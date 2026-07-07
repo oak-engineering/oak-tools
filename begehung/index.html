@@ -404,7 +404,9 @@ const HAZARDS = [
 const LEBENSPHASEN = ["Transport","Montage/Installation","Inbetriebnahme","Einrichten/Rüsten",
   "Normalbetrieb","Reinigung","Wartung/Instandhaltung","Störungsbeseitigung","Umbau","Demontage/Entsorgung"];
 
-/* ===== Typische Gefährdungsfaktoren je Maschinentyp (Vorauswahl; Feinschliff = BdA im Hintergrund) ===== */
+/* ===== Typische Gefährdungsfaktoren je Maschinentyp (Vorauswahl; Feinschliff = BdA im Hintergrund) =====
+   SSOT: references/anlagenkataster/kunststoff-spritzguss/kunststoff-spritzguss.md
+   ("Maschinentyp-Profile") – Änderungen dort pflegen, dann hierher übernehmen + deployen. */
 const MASCHINENTYPEN = [
  {id:"sgm",       label:"Spritzgießmaschine",   gf:["1.1","1.4","2.1","3.2","6.1","7.1"]},
  {id:"extruder",  label:"Extruder",             gf:["1.1","2.1","3.2","6.1","7.1"]},
@@ -731,6 +733,8 @@ function updateHazSel(gnr){
 }
 
 /* ===== Mängel (grounded: DGUV 113-606 / T 009) =====
+   SSOT: references/anlagenkataster/kunststoff-spritzguss/kunststoff-spritzguss.md
+   (Liste A1–E3 + "Kopplung im Begehungsbogen") – Änderungen dort pflegen, dann hierher übernehmen.
    gf = Gefährdungsfaktoren (BGHM), pf = Prüfpunkte (T 008-2 → N), die der Mangel automatisch setzt.
    rate/mn = Hintergrund-Bepreisung + Standard-Maßnahme (nicht im UI, landen im Export). */
 const MAENGEL_KATALOG = [
@@ -739,12 +743,14 @@ const MAENGEL_KATALOG = [
  {id:"A3", label:"Not-Halt fehlt/defekt", rq:"T 009 · BetrSichV", mn:"Not-Halt nachrüsten/instand setzen", rate:500, gf:["1.1"], pf:["P10"]},
  {id:"A4", label:"Kein Wiederanlaufschutz", rq:"EN ISO 14118", mn:"Wiederanlaufsperre nachrüsten", rate:500, gf:["1.4"], pf:["P32"]},
  {id:"B1", label:"Heiße Oberflächen ungesichert (Düse/Zylinder/Heizband)", rq:"DGUV 113-606 3.1.7", mn:"Isolieren/abschirmen + Hitzeschutz-PSA", rate:400, gf:["6.1"], pf:[]},
+ {id:"B2", label:"Materialstau-/Verpuffungsschutz fehlt (POM/PVC/PA)", rq:"DGUV 113-606 3.1.9/3.1.10", mn:"Materialführung sichern; Schutzvisier; Anfahrregeln", rate:300, gf:["3.4"], pf:[]},
  {id:"B3", label:"Absaugung / Zersetzungsgase (z. B. Formaldehyd)", rq:"DGUV 113-606 3.1.9 · T 009 4.6.1", mn:"Absaugung; Atemschutz bei Störung", rate:600, gf:["3.2"], pf:["P51"]},
  {id:"B4", label:"Brand-/Explosionsschutz (Staub, Ex-Bereich)", rq:"DGUV 113-606 3.1.10", mn:"Ex-Schutzdokument; ex-Absaugung; Zündquellen vermeiden", rate:800, gf:["5.2"], pf:[]},
  {id:"C1", label:"Leiter/Tritt/Podest/Zugang unsicher", rq:"DGUV 113-606 3.3.2 · T 009 4.2.4", mn:"Normkonforme Podesttreppe + Handlauf", rate:400, gf:["1.5","1.6"], pf:["P11"]},
  {id:"C2", label:"Kran/Transport über Bedienbereich ungesichert", rq:"DGUV 113-606 3.3.3", mn:"Zaun erweitern + Kran-Endschalter/Verriegelung + Warnleuchte", rate:1500, gf:["1.3"], pf:[]},
  {id:"C3", label:"Leckage / Boden rutschig (Öl/Granulat)", rq:"DGUV 113-606 3.1.2/3.1.5", mn:"Leckage beheben; Reinigung; Sicherheitsschuhe", rate:300, gf:["1.5"], pf:[]},
  {id:"C4", label:"Beleuchtung unzureichend (Werkzeugraum)", rq:"T 009 4.3.3 · ASR A3.4", mn:"LED-Maschinenleuchte (IP67)", rate:250, gf:["8.2"], pf:["P52"]},
+ {id:"C5", label:"Absturzsicherung hochgelegener Plätze fehlt", rq:"ASR A2.1 · DGUV 113-606 3.3.2", mn:"Geländer/Absturzsicherung nachrüsten", rate:600, gf:["1.6"], pf:["P11"]},
  {id:"D1", label:"E-Prüfung (DGUV V3) überfällig / Elektrik mangelhaft", rq:"DGUV 113-606 3.1.13 · DGUV V3", mn:"DGUV-V3-Prüfung durch Elektrofachkraft", rate:200, gf:["2.1"], pf:["P27","P28"]},
  {id:"D2", label:"Hydraulik undicht / Schlauch defekt (Leckage)", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Schläuche tauschen; Druckentlastung prüfen", rate:500, gf:["1.4"], pf:["P33","P34"], stufen:true},
  {id:"D3", label:"Pneumatik undicht / Leitung defekt (Leckage)", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Leitungen tauschen; Druckentlastung prüfen", rate:400, gf:["1.4"], pf:["P44","P45"], stufen:true},
