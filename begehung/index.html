@@ -296,6 +296,8 @@
   <details class="card">
     <summary><h2>5 · Gefährdungsfaktoren</h2><span class="chev">›</span></summary>
     <div class="desc">Klassifikation BGHM. Nummer antippen = Gefährdung vorhanden – die Auswahl erscheint darunter im Wortlaut.</div>
+    <label class="f">Vorauswahl nach Maschinentyp (setzt typische Faktoren – von Hand anpassbar)</label>
+    <div class="chips" id="typChips"></div>
     <div id="hazards"></div>
   </details>
 
@@ -401,6 +403,18 @@ const HAZARDS = [
 
 const LEBENSPHASEN = ["Transport","Montage/Installation","Inbetriebnahme","Einrichten/Rüsten",
   "Normalbetrieb","Reinigung","Wartung/Instandhaltung","Störungsbeseitigung","Umbau","Demontage/Entsorgung"];
+
+/* ===== Typische Gefährdungsfaktoren je Maschinentyp (Vorauswahl; Feinschliff = BdA im Hintergrund) ===== */
+const MASCHINENTYPEN = [
+ {id:"sgm",       label:"Spritzgießmaschine",   gf:["1.1","1.4","2.1","3.2","6.1","7.1"]},
+ {id:"extruder",  label:"Extruder",             gf:["1.1","2.1","3.2","6.1","7.1"]},
+ {id:"muehle",    label:"Schneidmühle",         gf:["1.1","1.2","2.1","3.2","5.2","7.1"]},
+ {id:"kran",      label:"Kran/Hebezeug",        gf:["1.3","1.4","9.1"]},
+ {id:"kompressor",label:"Kompressor/Druckluft", gf:["2.1","6.1","7.1","7.8"]},
+ {id:"temperier", label:"Temperiergerät",       gf:["2.1","6.1"]},
+ {id:"saege",     label:"Säge/Werkstatt",       gf:["1.1","1.2","3.2","7.1"]},
+ {id:"foerder",   label:"Fördertechnik",        gf:["1.1","1.3","7.1"]},
+];
 
 /* ===== Prüfliste Maschinensicherheit (BG RCI T 008-2) =====
    Je Punkt: [ID, Volltext (für Export/Info), Kurzlabel (für die Zeile)] */
@@ -606,8 +620,9 @@ function init(){
     });
     pc.appendChild(ch);
   });
-  // Gefährdungen (Nummern-Matrix)
+  // Gefährdungen (Nummern-Matrix) + Maschinentyp-Vorauswahl
   renderHazards();
+  renderTypen();
   renderAllgThumbs();
   renderAudio();
   renderPruefliste();
@@ -689,6 +704,23 @@ function renderHazards(){
     row.appendChild(sel);
     wrap.appendChild(row);
     updateHazSel(g.nr);
+  });
+}
+/* Maschinentyp-Chips: ein Tipp setzt die typischen Faktoren des Typs (additiv, von Hand korrigierbar) */
+function renderTypen(){
+  const box=document.getElementById("typChips"); if(!box) return; box.innerHTML="";
+  MASCHINENTYPEN.forEach(t=>{
+    const ch=document.createElement("span"); ch.className="chip"+(state.meta.maschinentyp===t.id?" on":"");
+    ch.textContent=t.label;
+    ch.addEventListener("click",()=>{
+      if(state.meta.maschinentyp===t.id){ state.meta.maschinentyp=""; ch.classList.remove("on"); save(); return; }
+      state.meta.maschinentyp=t.id;
+      box.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.textContent===t.label));
+      let n=0; t.gf.forEach(nr=>{ if(setzeGefahr(nr)) n++; });
+      save();
+      toast(n ? t.label+": "+n+" typische Gefährdungsfaktoren gesetzt" : t.label+": typische Faktoren waren schon gesetzt");
+    });
+    box.appendChild(ch);
   });
 }
 function updateHazSel(gnr){
