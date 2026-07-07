@@ -112,8 +112,20 @@
     border-top:1px solid var(--line);box-shadow:0 -2px 12px rgba(27,67,50,.1);
     padding:10px 12px calc(10px + env(safe-area-inset-bottom)) 12px;
     display:flex;gap:8px;overflow-x:auto;max-width:760px;margin:0 auto}
-  .actionbar .btn{white-space:nowrap;flex:0 0 auto}
-  .countpill{align-self:center;font-size:12.5px;color:var(--muted);margin-left:auto;white-space:nowrap}
+  .actionbar .btn{white-space:nowrap;flex:1 1 0;justify-content:center;padding:14px 6px}
+
+  /* ---- Maschinen-Übersicht (Overlay) ---- */
+  #ovl{position:fixed;inset:0;background:rgba(27,67,50,.45);z-index:80;display:flex;align-items:flex-end;justify-content:center}
+  .ovcard{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:760px;max-height:75vh;
+    display:flex;flex-direction:column;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+  .ovcard h2{color:var(--gruen);font-size:20px;margin-bottom:8px}
+  .ovlist{overflow-y:auto;flex:1;min-height:60px}
+  .ovrow{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid #eef3f0}
+  .ovrow:first-child{border-top:none}
+  .ovname{flex:1;min-width:0}
+  .ovname b{display:block;font-size:14.5px;color:var(--dunkel)}
+  .ovname span{font-size:12px;color:var(--muted)}
+  .ovleer{color:var(--muted);padding:14px 2px}
 
   .hint{font-size:12px;color:var(--muted);background:#f0f6f2;border-left:3px solid var(--hell);
     padding:8px 11px;border-radius:0 8px 8px 0;margin:8px 0}
@@ -134,7 +146,22 @@
     box-shadow:0 4px 16px rgba(0,0,0,.35);opacity:0;transition:opacity .3s;pointer-events:none}
   #toast.show{opacity:1}
 
+  /* ---- Gefährdungs-Matrix (Abschnitt 4): je Gruppe eine Zeile mit Nummern-Buttons ---- */
+  .hrowg{padding:9px 0;border-top:1px solid #eef3f0}
+  .hrowg:first-of-type{border-top:none}
+  .hglabel{font-size:12.5px;font-weight:600;color:var(--dunkel);margin-bottom:7px}
+  .hnums{display:flex;flex-wrap:wrap;gap:7px}
+  .hbtn{min-width:52px;padding:12px 9px;border:1px solid var(--line);background:#fcfdfc;
+    border-radius:9px;font-family:var(--body);font-size:14.5px;font-weight:600;color:var(--text);
+    cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent}
+  .hbtn.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
+  .hbtn:active{transform:scale(.94)}
+
   /* ---- Prüfliste J/N/E ---- */
+  .pinfo{display:none;font-size:12px;color:var(--muted);margin-top:6px;padding-left:2px}
+  .pinfo.show{display:block}
+  .jall{margin-left:auto;border:1px solid var(--gruen);background:#fff;color:var(--gruen);
+    border-radius:8px;font-family:var(--body);font-size:11.5px;font-weight:600;padding:5px 9px;cursor:pointer;white-space:nowrap}
   .jne{display:flex;gap:6px;flex:0 0 auto}
   .jbtn{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:600;font-size:14px;cursor:pointer;color:var(--muted)}
   .jbtn.j.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
@@ -266,16 +293,10 @@
 </main>
 
 <div class="actionbar">
-  <button class="btn primary" id="btnClone">✓ Sichern &amp; nächste Maschine</button>
-  <button class="btn primary" id="btnJson">⬇︎ Export alle</button>
-  <button class="btn primary" id="btnShare">📤 Teilen</button>
-  <button class="btn" id="btnMd">⬇︎ Markdown</button>
-  <button class="btn" id="btnPrint">🖨 PDF</button>
-  <button class="btn" id="btnImport">⬆︎ Laden</button>
+  <button class="btn primary" id="btnClone">✓ Speichern</button>
   <button class="btn" id="btnReset">✕ Neu</button>
-  <input type="file" accept="application/json" id="importInput" hidden>
-  <span class="countpill" id="machPill">0 Maschinen gesichert</span>
-  <span class="countpill" id="countPill">0 Gefährdungen</span>
+  <button class="btn primary" id="btnShare">📤 Teilen</button>
+  <button class="btn" id="btnList">📋 <span id="machCount">0</span></button>
 </div>
 
 <script>
@@ -305,33 +326,33 @@ function toast(msg){
 
 /* ===== Datenbasis: BGHM-Gefährdungsklassifikation (ID-40380) ===== */
 const HAZARDS = [
- {nr:"1", t:"Mechanische Gefährdungen", items:[
+ {nr:"1", t:"Mechanische Gefährdungen", kurz:"Mechanik", items:[
    ["1.1","Ungeschützt bewegte Maschinenteile"],
    ["1.2","Teile mit gefährlichen Oberflächen"],
    ["1.3","Bewegte Transportmittel, bewegte Arbeitsmittel"],
    ["1.4","Unkontrolliert bewegte Teile"],
    ["1.5","Sturz, Ausrutschen, Stolpern, Umknicken"],
    ["1.6","Absturz"]]},
- {nr:"2", t:"Elektrische Gefährdungen", items:[
+ {nr:"2", t:"Elektrische Gefährdungen", kurz:"Elektrik", items:[
    ["2.1","Elektrischer Schlag"],
    ["2.2","Lichtbögen"],
    ["2.3","Elektrostatische Aufladungen"]]},
- {nr:"3", t:"Gefahrstoffe", items:[
+ {nr:"3", t:"Gefahrstoffe", kurz:"Gefahrstoffe", items:[
    ["3.1","Hautkontakt mit Gefahrstoffen (Feststoffe, Flüssigkeiten, Feuchtarbeit)"],
    ["3.2","Einatmen von Gefahrstoffen (Gase, Dämpfe, Nebel, Stäube einschl. Rauche)"],
    ["3.3","Verschlucken von Gefahrstoffen"],
    ["3.4","Physikalisch-chemische Gefährdungen (z. B. Brand, Explosion, usw.)"]]},
- {nr:"4", t:"Biologische Arbeitsstoffe", items:[
+ {nr:"4", t:"Biologische Arbeitsstoffe", kurz:"Biostoffe", items:[
    ["4.1","Infektionsgefährdung durch pathogene Mikroorganismen (z. B. Bakterien, Viren)"],
    ["4.2","Sensibilisierende und toxische Wirkungen von Mikroorganismen"]]},
- {nr:"5", t:"Brand- und Explosionsgefährdungen", items:[
+ {nr:"5", t:"Brand- und Explosionsgefährdungen", kurz:"Brand/Explosion", items:[
    ["5.1","Brennbare Feststoffe, Flüssigkeiten, Gase"],
    ["5.2","Explosionsfähige Atmosphäre"],
    ["5.3","Explosivstoffe"]]},
- {nr:"6", t:"Thermische Gefährdungen", items:[
+ {nr:"6", t:"Thermische Gefährdungen", kurz:"Thermisch", items:[
    ["6.1","Heiße Medien/Oberflächen"],
    ["6.2","Kalte Medien/Oberflächen"]]},
- {nr:"7", t:"Spezielle physikalische Einwirkungen", items:[
+ {nr:"7", t:"Spezielle physikalische Einwirkungen", kurz:"Physikalisch (Lärm, Vibration, Strahlung)", items:[
    ["7.1","Lärm"],
    ["7.2","Ultraschall, Infraschall"],
    ["7.3","Ganzkörpervibrationen"],
@@ -340,23 +361,23 @@ const HAZARDS = [
    ["7.6","Ionisierende Strahlung (z. B. Röntgenstrahlung, radioaktive Strahlung)"],
    ["7.7","Elektromagnetische Felder"],
    ["7.8","Unter- oder Überdruck"]]},
- {nr:"8", t:"Arbeitsumgebungsbedingungen", items:[
+ {nr:"8", t:"Arbeitsumgebungsbedingungen", kurz:"Arbeitsumgebung", items:[
    ["8.1","Klima (z. B. Hitze, Kälte, unzureichende Lüftung)"],
    ["8.2","Beleuchtung, Licht"],
    ["8.3","Ersticken, Ertrinken"],
    ["8.4","Unzureichende Flucht- und Verkehrswege, unzureichende Sicherheits- und Gesundheitsschutzkennzeichnung"],
    ["8.5","Unzureichende Bewegungsfläche, ungünstige Anordnung des Arbeitsplatzes, unzureichende Pausen-/Sanitärräume"]]},
- {nr:"9", t:"Physische Belastung / Arbeitsschwere", items:[
+ {nr:"9", t:"Physische Belastung / Arbeitsschwere", kurz:"Körperliche Belastung", items:[
    ["9.1","Schwere dynamische Arbeit (z. B. manuelle Handhabung von Lasten)"],
    ["9.2","Einseitige dynamische Arbeit, Körperbewegung (z. B. häufig wiederholte Bewegungen)"],
    ["9.3","Haltungsarbeit (Zwangshaltung), Haltearbeit"],
    ["9.4","Kombination aus statischer und dynamischer Arbeit"]]},
- {nr:"10", t:"Psychische Faktoren", items:[
+ {nr:"10", t:"Psychische Faktoren", kurz:"Psychisch", items:[
    ["10.1","Ungenügend gestaltete Arbeitsaufgabe (z. B. Routineaufgaben, Über-/Unterqualifikation)"],
    ["10.2","Ungenügend gestaltete Arbeitsorganisation (z. B. Zeitdruck, lange/wechselnde Arbeitszeiten, Nachtarbeit)"],
    ["10.3","Ungenügend gestaltete soziale Bedingungen (z. B. fehlende Kontakte, Führungsverhalten, Konflikte)"],
    ["10.4","Ungenügend gestaltete Arbeits-/Umgebungsbedingungen (z. B. Lärm, Klima, Enge, Softwaregestaltung)"]]},
- {nr:"11", t:"Sonstige Gefährdungen", items:[
+ {nr:"11", t:"Sonstige Gefährdungen", kurz:"Sonstige", items:[
    ["11.1","Durch Menschen (z. B. Überfall)"],
    ["11.2","Durch Tiere (z. B. gebissen werden)"],
    ["11.3","Durch Pflanzen und pflanzliche Produkte (z. B. sensibilisierende/toxische Wirkungen)"]]}
@@ -365,74 +386,75 @@ const HAZARDS = [
 const LEBENSPHASEN = ["Transport","Montage/Installation","Inbetriebnahme","Einrichten/Rüsten",
   "Normalbetrieb","Reinigung","Wartung/Instandhaltung","Störungsbeseitigung","Umbau","Demontage/Entsorgung"];
 
-/* ===== Prüfliste Maschinensicherheit (BG RCI T 008-2) ===== */
+/* ===== Prüfliste Maschinensicherheit (BG RCI T 008-2) =====
+   Je Punkt: [ID, Volltext (für Export/Info), Kurzlabel (für die Zeile)] */
 const PRUEFLISTE = [
  {nr:"2", t:"Allgemeines", items:[
-   ["P1","Angaben an der Maschine: Hersteller, Typ, Nr., Baujahr, Spannung/Strom, CE (ab 1.1.1995)"],
-   ["P2","EG-Konformitätserklärung liegt vor"],
-   ["P3","Deutschsprachige Betriebsanleitung vorhanden (best. Verwendung, Schutzeinrichtungen, Restgefahren, Wartung)"],
-   ["P4","Beschriftungen + Sicherheits-/Warnhinweise vorhanden und erkennbar"],
-   ["P5","Dokumentation früherer Prüfungen liegt vor"],
-   ["P6","Maschine wird weiterhin bestimmungsgemäß verwendet"],
-   ["P7","Keine wesentlichen Veränderungen seit letzter Prüfung"],
-   ["P8","Maschine entspricht dem Stand der Technik (kein Bestandsschutz)"]]},
+   ["P1","Angaben an der Maschine: Hersteller, Typ, Nr., Baujahr, Spannung/Strom, CE (ab 1.1.1995)","Typenschild/CE-Angaben"],
+   ["P2","EG-Konformitätserklärung liegt vor","Konformitätserklärung"],
+   ["P3","Deutschsprachige Betriebsanleitung vorhanden (best. Verwendung, Schutzeinrichtungen, Restgefahren, Wartung)","Betriebsanleitung deutsch"],
+   ["P4","Beschriftungen + Sicherheits-/Warnhinweise vorhanden und erkennbar","Warnhinweise lesbar"],
+   ["P5","Dokumentation früherer Prüfungen liegt vor","Frühere Prüf-Doku"],
+   ["P6","Maschine wird weiterhin bestimmungsgemäß verwendet","Bestimmungsgemäße Nutzung"],
+   ["P7","Keine wesentlichen Veränderungen seit letzter Prüfung","Keine wesentl. Änderung"],
+   ["P8","Maschine entspricht dem Stand der Technik (kein Bestandsschutz)","Stand der Technik"]]},
  {nr:"3", t:"Sicherheitskonzept (retrospektiv)", items:[
-   ["P9","Schutzkonzept verhinderte Folgen gefährlicher Situationen wirksam"],
-   ["P10","Not-Halt wirkt wie in der Betriebsanleitung beschrieben"],
-   ["P11","Ausreichend Arbeitsbühnen/sichere Zugänge (auch Störung/Wartung)"],
-   ["P12","Störungen beseitigbar ohne Umgehen von Schutzeinrichtungen"],
-   ["P13","Sicherheitskonzept für Instandhaltung bewährt (LOTO/Tippbetrieb)"],
-   ["P14","Schutzeinrichtungen in der Praxis bewährt"],
-   ["P15","Manipulation von Schutzeinrichtungen wirksam vermieden"],
-   ["P16","Kein häufiges Instandsetzen/Auswechseln von Schutzeinrichtungen nötig"]]},
+   ["P9","Schutzkonzept verhinderte Folgen gefährlicher Situationen wirksam","Schutzkonzept wirksam"],
+   ["P10","Not-Halt wirkt wie in der Betriebsanleitung beschrieben","Not-Halt wirkt"],
+   ["P11","Ausreichend Arbeitsbühnen/sichere Zugänge (auch Störung/Wartung)","Sichere Zugänge/Bühnen"],
+   ["P12","Störungen beseitigbar ohne Umgehen von Schutzeinrichtungen","Störung ohne SE-Umgehung"],
+   ["P13","Sicherheitskonzept für Instandhaltung bewährt (LOTO/Tippbetrieb)","LOTO/Instandhaltung"],
+   ["P14","Schutzeinrichtungen in der Praxis bewährt","SE praxisbewährt"],
+   ["P15","Manipulation von Schutzeinrichtungen wirksam vermieden","Keine SE-Manipulation"],
+   ["P16","Kein häufiges Instandsetzen/Auswechseln von Schutzeinrichtungen nötig","SE selten defekt"]]},
  {nr:"4", t:"Schutzeinrichtungen (Vollständigkeit/Wirksamkeit)", items:[
-   ["P17","Alle Schutzeinrichtungen (lt. Betriebsanleitung) vorhanden"],
-   ["P18","Frei von äußerlich erkennbaren Beschädigungen"],
-   ["P19","Stabil/dauerhaft verbunden, Befestigungsmittel vollständig"],
-   ["P20","Sicherheitsabstände trennender Schutzeinrichtungen ausreichend"],
-   ["P21","Sicherheitsabstände BWS/Zweihandsteuerung ausreichend"],
-   ["P22","Bewegl. trennende Schutzeinr. OHNE Zuhaltung funktionsfähig"],
-   ["P23","Bewegl. trennende Schutzeinr. MIT Zuhaltung funktionsfähig"],
-   ["P24","Berührungswirkende Schutzeinr. (Schaltmatte/-leiste) funktionsfähig"],
-   ["P25","Berührungslose Schutzeinr. (Lichtschranke/Laserscanner) funktionsfähig"],
-   ["P26","Ortsgebundene Schutzeinr. (Zweihand/Zustimm-/Fuß-/Tippschalter) funktionsfähig"]]},
+   ["P17","Alle Schutzeinrichtungen (lt. Betriebsanleitung) vorhanden","SE vollständig"],
+   ["P18","Frei von äußerlich erkennbaren Beschädigungen","SE unbeschädigt"],
+   ["P19","Stabil/dauerhaft verbunden, Befestigungsmittel vollständig","SE fest verbunden"],
+   ["P20","Sicherheitsabstände trennender Schutzeinrichtungen ausreichend","Abstände trennende SE"],
+   ["P21","Sicherheitsabstände BWS/Zweihandsteuerung ausreichend","Abstände BWS/Zweihand"],
+   ["P22","Bewegl. trennende Schutzeinr. OHNE Zuhaltung funktionsfähig","Bewegl. SE ohne Zuhaltung"],
+   ["P23","Bewegl. trennende Schutzeinr. MIT Zuhaltung funktionsfähig","Bewegl. SE mit Zuhaltung"],
+   ["P24","Berührungswirkende Schutzeinr. (Schaltmatte/-leiste) funktionsfähig","Schaltmatte/-leiste"],
+   ["P25","Berührungslose Schutzeinr. (Lichtschranke/Laserscanner) funktionsfähig","Lichtschranke/Scanner"],
+   ["P26","Ortsgebundene Schutzeinr. (Zweihand/Zustimm-/Fuß-/Tippschalter) funktionsfähig","Zweihand/Zustimmschalter"]]},
  {nr:"5", t:"Elektrische Ausrüstung", items:[
-   ["P27","Aktuelle Prüfung nach DGUV Vorschrift 3 dokumentiert"],
-   ["P28","Elektrik frei von offensichtlichen Mängeln (Schränke zu, Gehäuse intakt)"],
-   ["P29","Kabel außerhalb des Schaltschranks unbeschädigt"],
-   ["P30","Schaltschrank-Inneres frei von Staub/Verunreinigung"],
-   ["P31","Elektrische Bauteile gemäß Schaltplan gekennzeichnet"],
-   ["P32","Kein unerwarteter Anlauf nach Ausfall/Wiederkehr der Energie"]]},
+   ["P27","Aktuelle Prüfung nach DGUV Vorschrift 3 dokumentiert","DGUV-V3-Prüfung aktuell"],
+   ["P28","Elektrik frei von offensichtlichen Mängeln (Schränke zu, Gehäuse intakt)","Elektrik ohne Mängel"],
+   ["P29","Kabel außerhalb des Schaltschranks unbeschädigt","Kabel unbeschädigt"],
+   ["P30","Schaltschrank-Inneres frei von Staub/Verunreinigung","Schaltschrank sauber"],
+   ["P31","Elektrische Bauteile gemäß Schaltplan gekennzeichnet","Bauteile gekennzeichnet"],
+   ["P32","Kein unerwarteter Anlauf nach Ausfall/Wiederkehr der Energie","Kein unerwarteter Anlauf"]]},
  {nr:"6", t:"Hydraulische Ausrüstung", items:[
-   ["P33","Hydraulik frei von offensichtlichen Mängeln/Leckagen"],
-   ["P34","Hydraulikleitungen unbeschädigt (keine Scheuerstellen, Biegeradien ok)"],
-   ["P35","Hydraulische Bauteile gemäß Schaltplan gekennzeichnet"],
-   ["P36","Schlauchleitungen ausreichend gekennzeichnet (Hersteller/Norm/Datum/Druck)"],
-   ["P37","Auswechselintervalle Schlauchleitungen beachtet (6 J / 2 J)"],
-   ["P38","Herumschlagen des Schlauches verhindert"],
-   ["P39","Austauschintervalle der Filter eingehalten"],
-   ["P40","Austreten von Hydraulikflüssigkeit verhindert (Pinholing)"],
-   ["P41","Hydrospeicher nach Not-Halt druckentlastet/abgesperrt"],
-   ["P42","Hochhalteeinrichtung bei Leitungsbruch/Energieausfall funktionsfähig"],
-   ["P43","Keine gefahrbringenden Bewegungen bei Ausfall/Wiederkehr der Energie"]]},
+   ["P33","Hydraulik frei von offensichtlichen Mängeln/Leckagen","Hydraulik dicht"],
+   ["P34","Hydraulikleitungen unbeschädigt (keine Scheuerstellen, Biegeradien ok)","Leitungen unbeschädigt"],
+   ["P35","Hydraulische Bauteile gemäß Schaltplan gekennzeichnet","Bauteile gekennzeichnet"],
+   ["P36","Schlauchleitungen ausreichend gekennzeichnet (Hersteller/Norm/Datum/Druck)","Schläuche gekennzeichnet"],
+   ["P37","Auswechselintervalle Schlauchleitungen beachtet (6 J / 2 J)","Schlauch-Wechselintervall"],
+   ["P38","Herumschlagen des Schlauches verhindert","Schlauch gesichert"],
+   ["P39","Austauschintervalle der Filter eingehalten","Filterintervalle"],
+   ["P40","Austreten von Hydraulikflüssigkeit verhindert (Pinholing)","Kein Austritt (Pinholing)"],
+   ["P41","Hydrospeicher nach Not-Halt druckentlastet/abgesperrt","Hydrospeicher entlastet"],
+   ["P42","Hochhalteeinrichtung bei Leitungsbruch/Energieausfall funktionsfähig","Hochhalteeinrichtung"],
+   ["P43","Keine gefahrbringenden Bewegungen bei Ausfall/Wiederkehr der Energie","Sicher bei Energieausfall"]]},
  {nr:"7", t:"Pneumatische Ausrüstung", items:[
-   ["P44","Pneumatik frei von offensichtlichen Mängeln (kein hörbares Austreten)"],
-   ["P45","Pneumatikleitungen unbeschädigt"],
-   ["P46","Pneumatische Bauteile gemäß Schaltplan gekennzeichnet"],
-   ["P47","Druckbehälter nach Not-Halt druckentlastet/abgesperrt"],
-   ["P48","Hochhalteeinrichtung bei Leitungsbruch/Druckausfall funktionsfähig"],
-   ["P49","Austauschintervalle der Filter eingehalten"],
-   ["P50","Keine gefahrbringenden Bewegungen bei Ausfall/Wiederkehr der Druckluft"]]},
+   ["P44","Pneumatik frei von offensichtlichen Mängeln (kein hörbares Austreten)","Pneumatik dicht"],
+   ["P45","Pneumatikleitungen unbeschädigt","Leitungen unbeschädigt"],
+   ["P46","Pneumatische Bauteile gemäß Schaltplan gekennzeichnet","Bauteile gekennzeichnet"],
+   ["P47","Druckbehälter nach Not-Halt druckentlastet/abgesperrt","Druckbehälter entlastet"],
+   ["P48","Hochhalteeinrichtung bei Leitungsbruch/Druckausfall funktionsfähig","Hochhalteeinrichtung"],
+   ["P49","Austauschintervalle der Filter eingehalten","Filterintervalle"],
+   ["P50","Keine gefahrbringenden Bewegungen bei Ausfall/Wiederkehr der Druckluft","Sicher bei Druckausfall"]]},
  {nr:"8", t:"Umgebung der Maschine", items:[
-   ["P51","Grenzwerte Lärm/Vibration/EMVU/Gefahrstoffe eingehalten"],
-   ["P52","Beleuchtung ausreichend (ASR A3.4)"],
-   ["P53","Verkehrswege bemessen, gekennzeichnet, freigehalten"]]},
+   ["P51","Grenzwerte Lärm/Vibration/EMVU/Gefahrstoffe eingehalten","Grenzwerte eingehalten"],
+   ["P52","Beleuchtung ausreichend (ASR A3.4)","Beleuchtung ausreichend"],
+   ["P53","Verkehrswege bemessen, gekennzeichnet, freigehalten","Verkehrswege frei"]]},
  {nr:"9", t:"Betriebsanweisung & Unterweisung", items:[
-   ["P54","Aktuelle Betriebsanweisung vorhanden"],
-   ["P55","Beschäftigte vor Tätigkeit + regelmäßig unterwiesen"],
-   ["P56","Unterweisung umfasst besondere Gefährdungen der Maschine"],
-   ["P57","Unterweisung zu Funktion/Wirkung der Schutzeinrichtungen"],
-   ["P58","Unterweisung zu besonderen Anforderungen bei Notfällen"]]}
+   ["P54","Aktuelle Betriebsanweisung vorhanden","Betriebsanweisung aktuell"],
+   ["P55","Beschäftigte vor Tätigkeit + regelmäßig unterwiesen","Unterweisung erfolgt"],
+   ["P56","Unterweisung umfasst besondere Gefährdungen der Maschine","UW: Gefährdungen"],
+   ["P57","Unterweisung zu Funktion/Wirkung der Schutzeinrichtungen","UW: Schutzeinrichtungen"],
+   ["P58","Unterweisung zu besonderen Anforderungen bei Notfällen","UW: Notfälle"]]}
 ];
 
 const LSKEY = "oak_begehung_v1";
@@ -463,7 +485,7 @@ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().cat
 /* ===== State ===== */
 let state = loadState();
 let collection = (function(){ try{ const c=JSON.parse(localStorage.getItem(COLLKEY)); return Array.isArray(c)?c:[]; }catch(e){ return []; } })();
-function updateMachineCount(){ const el=document.getElementById("machPill"); if(el) el.textContent=collection.length+" Maschine"+(collection.length===1?"":"n")+" gesichert"; }
+function updateMachineCount(){ const el=document.getElementById("machCount"); if(el) el.textContent=collection.length; }
 
 let quotaGewarnt=false;
 /* Schreibt state + collection in BEIDE Senken. true, wenn beides mindestens einmal gesichert ist. */
@@ -482,7 +504,7 @@ async function persistAll(){
   if(hint) hint.textContent = ok ? ((lsState&&lsColl)?"gespeichert ✓":"gespeichert (Backup) ✓") : "SPEICHER VOLL!";
   if(!ok && !quotaGewarnt){
     quotaGewarnt=true;
-    alert("Browser-Speicher voll – Änderungen können NICHT mehr gespeichert werden!\nJETZT '⬇︎ Export alle' drücken (sichert alles als JSON), danach '✕ Neu'.");
+    alert("Browser-Speicher voll – Änderungen können NICHT mehr gespeichert werden!\nJETZT '📤 Teilen' drücken (sichert alles als JSON), danach aufräumen.");
   }
   return ok;
 }
@@ -494,12 +516,13 @@ async function saveAndClone(){
   if(leer){ toast("Noch nichts erfasst – erst Fotos oder Sprachnotiz aufnehmen."); return; }
   if(!(state.meta.maschine||"").trim()) state.meta.maschine="Maschine "+(collection.length+1);
   const name=state.meta.maschine;
+  if(!confirm("„"+name+"“ speichern und nächste Maschine beginnen?")) return;
   if(btn){ btn.disabled=true; btn.textContent="Sichere…"; }
   collection.push(JSON.parse(JSON.stringify(state)));   // aktuelle Maschine sichern
   if(!await persistAll()){
     collection.pop(); rescueExport();
-    if(btn){ btn.disabled=false; btn.textContent="✓ Sichern & nächste Maschine"; }
-    alert("Speicher voll – die Maschine konnte NICHT im Browser gesichert werden.\nEin Rettungs-Export (JSON) wurde soeben heruntergeladen – nichts ist verloren.\nDanach: Export prüfen, '✕ Neu' drücken, ggf. mit '⬆︎ Laden' fortsetzen.");
+    if(btn){ btn.disabled=false; btn.textContent="✓ Speichern"; }
+    alert("Speicher voll – die Maschine konnte NICHT im Browser gesichert werden.\nEin Rettungs-Export (JSON) wurde soeben heruntergeladen – nichts ist verloren.");
     return;
   }
   // Klon für die nächste, baugleiche Maschine: Bewertungsmuster behalten, Maschinen-Spezifisches leeren
@@ -527,7 +550,7 @@ let saveT;
 function save(){
   clearTimeout(saveT);
   const hint=document.getElementById("savehint"); if(hint) hint.textContent="speichere…";
-  saveT=setTimeout(()=>{ persistAll(); updateCount(); },350);
+  saveT=setTimeout(()=>{ persistAll(); },350);
 }
 function item(nr){ if(!state.items[nr]) state.items[nr]={ja:false,notiz:"",fotos:[]}; return state.items[nr]; }
 
@@ -567,58 +590,13 @@ function init(){
     });
     pc.appendChild(ch);
   });
-  // Gefährdungen
-  const wrap=document.getElementById("hazards");
-  HAZARDS.forEach(g=>{
-    const d=document.createElement("details"); d.className="grp";
-    const sum=document.createElement("summary");
-    sum.innerHTML=`<span class="gnum">${g.nr}</span><span>${g.t}</span>`
-      +`<span class="gcount" id="gc-${g.nr}">0</span><span class="chev">›</span>`;
-    d.appendChild(sum);
-    g.items.forEach(([nr,text])=>{
-      const it=item(nr);
-      const row=document.createElement("div"); row.className="item"+(it.ja?" on":""); row.id="it-"+nr;
-      row.innerHTML=
-        `<div class="irow">
-           <label class="switch"><input type="checkbox" ${it.ja?"checked":""} data-ja="${nr}">
-             <span class="slider"></span></label>
-           <div class="ilabel"><b>${nr}</b> ${text}</div>
-         </div>
-         <div class="idetail">
-           <textarea id="nt-${nr}" placeholder="Beobachtung / Quelle der Gefährdung …">${esc(it.notiz)}</textarea>
-           <div class="toolrow">
-             <button class="btn" data-foto="${nr}">📷 Foto</button>
-           </div>
-           <div class="thumbs" id="th-${nr}"></div>
-         </div>`;
-      d.appendChild(row);
-    });
-    wrap.appendChild(d);
-  });
-  // Bindings Gefährdungen
-  document.querySelectorAll("[data-ja]").forEach(cb=>{
-    cb.addEventListener("change",()=>{
-      const nr=cb.dataset.ja; item(nr).ja=cb.checked;
-      document.getElementById("it-"+nr).classList.toggle("on",cb.checked);
-      groupCount(nr.split(".")[0]); save();
-    });
-  });
-  document.querySelectorAll("[id^=nt-]").forEach(ta=>{
-    const nr=ta.id.slice(3);
-    ta.addEventListener("input",()=>{ item(nr).notiz=ta.value; save(); });
-  });
-  document.querySelectorAll("[data-foto]").forEach(b=>{
-    b.addEventListener("click",()=>pickPhoto(b.dataset.foto));
-  });
-  // Thumbs initial
-  Object.keys(state.items).forEach(nr=>renderThumbs(nr));
+  // Gefährdungen (Nummern-Matrix)
+  renderHazards();
   renderAllgThumbs();
   renderAudio();
   renderPruefliste();
   renderPalette();
   renderMaengel();
-  HAZARDS.forEach(g=>groupCount(g.nr));
-  updateCount();
   updateMachineCount();
 
   // Default Datum heute
@@ -643,15 +621,16 @@ function renderPruefliste(){
   const wrap=document.getElementById("pruefliste");
   PRUEFLISTE.forEach(g=>{
     const d=document.createElement("details"); d.className="grp";
-    d.innerHTML=`<summary><span class="gnum">${g.nr}</span><span>${g.t}</span><span class="gcount" id="pgc-${g.nr}">0</span><span class="chev">›</span></summary>`;
-    g.items.forEach(([id,text])=>{
+    d.innerHTML=`<summary><span class="gnum">${g.nr}</span><span>${g.t}</span><button class="jall" data-jall="${g.nr}">Rest = J</button><span class="gcount" id="pgc-${g.nr}">0</span><span class="chev">›</span></summary>`;
+    g.items.forEach(([id,text,kurz])=>{
       const p=pitem(id);
       const row=document.createElement("div"); row.className="pitem"+(p.b==="n"?" mangel":""); row.id="p-"+id;
-      row.innerHTML=`<div class="prow"><div class="plabel"><b>${id.slice(1)}</b> ${text}</div>
+      row.innerHTML=`<div class="prow"><div class="plabel" data-info="${id}"><b>${id.slice(1)}</b> ${kurz||text}</div>
         <div class="jne">
           <button class="jbtn j${p.b==="j"?" on":""}" data-pb="${id}:j">J</button>
           <button class="jbtn n${p.b==="n"?" on":""}" data-pb="${id}:n">N</button>
           <button class="jbtn e${p.b==="e"?" on":""}" data-pb="${id}:e">E</button></div></div>
+        <div class="pinfo" id="pi-${id}">${text}</div>
         <div class="pdetail">
           <div class="chips"><span class="chip${p.s==="g"?" on":""}" data-ps="${id}:g">geringfügig</span><span class="chip${p.s==="s"?" on":""}" data-ps="${id}:s">schwerwiegend</span></div>
           <div class="kostrow"><span class="kostlbl">geschätzte Behebungskosten (netto)</span><input type="text" inputmode="numeric" id="pk-${id}" class="kostin" placeholder="€" value="${esc(p.k)}"><span class="chip kq" data-pk="${id}:150">150€</span><span class="chip kq" data-pk="${id}:300">300€</span><span class="chip kq" data-pk="${id}:500">500€</span><span class="chip kq" data-pk="${id}:1000">1000€</span></div>
@@ -676,18 +655,60 @@ function renderPruefliste(){
   wrap.querySelectorAll("[id^=pk-]").forEach(inp=>{ const id=inp.id.slice(3); inp.addEventListener("input",()=>{ pitem(id).k=inp.value.replace(/[^0-9.,]/g,""); save(); }); });
   wrap.querySelectorAll("[data-pk]").forEach(c=>c.addEventListener("click",()=>{ const [id,v]=c.dataset.pk.split(":"); pitem(id).k=v; const inp=document.getElementById("pk-"+id); if(inp) inp.value=v; save(); }));
   wrap.querySelectorAll("[data-pfoto]").forEach(b=>b.addEventListener("click",()=>pickPhotoP(b.dataset.pfoto)));
+  // Tipp aufs Label = Volltext ein-/ausblenden
+  wrap.querySelectorAll("[data-info]").forEach(l=>l.addEventListener("click",()=>{
+    const el=document.getElementById("pi-"+l.dataset.info); if(el) el.classList.toggle("show");
+  }));
+  // „Rest = J": alle unbeantworteten Punkte der Gruppe auf J setzen
+  wrap.querySelectorAll("[data-jall]").forEach(b=>b.addEventListener("click",e=>{
+    e.preventDefault(); e.stopPropagation();
+    const g=PRUEFLISTE.find(x=>x.nr===b.dataset.jall); if(!g) return;
+    g.items.forEach(([id])=>{ const p=pitem(id);
+      if(!p.b){ p.b="j"; const jb=wrap.querySelector(`[data-pb="${id}:j"]`); if(jb) jb.classList.add("on"); } });
+    save();
+  }));
   Object.keys(state.pruefung).forEach(id=>renderPThumbs(id));
   PRUEFLISTE.forEach(g=>pgroupCount(g.items[0][0]));
 }
 
-function groupCount(gnr){
-  let n=0; HAZARDS.find(g=>g.nr===gnr).items.forEach(([nr])=>{ if(state.items[nr]&&state.items[nr].ja) n++; });
-  const el=document.getElementById("gc-"+gnr);
-  el.textContent=n; el.classList.toggle("show",n>0);
+/* ===== Gefährdungs-Matrix: je Gruppe eine Zeile mit Nummern-Buttons;
+   aktivierte Faktoren erscheinen darunter als Karte (Volltext + Notiz + Foto) ===== */
+function renderHazards(){
+  const wrap=document.getElementById("hazards"); if(!wrap) return; wrap.innerHTML="";
+  HAZARDS.forEach(g=>{
+    const row=document.createElement("div"); row.className="hrowg";
+    row.innerHTML=`<div class="hglabel">${g.nr} · ${g.t}</div>`;
+    const nums=document.createElement("div"); nums.className="hnums";
+    g.items.forEach(([nr,text])=>{
+      const b=document.createElement("button"); b.type="button";
+      b.className="hbtn"+(item(nr).ja?" on":""); b.textContent=nr; b.title=text;
+      b.addEventListener("click",()=>{
+        const it=item(nr); it.ja=!it.ja;
+        b.classList.toggle("on",it.ja);
+        renderHazardCards(); save();
+      });
+      nums.appendChild(b);
+    });
+    row.appendChild(nums); wrap.appendChild(row);
+  });
+  const list=document.createElement("div"); list.id="hazCards"; wrap.appendChild(list);
+  renderHazardCards();
 }
-function updateCount(){
-  let n=0; Object.values(state.items).forEach(i=>{ if(i.ja) n++; });
-  document.getElementById("countPill").textContent=n+" Gefährdung"+(n===1?"":"en");
+function renderHazardCards(){
+  const list=document.getElementById("hazCards"); if(!list) return; list.innerHTML="";
+  HAZARDS.forEach(g=>g.items.forEach(([nr,text])=>{
+    const it=state.items[nr]; if(!it||!it.ja) return;
+    const c=document.createElement("div"); c.className="mcard";
+    c.innerHTML=`<div class="mhead"><b>${nr} ${text}</b></div>`
+      +`<textarea id="nt-${nr}" placeholder="Beobachtung / Quelle der Gefährdung …">${esc(it.notiz)}</textarea>`
+      +`<div class="toolrow"><button class="btn" data-foto="${nr}">📷 Foto</button></div>`
+      +`<div class="thumbs" id="th-${nr}"></div>`;
+    list.appendChild(c);
+  }));
+  list.querySelectorAll("[id^=nt-]").forEach(ta=>{ const nr=ta.id.slice(3);
+    ta.addEventListener("input",()=>{ item(nr).notiz=ta.value; save(); }); });
+  list.querySelectorAll("[data-foto]").forEach(b=>b.addEventListener("click",()=>pickPhoto(b.dataset.foto)));
+  Object.keys(state.items).forEach(nr=>renderThumbs(nr));
 }
 
 /* ===== Mängel & Bepreisung (grounded: DGUV 113-606 / T 009) ===== */
@@ -893,21 +914,14 @@ function download(name, content, type){
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
   document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500);
 }
-function baseName(){ return "Begehung_"+slug(state.meta.maschine||state.meta.kunde)+"_"+(state.meta.datum||""); }
-
 document.getElementById("btnClone").addEventListener("click", saveAndClone);
-document.getElementById("btnJson").addEventListener("click",()=>{
-  const out=exportPaket();
-  if(!out){ alert("Noch keine Maschine erfasst."); return; }
-  const kunden=[...new Set(out.maschinen.map(m=>((m.meta||{}).kunde||"").trim()).filter(Boolean))];
-  if(kunden.length>1) alert("Achtung: Der Export enthält Maschinen von "+kunden.length+" verschiedenen Kunden ("+kunden.join(", ")+").\nFalls ungewollt: alten Stand mit '✕ Neu' verwerfen, bevor du beim nächsten Kunden startest.");
-  download("Begehung_"+slug(state.meta.kunde||state.meta.maschine)+"_"+(state.meta.datum||"")+"_"+out.maschinen.length+"Masch.json", JSON.stringify(out), "application/json");
-});
 
 /* Teilen: Export direkt in eine App geben (z. B. Google Drive → eingang/ des Kunden) */
 document.getElementById("btnShare").addEventListener("click",async()=>{
   const out=exportPaket();
-  if(!out){ alert("Noch keine Maschine erfasst."); return; }
+  if(!out){ toast("Noch keine Maschine erfasst."); return; }
+  const kunden=[...new Set(out.maschinen.map(m=>((m.meta||{}).kunde||"").trim()).filter(Boolean))];
+  if(kunden.length>1) alert("Achtung: Der Export enthält Maschinen von "+kunden.length+" verschiedenen Kunden ("+kunden.join(", ")+").");
   const name="Begehung_"+slug(state.meta.kunde||state.meta.maschine)+"_"+(state.meta.datum||"")+"_"+out.maschinen.length+"Masch.json";
   const file=new File([JSON.stringify(out)],name,{type:"application/json"});
   if(navigator.canShare && navigator.canShare({files:[file]})){
@@ -918,94 +932,54 @@ document.getElementById("btnShare").addEventListener("click",async()=>{
   }
 });
 
-document.getElementById("btnMd").addEventListener("click",()=>{
-  download(baseName()+".md", buildMarkdown(), "text/markdown;charset=utf-8");
-});
-
-function buildMarkdown(){
-  const m=state.meta; const L=[];
-  L.push(`# Begehungsbogen – ${m.maschine||"(Maschine)"}`,"");
-  L.push("> Rohaufnahme vor Ort. Bewertung (Risiko + Maßnahmen TOP) erfolgt nachgelagert in der BdA.","");
-  L.push("| Feld | Wert |","|---|---|");
-  const row=(k,v)=>L.push(`| ${k} | ${v||"–"} |`);
-  row("Kunde",m.kunde); row("Maschine/Anlage",m.maschine); row("Hersteller",m.hersteller);
-  row("Typ/Modell",m.typ); row("Baujahr",m.baujahr); row("Serien-Nr.",m.seriennr);
-  row("Standort",m.standort); row("Bereich",m.bereich); row("Datum",m.datum); row("Begeher",m.begeher);
-  row("CE / Konformität",m.ce); row("Betriebsanleitung",m.anleitung);
-  row("Lebensphasen",(m.lebensphasen||[]).join(", "));
-  L.push("");
-  L.push("## Festgestellte Gefährdungen (vorhanden = ja)","");
-  let any=false;
-  HAZARDS.forEach(g=>{
-    const hits=g.items.filter(([nr])=>state.items[nr]&&state.items[nr].ja);
-    if(!hits.length) return; any=true;
-    L.push(`### ${g.nr} ${g.t}`);
-    hits.forEach(([nr,text])=>{
-      const it=state.items[nr];
-      let line=`- **${nr} ${text}**`;
-      if(it.notiz) line+=` — ${it.notiz.trim()}`;
-      if(it.fotos&&it.fotos.length) line+=`  _[Fotos: ${it.fotos.map((f,i)=>`${nr}_${i+1}`).join(", ")}]_`;
-      L.push(line);
-    });
-    L.push("");
-  });
-  if(!any) L.push('_Keine Gefährdung als „ja" markiert._','');
-  // Mängelliste (Maschinensicherheit T 008-2)
-  const maengel=[];
-  PRUEFLISTE.forEach(g=>g.items.forEach(([id,text])=>{ const p=state.pruefung&&state.pruefung[id]; if(p&&p.b==="n") maengel.push({id:id.slice(1),text,sev:p.s==="s"?"schwerwiegend":(p.s==="g"?"geringfügig":"–"),mm:p.m,kk:p.k,rq:""}); }));
-  const _SEV={g:"gering",m:"mittel",h:"hoch"};
-  (state.maengel||[]).forEach((m,i)=>maengel.push({id:"M"+(i+1),text:m.label+(m.mass?` (${m.mass})`:""),sev:_SEV[m.schwere]||"–",mm:m.notiz,kk:m.kosten,rq:m.rq}));
-  if(maengel.length){
-    L.push("## Mängelliste & Bepreisung","");
-    L.push("| Nr. | Mangel | Rechtsquelle | Schwere | Kosten netto | Maßnahme |","|---|---|---|---|---|---|");
-    maengel.forEach(x=>L.push(`| ${x.id} | ${x.text} | ${x.rq||"–"} | ${x.sev} | ${x.kk?parseKosten(x.kk).toLocaleString("de-DE")+" €":"–"} | ${(x.mm||"").trim()||"–"} |`));
-    const hoch=maengel.filter(x=>x.sev==="hoch"||x.sev==="schwerwiegend").length;
-    const summe=maengel.reduce((a,x)=>a+parseKosten(x.kk),0);
-    L.push("", `**${maengel.length} Mängel${hoch?`, davon ${hoch} hoch/schwerwiegend → Stilllegung prüfen`:""}. Geschätzte Behebung gesamt: ${summe.toLocaleString("de-DE")} € (netto, Richtwert).**`, "");
-    L.push("> Aus dieser Mängelliste leiten sich **BdA** (Gefährdung + Rechtsquelle + Maßnahme/TOP) und **BA** je Maschine ab.","");
-  }
-  if(state.audio&&state.audio.data){
-    const d=state.audio.dauer||0;
-    L.push("## Sprachnotiz","",`Sprachnotiz vorhanden (${Math.floor(d/60)}:${String(d%60).padStart(2,"0")} min) – im JSON-Export enthalten; Transkription am PC: \`python tools/transkribiere.py "<Export>.json"\``,"");
-  }
-  if(m.allg_notiz){ L.push("## Allgemeine Notizen", "", m.allg_notiz.trim(), ""); }
-  const allgF=(state.fotosAllg||[]).length;
-  if(allgF) L.push(`## Fotos zur Maschine`, "", `${allgF} Foto(s): ${state.fotosAllg.map((f,i)=>`Foto ${i+1}`).join(", ")} – Nummern entsprechen den Referenzen in der Sprachnotiz (Reihenfolge = Aufnahmereihenfolge im JSON-Export).`, "");
-  L.push("---", `*Erfasst mit OAK Begehungsbogen · Export ${new Date().toLocaleString("de-DE")}*`);
-  return L.join("\n");
-}
-
-document.getElementById("btnPrint").addEventListener("click",()=>{ document.querySelectorAll("details").forEach(d=>d.open=true); window.print(); });
-
-/* Import */
-document.getElementById("btnImport").addEventListener("click",()=>document.getElementById("importInput").click());
-document.getElementById("importInput").addEventListener("change",e=>{
-  const f=e.target.files[0]; if(!f) return;
-  const r=new FileReader();
-  r.onload=async()=>{ try{ const s=JSON.parse(r.result);
-    if(s._typ==="OAK-Begehung-Sammlung" && Array.isArray(s.maschinen)){
-      if(collection.length && !confirm("Import ersetzt "+collection.length+" bereits gesicherte Maschine(n). Fortfahren?\n(Tipp: vorher '⬇︎ Export alle')")) return;
-      collection=s.maschinen.slice(); const last=collection.pop()||blankState();
-      state={meta:last.meta,items:last.items||{},pruefung:last.pruefung||{},maengel:last.maengel||[],fotosAllg:last.fotosAllg||[],audio:last.audio||null};
-      await persistAll(); location.reload(); return;
-    }
-    if(!s.meta) throw 0;
-    if((state.meta.maschine||"").trim() && !confirm("Import überschreibt den aktuellen Bogen („"+state.meta.maschine+"“). Fortfahren?")) return;
-    state={meta:s.meta,items:s.items||{},pruefung:s.pruefung||{},maengel:s.maengel||[],fotosAllg:s.fotosAllg||[],audio:s.audio||null};
-    await persistAll(); location.reload();
-  }catch(err){ alert("Datei konnte nicht gelesen werden (kein gültiger Begehungsbogen)."); } };
-  r.readAsText(f);
-});
-
-/* Reset */
+/* Neu: nur den aktuellen Bogen verwerfen – gesicherte Maschinen bleiben erhalten */
 document.getElementById("btnReset").addEventListener("click",async()=>{
-  if(confirm("ALLES verwerfen (aktuelle + alle gesicherten Maschinen)?\n(Tipp: vorher exportieren!)")){
-    state=blankState(); collection=[];
-    localStorage.removeItem(LSKEY); localStorage.removeItem(COLLKEY);
-    await idbDel(LSKEY); await idbDel(COLLKEY);
-    location.reload();
-  }
+  if(!confirm("Aktuellen Bogen verwerfen und neu beginnen?\n(Die gesicherten Maschinen bleiben erhalten.)")) return;
+  state=blankState(); await persistAll(); location.reload();
 });
+
+/* Übersicht: gesicherte Maschinen ansehen / einzeln löschen / Tag komplett abschließen */
+document.getElementById("btnList").addEventListener("click", zeigeUebersicht);
+function zeigeUebersicht(){
+  const alt=document.getElementById("ovl"); if(alt) alt.remove();
+  const ov=document.createElement("div"); ov.id="ovl";
+  const rows=collection.map((m,i)=>{
+    const fotos=(m.fotosAllg||[]).length
+      + Object.values(m.items||{}).reduce((a,it)=>a+((it.fotos||[]).length),0)
+      + Object.values(m.pruefung||{}).reduce((a,p)=>a+((p.fotos||[]).length),0)
+      + (m.maengel||[]).reduce((a,x)=>a+((x.fotos||[]).length),0);
+    const d=(m.audio&&m.audio.dauer)||0;
+    const audio=(m.audio&&m.audio.data)?"🎙 "+Math.floor(d/60)+":"+String(d%60).padStart(2,"0"):"ohne 🎙";
+    const gef=Object.values(m.items||{}).filter(it=>it.ja).length;
+    const man=(m.maengel||[]).length+Object.values(m.pruefung||{}).filter(p=>p.b==="n").length;
+    return `<div class="ovrow"><div class="ovname"><b>${i+1} · ${esc((m.meta||{}).maschine||"?")}</b>`
+      +`<span>${fotos} Foto(s) · ${audio} · ${gef} Gefährdungen · ${man} Mängel</span></div>`
+      +`<button class="mdel" data-ovdel="${i}">×</button></div>`;
+  }).join("")||'<div class="ovleer">Noch keine Maschine gesichert.</div>';
+  ov.innerHTML=`<div class="ovcard"><h2>Gesicherte Maschinen (${collection.length})</h2>`
+    +`<div class="ovlist">${rows}</div>`
+    +`<div class="toolrow" style="margin-top:12px">`
+    +`<button class="btn" id="ovAlle">🗑 Alles löschen</button>`
+    +`<button class="btn primary" id="ovZu" style="margin-left:auto">Schließen</button></div></div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener("click",e=>{ if(e.target===ov) ov.remove(); });
+  ov.querySelector("#ovZu").addEventListener("click",()=>ov.remove());
+  ov.querySelector("#ovAlle").addEventListener("click",alleLoeschen);
+  ov.querySelectorAll("[data-ovdel]").forEach(b=>b.addEventListener("click",async()=>{
+    const i=+b.dataset.ovdel;
+    if(!confirm("„"+(((collection[i]||{}).meta||{}).maschine||"?")+"“ endgültig löschen?")) return;
+    collection.splice(i,1); await persistAll(); zeigeUebersicht();
+  }));
+}
+/* Tag abschließen: alles löschen (Kunde/Begeher bleiben voreingestellt) */
+async function alleLoeschen(){
+  if(!confirm("ALLE "+collection.length+" gesicherten Maschinen UND den aktuellen Bogen löschen?")) return;
+  if(!confirm("Wirklich sicher? Vorher per 📤 Teilen exportiert?")) return;
+  state=blankState(); collection=[];
+  localStorage.removeItem(LSKEY); localStorage.removeItem(COLLKEY);
+  await idbDel(LSKEY); await idbDel(COLLKEY);
+  location.reload();
+}
 
 /* Start: neuesten Stand aus localStorage vs. IndexedDB-Backup wählen, dann rendern.
    Alles mit Timeout – ein hängendes IndexedDB (z. B. iOS-Bug) darf die App nie lahmlegen. */
