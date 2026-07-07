@@ -156,6 +156,9 @@
     cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent}
   .hbtn.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
   .hbtn:active{transform:scale(.94)}
+  .hsel{margin-top:7px;font-size:13px;line-height:1.55;color:var(--dunkel)}
+  .hsel:empty{display:none}
+  .hsel b{color:var(--gruen)}
 
   /* ---- Prüfliste J/N/E ---- */
   .pinfo{display:none;font-size:12px;color:var(--muted);margin-top:6px;padding-left:2px}
@@ -267,27 +270,27 @@
     <div class="chips" data-multi="lebensphasen" id="phasenChips"></div>
   </details>
 
+  <!-- MÄNGEL (grounded: DGUV 113-606 / T 009) -->
+  <details class="card">
+    <summary><h2>4 · Mängel</h2><span class="chev">›</span></summary>
+    <div class="desc">Mangel antippen → wird übernommen. Rechtsquelle, Einstufung und Bepreisung laufen
+      im Hintergrund mit; passende Gefährdungsfaktoren (5) und Prüfpunkte (6) werden automatisch gesetzt.</div>
+    <div class="mpal" id="mPalette"></div>
+    <div id="mList"></div>
+  </details>
+
   <!-- GEFÄHRDUNGEN -->
   <details class="card">
-    <summary><h2>4 · Gefährdungsfaktoren</h2><span class="chev">›</span></summary>
-    <div class="desc">Klassifikation BGHM. Schalter auf <b>Ja</b> = vorhanden → Notiz + Foto möglich.</div>
+    <summary><h2>5 · Gefährdungsfaktoren</h2><span class="chev">›</span></summary>
+    <div class="desc">Klassifikation BGHM. Nummer antippen = Gefährdung vorhanden – die Auswahl erscheint darunter im Wortlaut.</div>
     <div id="hazards"></div>
   </details>
 
   <!-- MASCHINENSICHERHEIT / PRÜFLISTE -->
   <details class="card">
-    <summary><h2>5 · Maschinensicherheit</h2><span class="chev">›</span></summary>
+    <summary><h2>6 · Maschinensicherheit</h2><span class="chev">›</span></summary>
     <div class="desc">Prüfliste BG RCI T 008-2. <b>J</b> = erfüllt · <b>N</b> = Mangel · <b>E</b> = entfällt.</div>
     <div id="pruefliste"></div>
-  </details>
-
-  <!-- MÄNGEL & BEPREISUNG (grounded: DGUV 113-606 / T 009) -->
-  <details class="card">
-    <summary><h2>6 · Mängel &amp; Bepreisung</h2><span class="chev">›</span></summary>
-    <div class="desc">Mangel antippen → Karte mit Rechtsquelle + Maßnahme. Nur Schwere, ggf. Maß und Kosten ergänzen.</div>
-    <div class="mpal" id="mPalette"></div>
-    <div id="mList"></div>
-    <div class="msum" id="mSum"></div>
   </details>
 
 </main>
@@ -632,9 +635,6 @@ function renderPruefliste(){
           <button class="jbtn e${p.b==="e"?" on":""}" data-pb="${id}:e">E</button></div></div>
         <div class="pinfo" id="pi-${id}">${text}</div>
         <div class="pdetail">
-          <div class="chips"><span class="chip${p.s==="g"?" on":""}" data-ps="${id}:g">geringfügig</span><span class="chip${p.s==="s"?" on":""}" data-ps="${id}:s">schwerwiegend</span></div>
-          <div class="kostrow"><span class="kostlbl">geschätzte Behebungskosten (netto)</span><input type="text" inputmode="numeric" id="pk-${id}" class="kostin" placeholder="€" value="${esc(p.k)}"><span class="chip kq" data-pk="${id}:150">150€</span><span class="chip kq" data-pk="${id}:300">300€</span><span class="chip kq" data-pk="${id}:500">500€</span><span class="chip kq" data-pk="${id}:1000">1000€</span></div>
-          <textarea id="pm-${id}" placeholder="Maßnahme / Bemerkung …">${esc(p.m)}</textarea>
           <div class="toolrow"><button class="btn" data-pfoto="${id}">📷 Foto</button></div>
           <div class="thumbs" id="pth-${id}"></div></div>`;
       d.appendChild(row);
@@ -647,13 +647,6 @@ function renderPruefliste(){
     document.getElementById("p-"+id).classList.toggle("mangel", p.b==="n");
     pgroupCount(id); save();
   }));
-  wrap.querySelectorAll("[data-ps]").forEach(c=>c.addEventListener("click",()=>{
-    const [id,v]=c.dataset.ps.split(":"); const p=pitem(id); p.s=(p.s===v?"":v);
-    document.querySelectorAll(`[data-ps^="${id}:"]`).forEach(x=>x.classList.toggle("on", x.dataset.ps===id+":"+p.s)); save();
-  }));
-  wrap.querySelectorAll("[id^=pm-]").forEach(ta=>{ const id=ta.id.slice(3); ta.addEventListener("input",()=>{ pitem(id).m=ta.value; save(); }); });
-  wrap.querySelectorAll("[id^=pk-]").forEach(inp=>{ const id=inp.id.slice(3); inp.addEventListener("input",()=>{ pitem(id).k=inp.value.replace(/[^0-9.,]/g,""); save(); }); });
-  wrap.querySelectorAll("[data-pk]").forEach(c=>c.addEventListener("click",()=>{ const [id,v]=c.dataset.pk.split(":"); pitem(id).k=v; const inp=document.getElementById("pk-"+id); if(inp) inp.value=v; save(); }));
   wrap.querySelectorAll("[data-pfoto]").forEach(b=>b.addEventListener("click",()=>pickPhotoP(b.dataset.pfoto)));
   // Tipp aufs Label = Volltext ein-/ausblenden
   wrap.querySelectorAll("[data-info]").forEach(l=>l.addEventListener("click",()=>{
@@ -672,7 +665,8 @@ function renderPruefliste(){
 }
 
 /* ===== Gefährdungs-Matrix: je Gruppe eine Zeile mit Nummern-Buttons;
-   aktivierte Faktoren erscheinen darunter als Karte (Volltext + Notiz + Foto) ===== */
+   ausgewählte Faktoren stehen ausgeschrieben direkt unter der Zeile.
+   Details (Beobachtung/Beleg) kommen aus Fotos + Sprachnotiz. ===== */
 function renderHazards(){
   const wrap=document.getElementById("hazards"); if(!wrap) return; wrap.innerHTML="";
   HAZARDS.forEach(g=>{
@@ -685,51 +679,45 @@ function renderHazards(){
       b.addEventListener("click",()=>{
         const it=item(nr); it.ja=!it.ja;
         b.classList.toggle("on",it.ja);
-        renderHazardCards(); save();
+        updateHazSel(g.nr); save();
       });
       nums.appendChild(b);
     });
-    row.appendChild(nums); wrap.appendChild(row);
+    row.appendChild(nums);
+    const sel=document.createElement("div"); sel.className="hsel"; sel.id="hsel-"+g.nr;
+    row.appendChild(sel);
+    wrap.appendChild(row);
+    updateHazSel(g.nr);
   });
-  const list=document.createElement("div"); list.id="hazCards"; wrap.appendChild(list);
-  renderHazardCards();
 }
-function renderHazardCards(){
-  const list=document.getElementById("hazCards"); if(!list) return; list.innerHTML="";
-  HAZARDS.forEach(g=>g.items.forEach(([nr,text])=>{
-    const it=state.items[nr]; if(!it||!it.ja) return;
-    const c=document.createElement("div"); c.className="mcard";
-    c.innerHTML=`<div class="mhead"><b>${nr} ${text}</b></div>`
-      +`<textarea id="nt-${nr}" placeholder="Beobachtung / Quelle der Gefährdung …">${esc(it.notiz)}</textarea>`
-      +`<div class="toolrow"><button class="btn" data-foto="${nr}">📷 Foto</button></div>`
-      +`<div class="thumbs" id="th-${nr}"></div>`;
-    list.appendChild(c);
-  }));
-  list.querySelectorAll("[id^=nt-]").forEach(ta=>{ const nr=ta.id.slice(3);
-    ta.addEventListener("input",()=>{ item(nr).notiz=ta.value; save(); }); });
-  list.querySelectorAll("[data-foto]").forEach(b=>b.addEventListener("click",()=>pickPhoto(b.dataset.foto)));
-  Object.keys(state.items).forEach(nr=>renderThumbs(nr));
+function updateHazSel(gnr){
+  const g=HAZARDS.find(x=>x.nr===gnr); const el=document.getElementById("hsel-"+gnr);
+  if(!g||!el) return;
+  el.innerHTML=g.items.filter(([nr])=>state.items[nr]&&state.items[nr].ja)
+    .map(([nr,text])=>`<div><b>${nr}</b> ${text}</div>`).join("");
 }
 
-/* ===== Mängel & Bepreisung (grounded: DGUV 113-606 / T 009) ===== */
+/* ===== Mängel (grounded: DGUV 113-606 / T 009) =====
+   gf = Gefährdungsfaktoren (BGHM), pf = Prüfpunkte (T 008-2 → N), die der Mangel automatisch setzt.
+   rate/mn = Hintergrund-Bepreisung + Standard-Maßnahme (nicht im UI, landen im Export). */
 const MAENGEL_KATALOG = [
- {id:"A1", label:"Schutzeinrichtung fehlt/unwirksam (Düsenschutz, seitlich, Antrieb)", rq:"DGUV 113-606 3.1.3 · BetrSichV Anh.1", mass:"Ort/Bauteil", mn:"Schutzhaube/Abdeckung + Endschalter/Zuhaltung nachrüsten", rate:400},
- {id:"A2", label:"Schutzzaun fehlt/unzureichend · Bodenspalt", rq:"DGUV 113-606 3.1.3 · EN ISO 13857", mass:"Länge (m)", perUnit:true, rate:250, mn:"Zaun n. EN ISO 13857; Spalt < 180 mm sichern"},
- {id:"A3", label:"Not-Halt fehlt/defekt", rq:"T 009 · BetrSichV", mn:"Not-Halt nachrüsten/instand setzen", rate:500},
- {id:"A4", label:"Kein Wiederanlaufschutz", rq:"EN ISO 14118", mn:"Wiederanlaufsperre nachrüsten", rate:500},
- {id:"B1", label:"Heiße Oberflächen ungesichert (Düse/Zylinder/Heizband)", rq:"DGUV 113-606 3.1.7", mn:"Isolieren/abschirmen + Hitzeschutz-PSA", rate:400},
- {id:"B3", label:"Absaugung / Zersetzungsgase (z. B. Formaldehyd)", rq:"DGUV 113-606 3.1.9 · T 009 4.6.1", mn:"Absaugung; Atemschutz bei Störung", rate:600},
- {id:"B4", label:"Brand-/Explosionsschutz (Staub, Ex-Bereich)", rq:"DGUV 113-606 3.1.10", mn:"Ex-Schutzdokument; ex-Absaugung; Zündquellen vermeiden", rate:800},
- {id:"C1", label:"Leiter/Tritt/Podest/Zugang unsicher", rq:"DGUV 113-606 3.3.2 · T 009 4.2.4", mn:"Normkonforme Podesttreppe + Handlauf", rate:400},
- {id:"C2", label:"Kran/Transport über Bedienbereich ungesichert", rq:"DGUV 113-606 3.3.3", mn:"Zaun erweitern + Kran-Endschalter/Verriegelung + Warnleuchte", rate:1500},
- {id:"C3", label:"Leckage / Boden rutschig (Öl/Granulat)", rq:"DGUV 113-606 3.1.2/3.1.5", mn:"Leckage beheben; Reinigung; Sicherheitsschuhe", rate:300},
- {id:"C4", label:"Beleuchtung unzureichend (Werkzeugraum)", rq:"T 009 4.3.3 · ASR A3.4", mn:"LED-Maschinenleuchte (IP67)", rate:250},
- {id:"D1", label:"E-Prüfung (DGUV V3) überfällig / Elektrik mangelhaft", rq:"DGUV 113-606 3.1.13 · DGUV V3", mn:"DGUV-V3-Prüfung durch Elektrofachkraft", rate:200},
- {id:"D2", label:"Hydraulik/Pneumatik undicht / Schlauch defekt", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Schläuche tauschen; Druckentlastung prüfen", rate:500},
- {id:"E1", label:"CE/Konformität/Betriebsanleitung fehlt", rq:"T 009 Kap. 2", mn:"Unterlagen beschaffen/nachfordern", rate:150},
- {id:"E2", label:"BA/Unterweisung fehlt", rq:"DGUV 113-606 Kap. 2 · T 009 4.1.2", mn:"BA erstellen; Unterweisung + Dokumentation", rate:150},
- {id:"E3", label:"Kennzeichnung fehlt (Gebinde/Sicherheitszeichen)", rq:"TRGS 201 · ASR A1.3", mn:"Kennzeichnung anbringen", rate:150},
- {id:"X", label:"Sonstiger Mangel", rq:"", mass:"Beschreibung", mn:"", rate:0},
+ {id:"A1", label:"Schutzeinrichtung fehlt/unwirksam (Düsenschutz, seitlich, Antrieb)", rq:"DGUV 113-606 3.1.3 · BetrSichV Anh.1", mass:"Ort/Bauteil", mn:"Schutzhaube/Abdeckung + Endschalter/Zuhaltung nachrüsten", rate:400, gf:["1.1"], pf:["P17"]},
+ {id:"A2", label:"Schutzzaun fehlt/unzureichend · Bodenspalt", rq:"DGUV 113-606 3.1.3 · EN ISO 13857", mass:"Länge (m)", perUnit:true, rate:250, mn:"Zaun n. EN ISO 13857; Spalt < 180 mm sichern", gf:["1.1"], pf:["P20"]},
+ {id:"A3", label:"Not-Halt fehlt/defekt", rq:"T 009 · BetrSichV", mn:"Not-Halt nachrüsten/instand setzen", rate:500, gf:["1.1"], pf:["P10"]},
+ {id:"A4", label:"Kein Wiederanlaufschutz", rq:"EN ISO 14118", mn:"Wiederanlaufsperre nachrüsten", rate:500, gf:["1.4"], pf:["P32"]},
+ {id:"B1", label:"Heiße Oberflächen ungesichert (Düse/Zylinder/Heizband)", rq:"DGUV 113-606 3.1.7", mn:"Isolieren/abschirmen + Hitzeschutz-PSA", rate:400, gf:["6.1"], pf:[]},
+ {id:"B3", label:"Absaugung / Zersetzungsgase (z. B. Formaldehyd)", rq:"DGUV 113-606 3.1.9 · T 009 4.6.1", mn:"Absaugung; Atemschutz bei Störung", rate:600, gf:["3.2"], pf:["P51"]},
+ {id:"B4", label:"Brand-/Explosionsschutz (Staub, Ex-Bereich)", rq:"DGUV 113-606 3.1.10", mn:"Ex-Schutzdokument; ex-Absaugung; Zündquellen vermeiden", rate:800, gf:["5.2"], pf:[]},
+ {id:"C1", label:"Leiter/Tritt/Podest/Zugang unsicher", rq:"DGUV 113-606 3.3.2 · T 009 4.2.4", mn:"Normkonforme Podesttreppe + Handlauf", rate:400, gf:["1.5","1.6"], pf:["P11"]},
+ {id:"C2", label:"Kran/Transport über Bedienbereich ungesichert", rq:"DGUV 113-606 3.3.3", mn:"Zaun erweitern + Kran-Endschalter/Verriegelung + Warnleuchte", rate:1500, gf:["1.3"], pf:[]},
+ {id:"C3", label:"Leckage / Boden rutschig (Öl/Granulat)", rq:"DGUV 113-606 3.1.2/3.1.5", mn:"Leckage beheben; Reinigung; Sicherheitsschuhe", rate:300, gf:["1.5"], pf:[]},
+ {id:"C4", label:"Beleuchtung unzureichend (Werkzeugraum)", rq:"T 009 4.3.3 · ASR A3.4", mn:"LED-Maschinenleuchte (IP67)", rate:250, gf:["8.2"], pf:["P52"]},
+ {id:"D1", label:"E-Prüfung (DGUV V3) überfällig / Elektrik mangelhaft", rq:"DGUV 113-606 3.1.13 · DGUV V3", mn:"DGUV-V3-Prüfung durch Elektrofachkraft", rate:200, gf:["2.1"], pf:["P27","P28"]},
+ {id:"D2", label:"Hydraulik/Pneumatik undicht / Schlauch defekt", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Schläuche tauschen; Druckentlastung prüfen", rate:500, gf:["1.4"], pf:[]},
+ {id:"E1", label:"CE/Konformität/Betriebsanleitung fehlt", rq:"T 009 Kap. 2", mn:"Unterlagen beschaffen/nachfordern", rate:150, gf:[], pf:["P2","P3"]},
+ {id:"E2", label:"BA/Unterweisung fehlt", rq:"DGUV 113-606 Kap. 2 · T 009 4.1.2", mn:"BA erstellen; Unterweisung + Dokumentation", rate:150, gf:[], pf:["P54","P55"]},
+ {id:"E3", label:"Kennzeichnung fehlt (Gebinde/Sicherheitszeichen)", rq:"TRGS 201 · ASR A1.3", mn:"Kennzeichnung anbringen", rate:150, gf:["8.4"], pf:["P4"]},
+ {id:"X", label:"Sonstiger Mangel", rq:"", mass:"Beschreibung", mn:"", rate:0, gf:[], pf:[]},
 ];
 function katById(id){ return MAENGEL_KATALOG.find(k=>k.id===id)||{}; }
 function renderPalette(){
@@ -737,10 +725,31 @@ function renderPalette(){
   MAENGEL_KATALOG.forEach(k=>{ const b=document.createElement("button"); b.className="btn"; b.textContent="+ "+k.label;
     b.addEventListener("click",()=>addMangel(k)); pal.appendChild(b); });
 }
-function addMangel(k){ state.maengel.push({typ:k.id,label:k.label,rq:k.rq||"",mass:"",schwere:"",kosten:k.rate?String(k.rate):"",notiz:k.mn||"",fotos:[]}); renderMaengel(); save(); }
-function maengelSumme(){ return (state.maengel||[]).reduce((a,m)=>a+parseKosten(m.kosten),0); }
-function updateMSum(){ const el=document.getElementById("mSum"); if(!el) return; const n=(state.maengel||[]).length;
-  el.textContent=n?`${n} Mangel/Mängel · Summe ${maengelSumme().toLocaleString("de-DE")} €`:""; }
+/* Mangel setzt automatisch passende Gefährdungsfaktoren + Prüfpunkte (N) */
+function setzeGefahr(nr){
+  const it=item(nr); if(it.ja) return false; it.ja=true;
+  document.querySelectorAll("#hazards .hbtn").forEach(b=>{ if(b.textContent===nr) b.classList.add("on"); });
+  updateHazSel(nr.split(".")[0]);
+  return true;
+}
+function setzePruefpunktN(id){
+  const p=pitem(id); if(p.b==="n") return false; p.b="n";
+  document.querySelectorAll(`[data-pb^="${id}:"]`).forEach(x=>x.classList.toggle("on", x.dataset.pb===id+":n"));
+  const row=document.getElementById("p-"+id); if(row) row.classList.add("mangel");
+  pgroupCount(id);
+  return true;
+}
+function addMangel(k){
+  state.maengel.push({typ:k.id,label:k.label,rq:k.rq||"",mass:"",schwere:"",kosten:k.rate?String(k.rate):"",notiz:k.mn||"",fotos:[]});
+  let nGef=0, nPf=0;
+  (k.gf||[]).forEach(nr=>{ if(setzeGefahr(nr)) nGef++; });
+  (k.pf||[]).forEach(id=>{ if(setzePruefpunktN(id)) nPf++; });
+  renderMaengel(); save();
+  if(nGef||nPf) toast("Automatisch gesetzt: "
+    +(nGef?nGef+" Gefährdungsfaktor(en)":"")
+    +(nGef&&nPf?" + ":"")
+    +(nPf?nPf+" Prüfpunkt(e) auf N":""));
+}
 let mFotoTarget=null;
 const mFile=document.createElement("input"); mFile.type="file"; mFile.accept="image/*"; mFile.hidden=true; document.body.appendChild(mFile);
 mFile.addEventListener("change",()=>handleFile(mFile.files[0],obj=>{ if(mFotoTarget==null) return; state.maengel[mFotoTarget].fotos.push(obj); renderMThumbs(mFotoTarget); save(); }));
@@ -755,35 +764,19 @@ function renderMaengel(){
       `<div class="mhead"><b>${esc(m.label)}</b><button class="mdel" data-del="${i}">×</button></div>`
       +(m.rq?`<div style="color:var(--muted);font-size:11px;margin:0 0 6px">${esc(m.rq)}</div>`:"")
       +(k.mass?`<input type="text" class="kostin" style="width:100%" id="mm-${i}" placeholder="${esc(k.mass)}" value="${esc(m.mass)}">`:"")
-      +`<div class="sev"><button class="sevb g${m.schwere==="g"?" on":""}" data-msev="${i}:g">gering</button><button class="sevb m${m.schwere==="m"?" on":""}" data-msev="${i}:m">mittel</button><button class="sevb h${m.schwere==="h"?" on":""}" data-msev="${i}:h">hoch</button></div>`
-      +`<div class="kostrow"><span class="kostlbl">Kosten netto (€)${k.perUnit?` · ${k.rate} €/m`:""}</span><input type="text" inputmode="numeric" class="kostin" id="mk-${i}" placeholder="€" value="${esc(m.kosten)}"><span class="chip kq" data-mk="${i}:150">150</span><span class="chip kq" data-mk="${i}:300">300</span><span class="chip kq" data-mk="${i}:500">500</span><span class="chip kq" data-mk="${i}:1000">1000</span></div>`
-      +`<textarea id="mn-${i}" placeholder="Maßnahme / Notiz …">${esc(m.notiz)}</textarea>`
       +`<div class="toolrow"><button class="btn" data-mfoto="${i}">📷 Foto</button></div>`
       +`<div class="thumbs" id="mth-${i}"></div>`;
     wrap.appendChild(c);
   });
   wrap.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{ state.maengel.splice(+b.dataset.del,1); renderMaengel(); save(); }));
+  // Maß (z. B. Zaunlänge) → Hintergrund-Bepreisung über den Katalogsatz
   wrap.querySelectorAll("[id^=mm-]").forEach(inp=>{ const i=+inp.id.slice(3); inp.addEventListener("input",()=>{ const m=state.maengel[i]; m.mass=inp.value; const k=katById(m.typ);
-    if(k.perUnit){ const n=parseFloat(inp.value.replace(",","."))||0; m.kosten=String(Math.round(n*k.rate)); const ke=document.getElementById("mk-"+i); if(ke) ke.value=m.kosten; updateMSum(); } save(); }); });
-  wrap.querySelectorAll("[data-msev]").forEach(b=>b.addEventListener("click",()=>{ const a=b.dataset.msev.split(":"); const i=a[0], v=a[1]; const m=state.maengel[+i]; m.schwere=(m.schwere===v?"":v);
-    document.querySelectorAll(`[data-msev^="${i}:"]`).forEach(x=>x.classList.toggle("on",x.dataset.msev===i+":"+m.schwere)); save(); }));
-  wrap.querySelectorAll("[id^=mk-]").forEach(inp=>{ const i=+inp.id.slice(3); inp.addEventListener("input",()=>{ state.maengel[i].kosten=inp.value.replace(/[^0-9.,]/g,""); updateMSum(); save(); }); });
-  wrap.querySelectorAll("[data-mk]").forEach(c=>c.addEventListener("click",()=>{ const a=c.dataset.mk.split(":"); const i=a[0], v=a[1]; state.maengel[+i].kosten=v; const ke=document.getElementById("mk-"+i); if(ke) ke.value=v; updateMSum(); save(); }));
-  wrap.querySelectorAll("[id^=mn-]").forEach(ta=>{ const i=+ta.id.slice(3); ta.addEventListener("input",()=>{ state.maengel[i].notiz=ta.value; save(); }); });
+    if(k.perUnit){ const n=parseFloat(inp.value.replace(",","."))||0; m.kosten=String(Math.round(n*k.rate)); } save(); }); });
   wrap.querySelectorAll("[data-mfoto]").forEach(b=>b.addEventListener("click",()=>{ mFotoTarget=+b.dataset.mfoto; mFile.value=""; mFile.click(); }));
   (state.maengel||[]).forEach((m,i)=>renderMThumbs(i));
-  updateMSum();
 }
 
 /* ===== Fotos ===== */
-let fotoTarget=null;
-const fileInput=document.createElement("input");
-fileInput.type="file"; fileInput.accept="image/*"; fileInput.hidden=true; document.body.appendChild(fileInput);
-function pickPhoto(nr){ fotoTarget=nr; fileInput.value=""; fileInput.click(); }
-fileInput.addEventListener("change",()=>handleFile(fileInput.files[0], list=>{
-  if(!fotoTarget) return; const it=item(fotoTarget);
-  it.fotos.push(list); renderThumbs(fotoTarget); save();
-}));
 document.getElementById("allgFotoBtn").addEventListener("click",()=>{
   const ai=document.getElementById("allgFotoInput"); ai.value=""; ai.click();
 });
@@ -808,11 +801,6 @@ function shrink(dataUrl, cb){
   };
   img.onerror=()=>cb(dataUrl);
   img.src=dataUrl;
-}
-function renderThumbs(nr){
-  const box=document.getElementById("th-"+nr); if(!box) return;
-  const it=item(nr); box.innerHTML="";
-  it.fotos.forEach((f,i)=>box.appendChild(thumb(f,()=>{ it.fotos.splice(i,1); renderThumbs(nr); save(); })));
 }
 function renderAllgThumbs(){
   const box=document.getElementById("allgThumbs"); box.innerHTML="";
