@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1B4332">
+<title>OAK Begehungsbogen – Gefährdungserfassung</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232D6A4F'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='26' font-weight='700' fill='%23D8F3DC' text-anchor='middle'%3EOAK%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gruen:#2D6A4F; --dunkel:#1B4332; --hell:#52B788; --akzent:#D8F3DC;
+    --bg:#f4f7f5; --card:#ffffff; --line:#dbe5df; --text:#1d2b25; --muted:#6b7d74;
+    --headline:'Cormorant Garamond',Georgia,serif;
+    --body:'Jost','Segoe UI',system-ui,sans-serif;
+    --shadow:0 2px 10px rgba(27,67,50,.08);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:var(--body);background:var(--bg);color:var(--text);
+    font-size:16px;line-height:1.45;padding-bottom:96px}
+  h1,h2,h3{font-family:var(--headline);margin:0;font-weight:600;letter-spacing:.2px}
+
+  /* ---- Kopfleiste ---- */
+  header{position:sticky;top:0;z-index:50;background:var(--dunkel);color:#fff;
+    padding:10px 14px calc(10px + env(safe-area-inset-top)) 14px;
+    padding-top:calc(10px + env(safe-area-inset-top));box-shadow:var(--shadow)}
+  .hrow{display:flex;align-items:center;gap:10px}
+  .logo{width:34px;height:34px;border-radius:8px;background:var(--hell);
+    display:grid;place-items:center;font-family:var(--headline);font-weight:700;color:var(--dunkel);font-size:20px}
+  header h1{font-size:21px;line-height:1.1;color:#fff}
+  header .sub{font-size:11.5px;color:var(--akzent);opacity:.9;margin-top:1px}
+  .savehint{margin-left:auto;font-size:11px;color:var(--akzent);white-space:nowrap}
+
+  main{max-width:760px;margin:0 auto;padding:14px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:14px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .card > h2{color:var(--gruen);font-size:23px;margin-bottom:4px}
+  .card > .desc{color:var(--muted);font-size:13px;margin-bottom:10px}
+
+  label.f{display:block;margin:10px 0 4px;font-size:12.5px;font-weight:500;color:var(--dunkel)}
+  input[type=text],input[type=date],textarea,select{
+    width:100%;font-family:var(--body);font-size:16px;color:var(--text);
+    border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:#fcfdfc}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--hell);
+    box-shadow:0 0 0 3px var(--akzent)}
+  textarea{min-height:62px;resize:vertical}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+  @media(max-width:480px){.grid2{grid-template-columns:1fr}}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .chip{border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:13px;
+    background:#fcfdfc;cursor:pointer;user-select:none}
+  .chip.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
+
+  /* ---- Gefährdungsgruppen ---- */
+  details.grp{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;background:#fff}
+  details.grp>summary{list-style:none;cursor:pointer;padding:13px 14px;
+    display:flex;align-items:center;gap:10px;font-weight:600;color:var(--dunkel);
+    background:linear-gradient(0deg,#fbfdfb,#fff)}
+  details.grp>summary::-webkit-details-marker{display:none}
+  .gnum{min-width:26px;height:26px;border-radius:7px;background:var(--akzent);color:var(--dunkel);
+    display:grid;place-items:center;font-size:13px;font-weight:600}
+  details.grp[open]>summary{border-bottom:1px solid var(--line)}
+  .gcount{margin-left:auto;font-size:12px;color:#fff;background:var(--hell);
+    border-radius:999px;padding:2px 9px;min-width:22px;text-align:center;display:none}
+  .gcount.show{display:inline-block}
+  summary .chev{margin-left:6px;color:var(--muted);transition:transform .2s}
+  details.grp[open] summary .chev{transform:rotate(90deg)}
+
+  .item{padding:11px 14px;border-top:1px solid #eef3f0}
+  .item:first-child{border-top:none}
+  .irow{display:flex;align-items:flex-start;gap:11px}
+  .switch{position:relative;flex:0 0 auto;width:50px;height:30px;margin-top:1px}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:#cfdbd4;border-radius:999px;transition:.18s;cursor:pointer}
+  .slider:before{content:"";position:absolute;height:24px;width:24px;left:3px;top:3px;
+    background:#fff;border-radius:50%;transition:.18s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .switch input:checked + .slider{background:var(--gruen)}
+  .switch input:checked + .slider:before{transform:translateX(20px)}
+  .ilabel{flex:1;font-size:14.5px;line-height:1.3}
+  .ilabel b{color:var(--dunkel);font-weight:600}
+  .idetail{margin-top:10px;display:none;padding-left:0}
+  .item.on .idetail{display:block}
+  .item.on{background:var(--akzent)}
+  .item.on .idetail{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px}
+
+  .toolrow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .btn{font-family:var(--body);font-size:13.5px;border:1px solid var(--gruen);background:#fff;
+    color:var(--gruen);border-radius:10px;padding:9px 13px;cursor:pointer;font-weight:500;
+    display:inline-flex;align-items:center;gap:6px}
+  .btn:active{transform:scale(.97)}
+  .btn.primary{background:var(--gruen);color:#fff}
+  .btn.rec{border-color:#b5462f;color:#b5462f}
+  .btn.rec.active{background:#b5462f;color:#fff;animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.6}}
+  .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+  .thumb{position:relative;width:78px;height:78px;border-radius:9px;overflow:hidden;border:1px solid var(--line)}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb button{position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;border-radius:50%;
+    background:rgba(27,67,50,.85);color:#fff;font-size:14px;line-height:1;cursor:pointer}
+  .thumb .tnum{position:absolute;left:2px;bottom:2px;background:rgba(27,67,50,.85);color:#fff;
+    font-size:12px;font-weight:600;border-radius:6px;padding:1px 6px;pointer-events:none}
+
+  /* ---- Fußleiste ---- */
+  .actionbar{position:fixed;bottom:0;left:0;right:0;z-index:60;background:#fff;
+    border-top:1px solid var(--line);box-shadow:0 -2px 12px rgba(27,67,50,.1);
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom)) 12px;
+    display:flex;gap:8px;overflow-x:auto;max-width:760px;margin:0 auto}
+  .actionbar .btn{white-space:nowrap;flex:0 0 auto}
+  .countpill{align-self:center;font-size:12.5px;color:var(--muted);margin-left:auto;white-space:nowrap}
+
+  .hint{font-size:12px;color:var(--muted);background:#f0f6f2;border-left:3px solid var(--hell);
+    padding:8px 11px;border-radius:0 8px 8px 0;margin:8px 0}
+  .req{color:#b5462f}
+
+  /* ---- Prüfliste J/N/E ---- */
+  .jne{display:flex;gap:6px;flex:0 0 auto}
+  .jbtn{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:600;font-size:14px;cursor:pointer;color:var(--muted)}
+  .jbtn.j.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
+  .jbtn.n.on{background:#b5462f;border-color:#b5462f;color:#fff}
+  .jbtn.e.on{background:#9aa7a0;border-color:#9aa7a0;color:#fff}
+  .pitem{padding:10px 14px;border-top:1px solid #eef3f0}
+  .pitem:first-child{border-top:none}
+  .prow{display:flex;align-items:flex-start;gap:10px}
+  .plabel{flex:1;font-size:14px;line-height:1.3}
+  .plabel b{color:var(--dunkel)}
+  .pdetail{display:none;margin-top:9px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px}
+  .kostrow{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .kostlbl{font-size:12px;color:var(--dunkel);font-weight:500;width:100%}
+  .kostin{width:84px;font-size:15px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#fcfdfc}
+  .chip.kq{padding:6px 10px;font-size:12px}
+  .mpal{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 12px}
+  .mpal .btn{font-size:13px;padding:8px 12px}
+  .mcard{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:10px;background:#fbfdfb}
+  .mhead{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--dunkel)}
+  .mhead b{flex:1;font-size:14.5px}
+  .mdel{border:none;background:#e7efe9;color:var(--dunkel);width:26px;height:26px;border-radius:50%;font-size:16px;line-height:1;cursor:pointer}
+  .sev{display:flex;gap:6px;margin:8px 0}
+  .sevb{flex:1;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+  .sevb.g.on{background:#2e7d32;border-color:#2e7d32;color:#fff}
+  .sevb.m.on{background:#ef6c00;border-color:#ef6c00;color:#fff}
+  .sevb.h.on{background:#c62828;border-color:#c62828;color:#fff}
+  .msum{text-align:right;font-weight:700;color:var(--dunkel);font-size:15px;margin-top:6px}
+  .pitem.mangel .pdetail{display:block}
+  .pitem.mangel{background:#fbecea}
+  @media print{
+    header,.actionbar,.toolrow,.btn,.savehint,.chev{display:none!important}
+    body{background:#fff;padding:0}
+    .item:not(.on){display:none}
+    details.grp{break-inside:avoid}
+    details.grp:not([open]) .item{display:block}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <div class="logo">OAK</div>
+    <div>
+      <h1>Begehungsbogen</h1>
+      <div class="sub">Gefährdungserfassung · Maschinen &amp; Anlagen</div>
+    </div>
+    <div class="savehint" id="savehint">gespeichert</div>
+  </div>
+</header>
+
+<main>
+  <!-- SCHNELLERFASSUNG -->
+  <section class="card">
+    <h2>1 · Schnellerfassung: erst Fotos, dann Sprachnotiz</h2>
+    <div class="desc">Der schnelle Weg je Maschine: <b>erst 2–5 Fotos, dann max. 2 min diktieren</b>.
+      Alles Weitere (Abschnitte 2–6) ist optional – was dort fehlt, wird zuhause aus Fotos +
+      Sprachnotiz abgeleitet (Transkription offline am PC). Nur den <b>Kunden</b> einmal je Begehung
+      in Abschnitt 2 eintragen.</div>
+    <label class="f">Schritt 1 · 📷 Fotos machen (Nummer steht auf dem Vorschaubild)</label>
+    <div class="hint"><b>Foto 1 = Gesamtansicht</b> · <b>Foto 2 = Typenschild</b> (CE-Zeichen mit drauf –
+      erspart das Diktieren von Hersteller, Typ, Baujahr, Serien-Nr.) · <b>Foto 3+ = je Befund/Mangel eins</b>.<br>
+      <i>Misslungenes Foto sofort löschen und neu machen – sonst verrutschen die Nummern.</i></div>
+    <div class="toolrow">
+      <button class="btn" id="allgFotoBtn">📷 Foto</button>
+    </div>
+    <input type="file" accept="image/*" id="allgFotoInput" hidden>
+    <div class="thumbs" id="allgThumbs"></div>
+    <label class="f">Schritt 2 · 🎙 Sprachnotiz (≈ 90 Sekunden)</label>
+    <div class="hint"><b>Diktier-Protokoll:</b><br>
+      1. <b>Maschine:</b> Bezeichnung + Standort/Halle. Dazu: Betriebsanleitung vorhanden / fehlt / unklar.<br>
+      2. <b>Tätigkeiten:</b> was kommt vor – Normalbetrieb, Rüsten, Reinigung, Wartung, Störungsbeseitigung …<br>
+      3. <b>Je Befund:</b> „<b>Foto N zeigt</b> …" + was passieren kann + wer betroffen ist (Bediener,
+         Instandhalter, Reinigung …) + Schwere <b>gering/mittel/hoch</b> + Eintritt
+         <b>unwahrscheinlich/möglich/wahrscheinlich</b> + geschätzte Kosten.<br>
+      4. <b>Abschluss:</b> Sofortmaßnahme? Stilllegung nötig? Gesamteindruck.</div>
+    <div class="toolrow">
+      <button class="btn rec" id="audioRecBtn">🎙 Aufnahme starten</button>
+    </div>
+    <div id="audioBox"></div>
+    <label class="f">Freie Notizen (Besonderheiten, Vorfälle, Eindruck)</label>
+    <textarea data-meta="allg_notiz" id="allgNotiz" placeholder="z. B. Lärm subjektiv hoch, Wartungsklappe ohne Zuhaltung, …"></textarea>
+    <div class="toolrow">
+      <button class="btn rec" data-dictate="allgNotiz">🎤 Diktieren</button>
+    </div>
+  </section>
+
+  <!-- STAMMDATEN -->
+  <section class="card">
+    <h2>2 · Stammdaten (optional)</h2>
+    <div class="desc"><b>Optional</b> – Hersteller, Typ, Baujahr und Serien-Nr. stehen auf Foto 2 (Typenschild),
+      der Rest kommt aus der Sprachnotiz. <b>Kunde einmal je Begehung eintragen</b> – bleibt beim
+      Maschinenwechsel erhalten. <span class="req">*</span> = empfohlen.</div>
+    <div class="grid2">
+      <div><label class="f">Kunde / Firma <span class="req">*</span></label><input type="text" data-meta="kunde" placeholder="z. B. Wibo Kunststofftechnik GmbH"></div>
+      <div><label class="f">Maschine / Anlage <span class="req">*</span></label><input type="text" data-meta="maschine" placeholder="z. B. Kunststoffmühle"></div>
+      <div><label class="f">Hersteller</label><input type="text" data-meta="hersteller"></div>
+      <div><label class="f">Typ / Modell</label><input type="text" data-meta="typ"></div>
+      <div><label class="f">Baujahr</label><input type="text" data-meta="baujahr" inputmode="numeric"></div>
+      <div><label class="f">Serien-Nr.</label><input type="text" data-meta="seriennr"></div>
+      <div><label class="f">Standort / Halle</label><input type="text" data-meta="standort"></div>
+      <div><label class="f">Bereich / Kostenstelle</label><input type="text" data-meta="bereich"></div>
+      <div><label class="f">Datum der Begehung <span class="req">*</span></label><input type="date" data-meta="datum"></div>
+      <div><label class="f">Begeher (Name)</label><input type="text" data-meta="begeher" placeholder="N. Krawielitzki"></div>
+    </div>
+    <label class="f">CE-Kennzeichnung / Konformitätserklärung</label>
+    <div class="chips" data-single="ce">
+      <span class="chip" data-val="vorhanden">vorhanden</span>
+      <span class="chip" data-val="fehlt">fehlt</span>
+      <span class="chip" data-val="unklar">unklar</span>
+    </div>
+    <label class="f">Hersteller-Betriebsanleitung</label>
+    <div class="chips" data-single="anleitung">
+      <span class="chip" data-val="vorhanden">vorhanden</span>
+      <span class="chip" data-val="fehlt">fehlt</span>
+      <span class="chip" data-val="unklar">unklar</span>
+    </div>
+  </section>
+
+  <!-- LEBENSPHASEN -->
+  <section class="card">
+    <h2>3 · Betriebszustände / Lebensphasen</h2>
+    <div class="desc">Welche Tätigkeiten kommen real vor? (Mehrfachauswahl) – jede ist gesondert zu betrachten.
+      <b>Optional</b> – entfällt, wenn in der Sprachnotiz (1) genannt.</div>
+    <div class="chips" data-multi="lebensphasen" id="phasenChips"></div>
+  </section>
+
+  <!-- GEFÄHRDUNGEN -->
+  <section class="card">
+    <h2>4 · Gefährdungsfaktoren</h2>
+    <div class="desc"><b>Optional</b> (entfällt, wenn per Sprachnotiz abgedeckt). Klassifikation BGHM (ID-40380). Schalter auf <b>Ja</b>, wenn die Gefährdung an dieser Maschine vorhanden/relevant ist – dann Notiz, Foto &amp; Sprachnotiz möglich.</div>
+    <div class="hint">Geh die Liste komplett durch. Was du auf <b>Ja</b> stellst, bewertest du später am PC (Risiko + Maßnahmen nach TOP). Nicht gesetzte Punkte = nicht vorhanden / nicht relevant.</div>
+    <div id="hazards"></div>
+  </section>
+
+  <!-- MASCHINENSICHERHEIT / PRÜFLISTE -->
+  <section class="card">
+    <h2>5 · Maschinensicherheit (Prüfliste)</h2>
+    <div class="desc">Optional vor Ort: Mindestanforderungen nach <b>BG RCI T 008-2</b> (BetrSichV/Maschinenrichtlinie). <b>J</b> = erfüllt · <b>N</b> = Mangel · <b>E</b> = entfällt.</div>
+    <div class="hint">„N" erzeugt einen Mangel-Eintrag (geringfügig/schwerwiegend) → später die Mängelliste. Maßnahme per 🎤 diktierbar. Schwerwiegende Mängel = Stilllegung prüfen.</div>
+    <div id="pruefliste"></div>
+  </section>
+
+  <!-- MÄNGEL & BEPREISUNG (grounded: DGUV 113-606 / T 009) -->
+  <section class="card">
+    <h2>6 · Mängel &amp; Bepreisung</h2>
+    <div class="desc">Häufige Mängel (DGUV 113-606 / T 009) antippen → erscheint als Karte mit hinterlegter <b>Rechtsquelle + Maßnahme</b>. Du ergänzt nur <b>Schwere (gering–hoch)</b>, ggf. <b>Maß</b> (z. B. Zaunlänge) und <b>Kosten</b>. Summe → Mängelliste; daraus leiten sich BdA &amp; BA ab.</div>
+    <div class="mpal" id="mPalette"></div>
+    <div id="mList"></div>
+    <div class="msum" id="mSum"></div>
+  </section>
+
+</main>
+
+<div class="actionbar">
+  <button class="btn primary" id="btnClone">✓ Sichern &amp; nächste Maschine</button>
+  <button class="btn primary" id="btnJson">⬇︎ Export alle</button>
+  <button class="btn primary" id="btnShare">📤 Teilen</button>
+  <button class="btn" id="btnMd">⬇︎ Markdown</button>
+  <button class="btn" id="btnPrint">🖨 PDF</button>
+  <button class="btn" id="btnImport">⬆︎ Laden</button>
+  <button class="btn" id="btnReset">✕ Neu</button>
+  <input type="file" accept="application/json" id="importInput" hidden>
+  <span class="countpill" id="machPill">0 Maschinen gesichert</span>
+  <span class="countpill" id="countPill">0 Gefährdungen</span>
+</div>
+
+<script>
+"use strict";
+
+/* ===== Helfer ===== */
+/* Deutsche Betragseingabe: "1.500" = 1500, "300,50" = 300.5 */
+function parseKosten(s){
+  s=String(s==null?"":s).trim(); if(!s) return 0;
+  s=s.replace(/[\s€]/g,"").replace(/\.(?=\d{3}(\D|$))/g,"").replace(",",".");
+  const n=parseFloat(s); return isNaN(n)?0:n;
+}
+/* Nutzereingaben vor Einbau in innerHTML/Attribute entschärfen */
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ===== Datenbasis: BGHM-Gefährdungsklassifikation (ID-40380) ===== */
+const HAZARDS = [
+ {nr:"1", t:"Mechanische Gefährdungen", items:[
+   ["1.1","Ungeschützt bewegte Maschinenteile"],
+   ["1.2","Teile mit gefährlichen Oberflächen"],
+   ["1.3","Bewegte Transportmittel, bewegte Arbeitsmittel"],
+   ["1.4","Unkontrolliert bewegte Teile"],
+   ["1.5","Sturz, Ausrutschen, Stolpern, Umknicken"],
+   ["1.6","Absturz"]]},
+ {nr:"2", t:"Elektrische Gefährdungen", items:[
+   ["2.1","Elektrischer Schlag"],
+   ["2.2","Lichtbögen"],
+   ["2.3","Elektrostatische Aufladungen"]]},
+ {nr:"3", t:"Gefahrstoffe", items:[
+   ["3.1","Hautkontakt mit Gefahrstoffen (Feststoffe, Flüssigkeiten, Feuchtarbeit)"],
+   ["3.2","Einatmen von Gefahrstoffen (Gase, Dämpfe, Nebel, Stäube einschl. Rauche)"],
+   ["3.3","Verschlucken von Gefahrstoffen"],
+   ["3.4","Physikalisch-chemische Gefährdungen (z. B. Brand, Explosion, usw.)"]]},
+ {nr:"4", t:"Biologische Arbeitsstoffe", items:[
+   ["4.1","Infektionsgefährdung durch pathogene Mikroorganismen (z. B. Bakterien, Viren)"],
+   ["4.2","Sensibilisierende und toxische Wirkungen von Mikroorganismen"]]},
+ {nr:"5", t:"Brand- und Explosionsgefährdungen", items:[
+   ["5.1","Brennbare Feststoffe, Flüssigkeiten, Gase"],
+   ["5.2","Explosionsfähige Atmosphäre"],
+   ["5.3","Explosivstoffe"]]},
+ {nr:"6", t:"Thermische Gefährdungen", items:[
+   ["6.1","Heiße Medien/Oberflächen"],
+   ["6.2","Kalte Medien/Oberflächen"]]},
+ {nr:"7", t:"Spezielle physikalische Einwirkungen", items:[
+   ["7.1","Lärm"],
+   ["7.2","Ultraschall, Infraschall"],
+   ["7.3","Ganzkörpervibrationen"],
+   ["7.4","Hand-Arm-Vibrationen"],
+   ["7.5","Nicht ionisierende Strahlung (z. B. Infrarot, UV, Laserstrahlung)"],
+   ["7.6","Ionisierende Strahlung (z. B. Röntgenstrahlung, radioaktive Strahlung)"],
+   ["7.7","Elektromagnetische Felder"],
+   ["7.8","Unter- oder Überdruck"]]},
+ {nr:"8", t:"Arbeitsumgebungsbedingungen", items:[
+   ["8.1","Klima (z. B. Hitze, Kälte, unzureichende Lüftung)"],
+   ["8.2","Beleuchtung, Licht"],
+   ["8.3","Ersticken, Ertrinken"],
+   ["8.4","Unzureichende Flucht- und Verkehrswege, unzureichende Sicherheits- und Gesundheitsschutzkennzeichnung"],
+   ["8.5","Unzureichende Bewegungsfläche, ungünstige Anordnung des Arbeitsplatzes, unzureichende Pausen-/Sanitärräume"]]},
+ {nr:"9", t:"Physische Belastung / Arbeitsschwere", items:[
+   ["9.1","Schwere dynamische Arbeit (z. B. manuelle Handhabung von Lasten)"],
+   ["9.2","Einseitige dynamische Arbeit, Körperbewegung (z. B. häufig wiederholte Bewegungen)"],
+   ["9.3","Haltungsarbeit (Zwangshaltung), Haltearbeit"],
+   ["9.4","Kombination aus statischer und dynamischer Arbeit"]]},
+ {nr:"10", t:"Psychische Faktoren", items:[
+   ["10.1","Ungenügend gestaltete Arbeitsaufgabe (z. B. Routineaufgaben, Über-/Unterqualifikation)"],
+   ["10.2","Ungenügend gestaltete Arbeitsorganisation (z. B. Zeitdruck, lange/wechselnde Arbeitszeiten, Nachtarbeit)"],
+   ["10.3","Ungenügend gestaltete soziale Bedingungen (z. B. fehlende Kontakte, Führungsverhalten, Konflikte)"],
+   ["10.4","Ungenügend gestaltete Arbeits-/Umgebungsbedingungen (z. B. Lärm, Klima, Enge, Softwaregestaltung)"]]},
+ {nr:"11", t:"Sonstige Gefährdungen", items:[
+   ["11.1","Durch Menschen (z. B. Überfall)"],
+   ["11.2","Durch Tiere (z. B. gebissen werden)"],
+   ["11.3","Durch Pflanzen und pflanzliche Produkte (z. B. sensibilisierende/toxische Wirkungen)"]]}
+];
+
+const LEBENSPHASEN = ["Transport","Montage/Installation","Inbetriebnahme","Einrichten/Rüsten",
+  "Normalbetrieb","Reinigung","Wartung/Instandhaltung","Störungsbeseitigung","Umbau","Demontage/Entsorgung"];
+
+/* ===== Prüfliste Maschinensicherheit (BG RCI T 008-2) ===== */
+const PRUEFLISTE = [
+ {nr:"2", t:"Allgemeines", items:[
+   ["P1","Angaben an der Maschine: Hersteller, Typ, Nr., Baujahr, Spannung/Strom, CE (ab 1.1.1995)"],
+   ["P2","EG-Konformitätserklärung liegt vor"],
+   ["P3","Deutschsprachige Betriebsanleitung vorhanden (best. Verwendung, Schutzeinrichtungen, Restgefahren, Wartung)"],
+   ["P4","Beschriftungen + Sicherheits-/Warnhinweise vorhanden und erkennbar"],
+   ["P5","Dokumentation früherer Prüfungen liegt vor"],
+   ["P6","Maschine wird weiterhin bestimmungsgemäß verwendet"],
+   ["P7","Keine wesentlichen Veränderungen seit letzter Prüfung"],
+   ["P8","Maschine entspricht dem Stand der Technik (kein Bestandsschutz)"]]},
+ {nr:"3", t:"Sicherheitskonzept (retrospektiv)", items:[
+   ["P9","Schutzkonzept verhinderte Folgen gefährlicher Situationen wirksam"],
+   ["P10","Not-Halt wirkt wie in der Betriebsanleitung beschrieben"],
+   ["P11","Ausreichend Arbeitsbühnen/sichere Zugänge (auch Störung/Wartung)"],
+   ["P12","Störungen beseitigbar ohne Umgehen von Schutzeinrichtungen"],
+   ["P13","Sicherheitskonzept für Instandhaltung bewährt (LOTO/Tippbetrieb)"],
+   ["P14","Schutzeinrichtungen in der Praxis bewährt"],
+   ["P15","Manipulation von Schutzeinrichtungen wirksam vermieden"],
+   ["P16","Kein häufiges Instandsetzen/Auswechseln von Schutzeinrichtungen nötig"]]},
+ {nr:"4", t:"Schutzeinrichtungen (Vollständigkeit/Wirksamkeit)", items:[
+   ["P17","Alle Schutzeinrichtungen (lt. Betriebsanleitung) vorhanden"],
+   ["P18","Frei von äußerlich erkennbaren Beschädigungen"],
+   ["P19","Stabil/dauerhaft verbunden, Befestigungsmittel vollständig"],
+   ["P20","Sicherheitsabstände trennender Schutzeinrichtungen ausreichend"],
+   ["P21","Sicherheitsabstände BWS/Zweihandsteuerung ausreichend"],
+   ["P22","Bewegl. trennende Schutzeinr. OHNE Zuhaltung funktionsfähig"],
+   ["P23","Bewegl. trennende Schutzeinr. MIT Zuhaltung funktionsfähig"],
+   ["P24","Berührungswirkende Schutzeinr. (Schaltmatte/-leiste) funktionsfähig"],
+   ["P25","Berührungslose Schutzeinr. (Lichtschranke/Laserscanner) funktionsfähig"],
+   ["P26","Ortsgebundene Schutzeinr. (Zweihand/Zustimm-/Fuß-/Tippschalter) funktionsfähig"]]},
+ {nr:"5", t:"Elektrische Ausrüstung", items:[
+   ["P27","Aktuelle Prüfung nach DGUV Vorschrift 3 dokumentiert"],
+   ["P28","Elektrik frei von offensichtlichen Mängeln (Schränke zu, Gehäuse intakt)"],
+   ["P29","Kabel außerhalb des Schaltschranks unbeschädigt"],
+   ["P30","Schaltschrank-Inneres frei von Staub/Verunreinigung"],
+   ["P31","Elektrische Bauteile gemäß Schaltplan gekennzeichnet"],
+   ["P32","Kein unerwarteter Anlauf nach Ausfall/Wiederkehr der Energie"]]},
+ {nr:"6", t:"Hydraulische Ausrüstung", items:[
+   ["P33","Hydraulik frei von offensichtlichen Mängeln/Leckagen"],
+   ["P34","Hydraulikleitungen unbeschädigt (keine Scheuerstellen, Biegeradien ok)"],
+   ["P35","Hydraulische Bauteile gemäß Schaltplan gekennzeichnet"],
+   ["P36","Schlauchleitungen ausreichend gekennzeichnet (Hersteller/Norm/Datum/Druck)"],
+   ["P37","Auswechselintervalle Schlauchleitungen beachtet (6 J / 2 J)"],
+   ["P38","Herumschlagen des Schlauches verhindert"],
+   ["P39","Austauschintervalle der Filter eingehalten"],
+   ["P40","Austreten von Hydraulikflüssigkeit verhindert (Pinholing)"],
+   ["P41","Hydrospeicher nach Not-Halt druckentlastet/abgesperrt"],
+   ["P42","Hochhalteeinrichtung bei Leitungsbruch/Energieausfall funktionsfähig"],
+   ["P43","Keine gefahrbringenden Bewegungen bei Ausfall/Wiederkehr der Energie"]]},
+ {nr:"7", t:"Pneumatische Ausrüstung", items:[
+   ["P44","Pneumatik frei von offensichtlichen Mängeln (kein hörbares Austreten)"],
+   ["P45","Pneumatikleitungen unbeschädigt"],
+   ["P46","Pneumatische Bauteile gemäß Schaltplan gekennzeichnet"],
+   ["P47","Druckbehälter nach Not-Halt druckentlastet/abgesperrt"],
+   ["P48","Hochhalteeinrichtung bei Leitungsbruch/Druckausfall funktionsfähig"],
+   ["P49","Austauschintervalle der Filter eingehalten"],
+   ["P50","Keine gefahrbringenden Bewegungen bei Ausfall/Wiederkehr der Druckluft"]]},
+ {nr:"8", t:"Umgebung der Maschine", items:[
+   ["P51","Grenzwerte Lärm/Vibration/EMVU/Gefahrstoffe eingehalten"],
+   ["P52","Beleuchtung ausreichend (ASR A3.4)"],
+   ["P53","Verkehrswege bemessen, gekennzeichnet, freigehalten"]]},
+ {nr:"9", t:"Betriebsanweisung & Unterweisung", items:[
+   ["P54","Aktuelle Betriebsanweisung vorhanden"],
+   ["P55","Beschäftigte vor Tätigkeit + regelmäßig unterwiesen"],
+   ["P56","Unterweisung umfasst besondere Gefährdungen der Maschine"],
+   ["P57","Unterweisung zu Funktion/Wirkung der Schutzeinrichtungen"],
+   ["P58","Unterweisung zu besonderen Anforderungen bei Notfällen"]]}
+];
+
+const LSKEY = "oak_begehung_v1";
+const COLLKEY = "oak_begehung_coll_v1";
+
+/* ===== Persistenz: localStorage (Schnellpfad) + IndexedDB-Spiegel (großes Quota) =====
+   localStorage fasst nur ~5 MB – mit Fotos+Audio je Maschine schnell voll. IndexedDB
+   fasst hunderte MB und dient als zweite Senke; beim Start gewinnt der neuere Stand. */
+let idb=null;
+const idbReady=new Promise(res=>{ try{
+  const rq=indexedDB.open("oak_begehung",1);
+  rq.onupgradeneeded=()=>rq.result.createObjectStore("kv");
+  rq.onsuccess=()=>{ idb=rq.result; res(); };
+  rq.onerror=()=>res();
+}catch(e){ res(); } });
+function idbPut(key,val){ return new Promise(res=>{ if(!idb) return res(false);
+  try{ const tx=idb.transaction("kv","readwrite"); tx.objectStore("kv").put(val,key);
+    tx.oncomplete=()=>res(true); tx.onabort=tx.onerror=()=>res(false); }catch(e){ res(false); } }); }
+function idbGet(key){ return new Promise(res=>{ if(!idb) return res(null);
+  try{ const rq=idb.transaction("kv").objectStore("kv").get(key);
+    rq.onsuccess=()=>res(rq.result===undefined?null:rq.result); rq.onerror=()=>res(null); }catch(e){ res(null); } }); }
+function idbDel(key){ return new Promise(res=>{ if(!idb) return res(false);
+  try{ const tx=idb.transaction("kv","readwrite"); tx.objectStore("kv").delete(key);
+    tx.oncomplete=()=>res(true); tx.onabort=tx.onerror=()=>res(false); }catch(e){ res(false); } }); }
+if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+
+/* ===== State ===== */
+let state = loadState();
+let collection = (function(){ try{ const c=JSON.parse(localStorage.getItem(COLLKEY)); return Array.isArray(c)?c:[]; }catch(e){ return []; } })();
+function updateMachineCount(){ const el=document.getElementById("machPill"); if(el) el.textContent=collection.length+" Maschine"+(collection.length===1?"":"n")+" gesichert"; }
+
+let quotaGewarnt=false;
+/* Schreibt state + collection in BEIDE Senken. true, wenn beides mindestens einmal gesichert ist. */
+async function persistAll(){
+  state._ts=Date.now();
+  const sState=JSON.stringify(state), sColl=JSON.stringify(collection);
+  let lsState=true, lsColl=true;
+  try{ localStorage.setItem(LSKEY, sState); }catch(e){ lsState=false; }
+  try{ localStorage.setItem(COLLKEY, sColl); }catch(e){ lsColl=false; }
+  const idbState=await idbPut(LSKEY, sState);
+  const idbColl=await idbPut(COLLKEY, sColl);
+  updateMachineCount();
+  const ok=(lsState||idbState)&&(lsColl||idbColl);
+  const hint=document.getElementById("savehint");
+  if(hint) hint.textContent = ok ? ((lsState&&lsColl)?"gespeichert ✓":"gespeichert (Backup) ✓") : "SPEICHER VOLL!";
+  if(!ok && !quotaGewarnt){
+    quotaGewarnt=true;
+    alert("Browser-Speicher voll – Änderungen können NICHT mehr gespeichert werden!\nJETZT '⬇︎ Export alle' drücken (sichert alles als JSON), danach '✕ Neu'.");
+  }
+  return ok;
+}
+async function saveAndClone(){
+  if(!(state.meta.maschine||"").trim()){
+    if(state.audio&&state.audio.data){ state.meta.maschine="Maschine "+(collection.length+1); }
+    else { alert("Bitte zuerst Maschine/Anlage benennen (oder Sprachnotiz aufnehmen)."); return; }
+  }
+  collection.push(JSON.parse(JSON.stringify(state)));   // aktuelle Maschine sichern
+  if(!await persistAll()){
+    collection.pop(); rescueExport();
+    alert("Speicher voll – die Maschine konnte NICHT im Browser gesichert werden.\nEin Rettungs-Export (JSON) wurde soeben heruntergeladen – nichts ist verloren.\nDanach: Export prüfen, '✕ Neu' drücken, ggf. mit '⬆︎ Laden' fortsetzen.");
+    return;
+  }
+  // Klon für die nächste, baugleiche Maschine: Bewertungsmuster behalten, Maschinen-Spezifisches leeren
+  state.meta.maschine=""; state.meta.seriennr=""; state.meta.baujahr="";
+  Object.values(state.items).forEach(it=>{ it.fotos=[]; });
+  Object.values(state.pruefung).forEach(p=>{ p.fotos=[]; });
+  (state.maengel||[]).forEach(m=>{ m.fotos=[]; });
+  state.fotosAllg=[]; state.audio=null;
+  await persistAll();          // erst sicher schreiben, DANN neu laden (sonst Duplikat + Foto-Verschleppung)
+  location.reload();
+}
+function blankState(){
+  return { meta:{ kunde:"",maschine:"",hersteller:"",typ:"",baujahr:"",seriennr:"",
+    standort:"",bereich:"",datum:"",begeher:"",ce:"",anleitung:"",lebensphasen:[],allg_notiz:"" },
+    items:{}, pruefung:{}, maengel:[], fotosAllg:[], audio:null };
+}
+function loadState(){
+  try{ const s=JSON.parse(localStorage.getItem(LSKEY)); if(s&&s.meta){ if(!Array.isArray(s.maengel)) s.maengel=[]; return s; } }catch(e){}
+  return blankState();
+}
+let saveT;
+function save(){
+  clearTimeout(saveT);
+  const hint=document.getElementById("savehint"); if(hint) hint.textContent="speichere…";
+  saveT=setTimeout(()=>{ persistAll(); updateCount(); },350);
+}
+function item(nr){ if(!state.items[nr]) state.items[nr]={ja:false,notiz:"",fotos:[]}; return state.items[nr]; }
+
+/* ===== Render ===== */
+function init(){
+  // Stammdaten-Felder
+  document.querySelectorAll("[data-meta]").forEach(el=>{
+    const k=el.dataset.meta;
+    if(el.tagName==="INPUT"||el.tagName==="TEXTAREA"){
+      if(typeof state.meta[k]==="string") el.value=state.meta[k];
+      el.addEventListener("input",()=>{ state.meta[k]=el.value; save(); });
+    }
+  });
+  // Single-Choice Chips (ce / anleitung)
+  document.querySelectorAll("[data-single]").forEach(box=>{
+    const k=box.dataset.single;
+    box.querySelectorAll(".chip").forEach(ch=>{
+      if(state.meta[k]===ch.dataset.val) ch.classList.add("on");
+      ch.addEventListener("click",()=>{
+        const on=ch.classList.contains("on");
+        box.querySelectorAll(".chip").forEach(c=>c.classList.remove("on"));
+        if(!on){ ch.classList.add("on"); state.meta[k]=ch.dataset.val; } else { state.meta[k]=""; }
+        save();
+      });
+    });
+  });
+  // Lebensphasen
+  const pc=document.getElementById("phasenChips");
+  LEBENSPHASEN.forEach(p=>{
+    const ch=document.createElement("span"); ch.className="chip"; ch.textContent=p;
+    if(state.meta.lebensphasen.includes(p)) ch.classList.add("on");
+    ch.addEventListener("click",()=>{
+      const i=state.meta.lebensphasen.indexOf(p);
+      if(i>=0){ state.meta.lebensphasen.splice(i,1); ch.classList.remove("on"); }
+      else { state.meta.lebensphasen.push(p); ch.classList.add("on"); }
+      save();
+    });
+    pc.appendChild(ch);
+  });
+  // Gefährdungen
+  const wrap=document.getElementById("hazards");
+  HAZARDS.forEach(g=>{
+    const d=document.createElement("details"); d.className="grp";
+    const sum=document.createElement("summary");
+    sum.innerHTML=`<span class="gnum">${g.nr}</span><span>${g.t}</span>`
+      +`<span class="gcount" id="gc-${g.nr}">0</span><span class="chev">›</span>`;
+    d.appendChild(sum);
+    g.items.forEach(([nr,text])=>{
+      const it=item(nr);
+      const row=document.createElement("div"); row.className="item"+(it.ja?" on":""); row.id="it-"+nr;
+      row.innerHTML=
+        `<div class="irow">
+           <label class="switch"><input type="checkbox" ${it.ja?"checked":""} data-ja="${nr}">
+             <span class="slider"></span></label>
+           <div class="ilabel"><b>${nr}</b> ${text}</div>
+         </div>
+         <div class="idetail">
+           <textarea id="nt-${nr}" placeholder="Beobachtung / Quelle der Gefährdung …">${esc(it.notiz)}</textarea>
+           <div class="toolrow">
+             <button class="btn rec" data-dictate="nt-${nr}">🎤 Diktieren</button>
+             <button class="btn" data-foto="${nr}">📷 Foto</button>
+           </div>
+           <div class="thumbs" id="th-${nr}"></div>
+         </div>`;
+      d.appendChild(row);
+    });
+    wrap.appendChild(d);
+  });
+  // Bindings Gefährdungen
+  document.querySelectorAll("[data-ja]").forEach(cb=>{
+    cb.addEventListener("change",()=>{
+      const nr=cb.dataset.ja; item(nr).ja=cb.checked;
+      document.getElementById("it-"+nr).classList.toggle("on",cb.checked);
+      groupCount(nr.split(".")[0]); save();
+    });
+  });
+  document.querySelectorAll("[id^=nt-]").forEach(ta=>{
+    const nr=ta.id.slice(3);
+    ta.addEventListener("input",()=>{ item(nr).notiz=ta.value; save(); });
+  });
+  document.querySelectorAll("[data-foto]").forEach(b=>{
+    b.addEventListener("click",()=>pickPhoto(b.dataset.foto));
+  });
+  document.querySelectorAll("[data-dictate]").forEach(b=>{
+    b.addEventListener("click",()=>dictate(b, b.dataset.dictate));
+  });
+  // Thumbs initial
+  Object.keys(state.items).forEach(nr=>renderThumbs(nr));
+  renderAllgThumbs();
+  renderAudio();
+  renderPruefliste();
+  renderPalette();
+  renderMaengel();
+  HAZARDS.forEach(g=>groupCount(g.nr));
+  updateCount();
+  updateMachineCount();
+
+  // Default Datum heute
+  const dEl=document.querySelector('[data-meta="datum"]');
+  if(!state.meta.datum){ const t=new Date().toISOString().slice(0,10); dEl.value=t; state.meta.datum=t; }
+}
+
+/* ===== Prüfliste Maschinensicherheit ===== */
+function pitem(id){ if(!state.pruefung[id]) state.pruefung[id]={b:"",s:"",m:"",k:"",fotos:[]}; return state.pruefung[id]; }
+let pfotoTarget=null;
+const pFileInput=document.createElement("input"); pFileInput.type="file"; pFileInput.accept="image/*"; pFileInput.hidden=true; document.body.appendChild(pFileInput);
+function pickPhotoP(id){ pfotoTarget=id; pFileInput.value=""; pFileInput.click(); }
+pFileInput.addEventListener("change",()=>handleFile(pFileInput.files[0], obj=>{ if(!pfotoTarget) return; pitem(pfotoTarget).fotos.push(obj); renderPThumbs(pfotoTarget); save(); }));
+function renderPThumbs(id){ const box=document.getElementById("pth-"+id); if(!box) return; const p=pitem(id); box.innerHTML="";
+  p.fotos.forEach((f,i)=>box.appendChild(thumb(f,()=>{ p.fotos.splice(i,1); renderPThumbs(id); save(); }))); }
+function pgroupCount(anyId){
+  const g=PRUEFLISTE.find(g=>g.items.some(([id])=>id===anyId)); if(!g) return;
+  let n=0; g.items.forEach(([id])=>{ if(state.pruefung[id]&&state.pruefung[id].b==="n") n++; });
+  const el=document.getElementById("pgc-"+g.nr); if(el){ el.textContent=n; el.classList.toggle("show",n>0); }
+}
+function renderPruefliste(){
+  const wrap=document.getElementById("pruefliste");
+  PRUEFLISTE.forEach(g=>{
+    const d=document.createElement("details"); d.className="grp";
+    d.innerHTML=`<summary><span class="gnum">${g.nr}</span><span>${g.t}</span><span class="gcount" id="pgc-${g.nr}">0</span><span class="chev">›</span></summary>`;
+    g.items.forEach(([id,text])=>{
+      const p=pitem(id);
+      const row=document.createElement("div"); row.className="pitem"+(p.b==="n"?" mangel":""); row.id="p-"+id;
+      row.innerHTML=`<div class="prow"><div class="plabel"><b>${id.slice(1)}</b> ${text}</div>
+        <div class="jne">
+          <button class="jbtn j${p.b==="j"?" on":""}" data-pb="${id}:j">J</button>
+          <button class="jbtn n${p.b==="n"?" on":""}" data-pb="${id}:n">N</button>
+          <button class="jbtn e${p.b==="e"?" on":""}" data-pb="${id}:e">E</button></div></div>
+        <div class="pdetail">
+          <div class="chips"><span class="chip${p.s==="g"?" on":""}" data-ps="${id}:g">geringfügig</span><span class="chip${p.s==="s"?" on":""}" data-ps="${id}:s">schwerwiegend</span></div>
+          <div class="kostrow"><span class="kostlbl">geschätzte Behebungskosten (netto)</span><input type="text" inputmode="numeric" id="pk-${id}" class="kostin" placeholder="€" value="${esc(p.k)}"><span class="chip kq" data-pk="${id}:150">150€</span><span class="chip kq" data-pk="${id}:300">300€</span><span class="chip kq" data-pk="${id}:500">500€</span><span class="chip kq" data-pk="${id}:1000">1000€</span></div>
+          <textarea id="pm-${id}" placeholder="Maßnahme / Bemerkung …">${esc(p.m)}</textarea>
+          <div class="toolrow"><button class="btn rec" data-dictate="pm-${id}">🎤 Diktieren</button><button class="btn" data-pfoto="${id}">📷 Foto</button></div>
+          <div class="thumbs" id="pth-${id}"></div></div>`;
+      d.appendChild(row);
+    });
+    wrap.appendChild(d);
+  });
+  wrap.querySelectorAll("[data-pb]").forEach(b=>b.addEventListener("click",()=>{
+    const [id,v]=b.dataset.pb.split(":"); const p=pitem(id); p.b=(p.b===v?"":v);
+    document.querySelectorAll(`[data-pb^="${id}:"]`).forEach(x=>x.classList.toggle("on", x.dataset.pb===id+":"+p.b));
+    document.getElementById("p-"+id).classList.toggle("mangel", p.b==="n");
+    pgroupCount(id); save();
+  }));
+  wrap.querySelectorAll("[data-ps]").forEach(c=>c.addEventListener("click",()=>{
+    const [id,v]=c.dataset.ps.split(":"); const p=pitem(id); p.s=(p.s===v?"":v);
+    document.querySelectorAll(`[data-ps^="${id}:"]`).forEach(x=>x.classList.toggle("on", x.dataset.ps===id+":"+p.s)); save();
+  }));
+  wrap.querySelectorAll("[id^=pm-]").forEach(ta=>{ const id=ta.id.slice(3); ta.addEventListener("input",()=>{ pitem(id).m=ta.value; save(); }); });
+  wrap.querySelectorAll("[id^=pk-]").forEach(inp=>{ const id=inp.id.slice(3); inp.addEventListener("input",()=>{ pitem(id).k=inp.value.replace(/[^0-9.,]/g,""); save(); }); });
+  wrap.querySelectorAll("[data-pk]").forEach(c=>c.addEventListener("click",()=>{ const [id,v]=c.dataset.pk.split(":"); pitem(id).k=v; const inp=document.getElementById("pk-"+id); if(inp) inp.value=v; save(); }));
+  wrap.querySelectorAll("[data-pfoto]").forEach(b=>b.addEventListener("click",()=>pickPhotoP(b.dataset.pfoto)));
+  wrap.querySelectorAll("[data-dictate]").forEach(b=>b.addEventListener("click",()=>dictate(b,b.dataset.dictate)));
+  Object.keys(state.pruefung).forEach(id=>renderPThumbs(id));
+  PRUEFLISTE.forEach(g=>pgroupCount(g.items[0][0]));
+}
+
+function groupCount(gnr){
+  let n=0; HAZARDS.find(g=>g.nr===gnr).items.forEach(([nr])=>{ if(state.items[nr]&&state.items[nr].ja) n++; });
+  const el=document.getElementById("gc-"+gnr);
+  el.textContent=n; el.classList.toggle("show",n>0);
+}
+function updateCount(){
+  let n=0; Object.values(state.items).forEach(i=>{ if(i.ja) n++; });
+  document.getElementById("countPill").textContent=n+" Gefährdung"+(n===1?"":"en");
+}
+
+/* ===== Mängel & Bepreisung (grounded: DGUV 113-606 / T 009) ===== */
+const MAENGEL_KATALOG = [
+ {id:"A1", label:"Schutzeinrichtung fehlt/unwirksam (Düsenschutz, seitlich, Antrieb)", rq:"DGUV 113-606 3.1.3 · BetrSichV Anh.1", mass:"Ort/Bauteil", mn:"Schutzhaube/Abdeckung + Endschalter/Zuhaltung nachrüsten", rate:400},
+ {id:"A2", label:"Schutzzaun fehlt/unzureichend · Bodenspalt", rq:"DGUV 113-606 3.1.3 · EN ISO 13857", mass:"Länge (m)", perUnit:true, rate:250, mn:"Zaun n. EN ISO 13857; Spalt < 180 mm sichern"},
+ {id:"A3", label:"Not-Halt fehlt/defekt", rq:"T 009 · BetrSichV", mn:"Not-Halt nachrüsten/instand setzen", rate:500},
+ {id:"A4", label:"Kein Wiederanlaufschutz", rq:"EN ISO 14118", mn:"Wiederanlaufsperre nachrüsten", rate:500},
+ {id:"B1", label:"Heiße Oberflächen ungesichert (Düse/Zylinder/Heizband)", rq:"DGUV 113-606 3.1.7", mn:"Isolieren/abschirmen + Hitzeschutz-PSA", rate:400},
+ {id:"B3", label:"Absaugung / Zersetzungsgase (z. B. Formaldehyd)", rq:"DGUV 113-606 3.1.9 · T 009 4.6.1", mn:"Absaugung; Atemschutz bei Störung", rate:600},
+ {id:"B4", label:"Brand-/Explosionsschutz (Staub, Ex-Bereich)", rq:"DGUV 113-606 3.1.10", mn:"Ex-Schutzdokument; ex-Absaugung; Zündquellen vermeiden", rate:800},
+ {id:"C1", label:"Leiter/Tritt/Podest/Zugang unsicher", rq:"DGUV 113-606 3.3.2 · T 009 4.2.4", mn:"Normkonforme Podesttreppe + Handlauf", rate:400},
+ {id:"C2", label:"Kran/Transport über Bedienbereich ungesichert", rq:"DGUV 113-606 3.3.3", mn:"Zaun erweitern + Kran-Endschalter/Verriegelung + Warnleuchte", rate:1500},
+ {id:"C3", label:"Leckage / Boden rutschig (Öl/Granulat)", rq:"DGUV 113-606 3.1.2/3.1.5", mn:"Leckage beheben; Reinigung; Sicherheitsschuhe", rate:300},
+ {id:"C4", label:"Beleuchtung unzureichend (Werkzeugraum)", rq:"T 009 4.3.3 · ASR A3.4", mn:"LED-Maschinenleuchte (IP67)", rate:250},
+ {id:"D1", label:"E-Prüfung (DGUV V3) überfällig / Elektrik mangelhaft", rq:"DGUV 113-606 3.1.13 · DGUV V3", mn:"DGUV-V3-Prüfung durch Elektrofachkraft", rate:200},
+ {id:"D2", label:"Hydraulik/Pneumatik undicht / Schlauch defekt", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Schläuche tauschen; Druckentlastung prüfen", rate:500},
+ {id:"E1", label:"CE/Konformität/Betriebsanleitung fehlt", rq:"T 009 Kap. 2", mn:"Unterlagen beschaffen/nachfordern", rate:150},
+ {id:"E2", label:"BA/Unterweisung fehlt", rq:"DGUV 113-606 Kap. 2 · T 009 4.1.2", mn:"BA erstellen; Unterweisung + Dokumentation", rate:150},
+ {id:"E3", label:"Kennzeichnung fehlt (Gebinde/Sicherheitszeichen)", rq:"TRGS 201 · ASR A1.3", mn:"Kennzeichnung anbringen", rate:150},
+ {id:"X", label:"Sonstiger Mangel", rq:"", mass:"Beschreibung", mn:"", rate:0},
+];
+function katById(id){ return MAENGEL_KATALOG.find(k=>k.id===id)||{}; }
+function renderPalette(){
+  const pal=document.getElementById("mPalette"); if(!pal) return; pal.innerHTML="";
+  MAENGEL_KATALOG.forEach(k=>{ const b=document.createElement("button"); b.className="btn"; b.textContent="+ "+k.label;
+    b.addEventListener("click",()=>addMangel(k)); pal.appendChild(b); });
+}
+function addMangel(k){ state.maengel.push({typ:k.id,label:k.label,rq:k.rq||"",mass:"",schwere:"",kosten:k.rate?String(k.rate):"",notiz:k.mn||"",fotos:[]}); renderMaengel(); save(); }
+function maengelSumme(){ return (state.maengel||[]).reduce((a,m)=>a+parseKosten(m.kosten),0); }
+function updateMSum(){ const el=document.getElementById("mSum"); if(!el) return; const n=(state.maengel||[]).length;
+  el.textContent=n?`${n} Mangel/Mängel · Summe ${maengelSumme().toLocaleString("de-DE")} €`:""; }
+let mFotoTarget=null;
+const mFile=document.createElement("input"); mFile.type="file"; mFile.accept="image/*"; mFile.hidden=true; document.body.appendChild(mFile);
+mFile.addEventListener("change",()=>handleFile(mFile.files[0],obj=>{ if(mFotoTarget==null) return; state.maengel[mFotoTarget].fotos.push(obj); renderMThumbs(mFotoTarget); save(); }));
+function renderMThumbs(i){ const box=document.getElementById("mth-"+i); if(!box) return; const m=state.maengel[i]; box.innerHTML="";
+  m.fotos.forEach((f,j)=>box.appendChild(thumb(f,()=>{ m.fotos.splice(j,1); renderMThumbs(i); save(); }))); }
+function renderMaengel(){
+  const wrap=document.getElementById("mList"); if(!wrap) return; wrap.innerHTML="";
+  (state.maengel||[]).forEach((m,i)=>{
+    const k=katById(m.typ);
+    const c=document.createElement("div"); c.className="mcard";
+    c.innerHTML=
+      `<div class="mhead"><b>${esc(m.label)}</b><button class="mdel" data-del="${i}">×</button></div>`
+      +(m.rq?`<div style="color:var(--muted);font-size:11px;margin:0 0 6px">${esc(m.rq)}</div>`:"")
+      +(k.mass?`<input type="text" class="kostin" style="width:100%" id="mm-${i}" placeholder="${esc(k.mass)}" value="${esc(m.mass)}">`:"")
+      +`<div class="sev"><button class="sevb g${m.schwere==="g"?" on":""}" data-msev="${i}:g">gering</button><button class="sevb m${m.schwere==="m"?" on":""}" data-msev="${i}:m">mittel</button><button class="sevb h${m.schwere==="h"?" on":""}" data-msev="${i}:h">hoch</button></div>`
+      +`<div class="kostrow"><span class="kostlbl">Kosten netto (€)${k.perUnit?` · ${k.rate} €/m`:""}</span><input type="text" inputmode="numeric" class="kostin" id="mk-${i}" placeholder="€" value="${esc(m.kosten)}"><span class="chip kq" data-mk="${i}:150">150</span><span class="chip kq" data-mk="${i}:300">300</span><span class="chip kq" data-mk="${i}:500">500</span><span class="chip kq" data-mk="${i}:1000">1000</span></div>`
+      +`<textarea id="mn-${i}" placeholder="Maßnahme / Notiz …">${esc(m.notiz)}</textarea>`
+      +`<div class="toolrow"><button class="btn rec" data-dictate="mn-${i}">🎤 Diktieren</button><button class="btn" data-mfoto="${i}">📷 Foto</button></div>`
+      +`<div class="thumbs" id="mth-${i}"></div>`;
+    wrap.appendChild(c);
+  });
+  wrap.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{ state.maengel.splice(+b.dataset.del,1); renderMaengel(); save(); }));
+  wrap.querySelectorAll("[id^=mm-]").forEach(inp=>{ const i=+inp.id.slice(3); inp.addEventListener("input",()=>{ const m=state.maengel[i]; m.mass=inp.value; const k=katById(m.typ);
+    if(k.perUnit){ const n=parseFloat(inp.value.replace(",","."))||0; m.kosten=String(Math.round(n*k.rate)); const ke=document.getElementById("mk-"+i); if(ke) ke.value=m.kosten; updateMSum(); } save(); }); });
+  wrap.querySelectorAll("[data-msev]").forEach(b=>b.addEventListener("click",()=>{ const a=b.dataset.msev.split(":"); const i=a[0], v=a[1]; const m=state.maengel[+i]; m.schwere=(m.schwere===v?"":v);
+    document.querySelectorAll(`[data-msev^="${i}:"]`).forEach(x=>x.classList.toggle("on",x.dataset.msev===i+":"+m.schwere)); save(); }));
+  wrap.querySelectorAll("[id^=mk-]").forEach(inp=>{ const i=+inp.id.slice(3); inp.addEventListener("input",()=>{ state.maengel[i].kosten=inp.value.replace(/[^0-9.,]/g,""); updateMSum(); save(); }); });
+  wrap.querySelectorAll("[data-mk]").forEach(c=>c.addEventListener("click",()=>{ const a=c.dataset.mk.split(":"); const i=a[0], v=a[1]; state.maengel[+i].kosten=v; const ke=document.getElementById("mk-"+i); if(ke) ke.value=v; updateMSum(); save(); }));
+  wrap.querySelectorAll("[id^=mn-]").forEach(ta=>{ const i=+ta.id.slice(3); ta.addEventListener("input",()=>{ state.maengel[i].notiz=ta.value; save(); }); });
+  wrap.querySelectorAll("[data-mfoto]").forEach(b=>b.addEventListener("click",()=>{ mFotoTarget=+b.dataset.mfoto; mFile.value=""; mFile.click(); }));
+  wrap.querySelectorAll("[data-dictate]").forEach(b=>b.addEventListener("click",()=>dictate(b,b.dataset.dictate)));
+  (state.maengel||[]).forEach((m,i)=>renderMThumbs(i));
+  updateMSum();
+}
+
+/* ===== Fotos ===== */
+let fotoTarget=null;
+const fileInput=document.createElement("input");
+fileInput.type="file"; fileInput.accept="image/*"; fileInput.hidden=true; document.body.appendChild(fileInput);
+function pickPhoto(nr){ fotoTarget=nr; fileInput.value=""; fileInput.click(); }
+fileInput.addEventListener("change",()=>handleFile(fileInput.files[0], list=>{
+  if(!fotoTarget) return; const it=item(fotoTarget);
+  it.fotos.push(list); renderThumbs(fotoTarget); save();
+}));
+document.getElementById("allgFotoBtn").addEventListener("click",()=>{
+  const ai=document.getElementById("allgFotoInput"); ai.value=""; ai.click();
+});
+document.getElementById("allgFotoInput").addEventListener("change",e=>{
+  handleFile(e.target.files[0], obj=>{ state.fotosAllg.push(obj); renderAllgThumbs(); save(); });
+});
+function handleFile(file, cb){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{ shrink(r.result, data=>cb({name:file.name||"foto.jpg", data})); };
+  r.readAsDataURL(file);
+}
+// Bild herunterskalieren (max 1600px, JPEG 0.72) – spart Speicher
+function shrink(dataUrl, cb){
+  const img=new Image();
+  img.onload=()=>{
+    const max=1280; let {width:w,height:h}=img;
+    if(w>max||h>max){ const s=Math.min(max/w,max/h); w=Math.round(w*s); h=Math.round(h*s); }
+    const c=document.createElement("canvas"); c.width=w; c.height=h;
+    c.getContext("2d").drawImage(img,0,0,w,h);
+    try{ cb(c.toDataURL("image/jpeg",0.72)); }catch(e){ cb(dataUrl); }
+  };
+  img.onerror=()=>cb(dataUrl);
+  img.src=dataUrl;
+}
+function renderThumbs(nr){
+  const box=document.getElementById("th-"+nr); if(!box) return;
+  const it=item(nr); box.innerHTML="";
+  it.fotos.forEach((f,i)=>box.appendChild(thumb(f,()=>{ it.fotos.splice(i,1); renderThumbs(nr); save(); })));
+}
+function renderAllgThumbs(){
+  const box=document.getElementById("allgThumbs"); box.innerHTML="";
+  state.fotosAllg.forEach((f,i)=>box.appendChild(thumb(f,()=>{ state.fotosAllg.splice(i,1); renderAllgThumbs(); save(); }, i+1)));
+}
+function thumb(f, onDel, num){
+  const d=document.createElement("div"); d.className="thumb";
+  const im=document.createElement("img"); im.src=f.data; d.appendChild(im);
+  const b=document.createElement("button"); b.textContent="×"; b.onclick=onDel; d.appendChild(b);
+  if(num){ const n=document.createElement("span"); n.className="tnum"; n.textContent=num; d.appendChild(n); }
+  return d;
+}
+
+/* ===== Sprachnotiz (Audio-Aufnahme je Maschine, offline) ===== */
+const AUDIO_MAX_S = 180;   // Sicherheitslimit; Ziel sind 1-2 min
+let aRec=null, aChunks=[], aTimer=null, aStart=0, aStream=null;
+function audioMime(){
+  if(!window.MediaRecorder) return null;
+  for(const m of ["audio/webm;codecs=opus","audio/webm","audio/mp4"])
+    if(MediaRecorder.isTypeSupported(m)) return m;
+  return null;
+}
+async function toggleAudioRec(){
+  const btn=document.getElementById("audioRecBtn");
+  if(aRec){ aRec.stop(); return; }
+  if(state.audio&&state.audio.data&&!confirm("Es gibt schon eine Sprachnotiz zu dieser Maschine – neue Aufnahme ersetzt sie. Fortfahren?")) return;
+  const mime=audioMime();
+  if(!mime || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    alert("Audio-Aufnahme wird von diesem Browser nicht unterstützt.\nAlternative: Sprachmemo-App des Handys nutzen und die Datei zuhause mit tools/transkribiere.py verarbeiten.");
+    return;
+  }
+  try{ aStream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+  catch(e){ alert("Kein Mikrofon-Zugriff (Berechtigung verweigert?)."); return; }
+  aChunks=[]; aRec=new MediaRecorder(aStream,{mimeType:mime,audioBitsPerSecond:32000});
+  aRec.ondataavailable=e=>{ if(e.data&&e.data.size) aChunks.push(e.data); };
+  aRec.onstop=()=>{
+    clearInterval(aTimer);
+    const dauer=Math.round((Date.now()-aStart)/1000);
+    const blob=new Blob(aChunks,{type:mime});
+    aStream.getTracks().forEach(t=>t.stop()); aStream=null; aRec=null;
+    btn.classList.remove("active"); btn.textContent="🎙 Aufnahme starten";
+    const r=new FileReader();
+    r.onload=()=>{
+      state.audio={name:"sprachnotiz."+(mime.indexOf("mp4")>=0?"m4a":"webm"),
+        mime, dauer, data:r.result};
+      save(); renderAudio();
+    };
+    r.readAsDataURL(blob);
+  };
+  aStart=Date.now(); aRec.start();
+  btn.classList.add("active");
+  aTimer=setInterval(()=>{
+    const s=Math.round((Date.now()-aStart)/1000);
+    btn.textContent="⏹ Stop ("+String(Math.floor(s/60))+":"+String(s%60).padStart(2,"0")+")";
+    if(s>=AUDIO_MAX_S && aRec) aRec.stop();
+  },500);
+}
+function renderAudio(){
+  const box=document.getElementById("audioBox"); if(!box) return;
+  box.innerHTML="";
+  if(!state.audio||!state.audio.data) return;
+  const a=state.audio;
+  const row=document.createElement("div"); row.className="toolrow"; row.style.alignItems="center";
+  const player=document.createElement("audio"); player.controls=true; player.src=a.data;
+  player.style.flex="1 1 200px"; player.style.height="36px";
+  const info=document.createElement("span");
+  info.style.cssText="font-size:12px;color:var(--muted)";
+  info.textContent=Math.floor((a.dauer||0)/60)+":"+String((a.dauer||0)%60).padStart(2,"0")+" min";
+  const del=document.createElement("button"); del.className="btn"; del.textContent="× Löschen";
+  del.addEventListener("click",()=>{ if(confirm("Sprachnotiz löschen?")){ state.audio=null; save(); renderAudio(); } });
+  row.appendChild(player); row.appendChild(info); row.appendChild(del);
+  box.appendChild(row);
+}
+document.getElementById("audioRecBtn").addEventListener("click",toggleAudioRec);
+
+/* ===== Sprachnotiz (Diktat) ===== */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let activeRec=null, activeBtn=null, diktatEinwilligung=false;
+function dictate(btn, targetId){
+  const ta=document.getElementById(targetId);
+  if(activeRec){ activeRec.stop(); return; }
+  if(!SR){
+    ta.focus();
+    alert("Live-Diktat wird von diesem Browser nicht unterstützt.\nNutze einfach das Mikrofon deiner Tastatur (Tippen ins Feld → Mikro-Taste).");
+    return;
+  }
+  if(!diktatEinwilligung){
+    if(!confirm("Datenschutz-Hinweis: Das Live-Diktat nutzt die Spracherkennung des Browsers – das Audio geht dabei an dessen Anbieter (z. B. Google).\nFür vertrauliche Inhalte besser die 🎙 Sprachnotiz nutzen (bleibt komplett offline).\n\nDiktat trotzdem verwenden?")) return;
+    diktatEinwilligung=true;
+  }
+  const rec=new SR(); rec.lang="de-DE"; rec.interimResults=false; rec.continuous=true;
+  activeRec=rec; activeBtn=btn; btn.classList.add("active"); btn.textContent="⏹ Stop";
+  rec.onresult=e=>{
+    let txt="";
+    for(let i=e.resultIndex;i<e.results.length;i++) if(e.results[i].isFinal) txt+=e.results[i][0].transcript;
+    if(txt){ ta.value=(ta.value?ta.value.trim()+" ":"")+txt.trim(); ta.dispatchEvent(new Event("input")); }
+  };
+  rec.onerror=()=>stopRec();
+  rec.onend=()=>stopRec();
+  try{ rec.start(); }catch(e){ stopRec(); }
+}
+function stopRec(){
+  if(activeBtn){ activeBtn.classList.remove("active"); activeBtn.textContent="🎤 Diktieren"; }
+  activeRec=null; activeBtn=null;
+}
+
+/* ===== Export ===== */
+function slug(s){ return (s||"begehung").toLowerCase().replace(/[äöüß]/g,m=>({"ä":"ae","ö":"oe","ü":"ue","ß":"ss"}[m]))
+  .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40)||"begehung"; }
+/* Sammlung + aktueller Bogen als Export-Objekt (aktueller Bogen nur, wenn nicht identisch mit letzter Sicherung) */
+function exportPaket(){
+  const machines=collection.map(m=>JSON.parse(JSON.stringify(m)));
+  if((state.meta.maschine||"").trim()){
+    const cur=JSON.parse(JSON.stringify(state));
+    const key=o=>{ const c=Object.assign({},o); delete c._ts; return JSON.stringify(c); };
+    const last=machines[machines.length-1];
+    if(!last || key(last)!==key(cur)) machines.push(cur);
+  }
+  if(!machines.length) return null;
+  return { _typ:"OAK-Begehung-Sammlung", _version:2, _exportiert:new Date().toISOString(),
+    kunde:state.meta.kunde||"", datum:state.meta.datum||"", anzahl:machines.length, maschinen:machines };
+}
+function rescueExport(){
+  const p=exportPaket(); if(!p) return;
+  download("RETTUNG_Begehung_"+slug(state.meta.kunde||state.meta.maschine)+"_"+(state.meta.datum||"")+".json",
+    JSON.stringify(p), "application/json");
+}
+function download(name, content, type){
+  const blob=(content instanceof Blob)?content:new Blob([content],{type:type||"text/plain;charset=utf-8"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500);
+}
+function baseName(){ return "Begehung_"+slug(state.meta.maschine||state.meta.kunde)+"_"+(state.meta.datum||""); }
+
+document.getElementById("btnClone").addEventListener("click", saveAndClone);
+document.getElementById("btnJson").addEventListener("click",()=>{
+  const out=exportPaket();
+  if(!out){ alert("Noch keine Maschine erfasst."); return; }
+  const kunden=[...new Set(out.maschinen.map(m=>((m.meta||{}).kunde||"").trim()).filter(Boolean))];
+  if(kunden.length>1) alert("Achtung: Der Export enthält Maschinen von "+kunden.length+" verschiedenen Kunden ("+kunden.join(", ")+").\nFalls ungewollt: alten Stand mit '✕ Neu' verwerfen, bevor du beim nächsten Kunden startest.");
+  download("Begehung_"+slug(state.meta.kunde||state.meta.maschine)+"_"+(state.meta.datum||"")+"_"+out.maschinen.length+"Masch.json", JSON.stringify(out), "application/json");
+});
+
+/* Teilen: Export direkt in eine App geben (z. B. Google Drive → eingang/ des Kunden) */
+document.getElementById("btnShare").addEventListener("click",async()=>{
+  const out=exportPaket();
+  if(!out){ alert("Noch keine Maschine erfasst."); return; }
+  const name="Begehung_"+slug(state.meta.kunde||state.meta.maschine)+"_"+(state.meta.datum||"")+"_"+out.maschinen.length+"Masch.json";
+  const file=new File([JSON.stringify(out)],name,{type:"application/json"});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file],title:name}); }catch(e){ /* vom Nutzer abgebrochen */ }
+  }else{
+    download(name, JSON.stringify(out), "application/json");
+    alert("Direktes Teilen unterstützt dieser Browser nicht – die Datei wurde stattdessen heruntergeladen.");
+  }
+});
+
+document.getElementById("btnMd").addEventListener("click",()=>{
+  download(baseName()+".md", buildMarkdown(), "text/markdown;charset=utf-8");
+});
+
+function buildMarkdown(){
+  const m=state.meta; const L=[];
+  L.push(`# Begehungsbogen – ${m.maschine||"(Maschine)"}`,"");
+  L.push("> Rohaufnahme vor Ort. Bewertung (Risiko + Maßnahmen TOP) erfolgt nachgelagert in der BdA.","");
+  L.push("| Feld | Wert |","|---|---|");
+  const row=(k,v)=>L.push(`| ${k} | ${v||"–"} |`);
+  row("Kunde",m.kunde); row("Maschine/Anlage",m.maschine); row("Hersteller",m.hersteller);
+  row("Typ/Modell",m.typ); row("Baujahr",m.baujahr); row("Serien-Nr.",m.seriennr);
+  row("Standort",m.standort); row("Bereich",m.bereich); row("Datum",m.datum); row("Begeher",m.begeher);
+  row("CE / Konformität",m.ce); row("Betriebsanleitung",m.anleitung);
+  row("Lebensphasen",(m.lebensphasen||[]).join(", "));
+  L.push("");
+  L.push("## Festgestellte Gefährdungen (vorhanden = ja)","");
+  let any=false;
+  HAZARDS.forEach(g=>{
+    const hits=g.items.filter(([nr])=>state.items[nr]&&state.items[nr].ja);
+    if(!hits.length) return; any=true;
+    L.push(`### ${g.nr} ${g.t}`);
+    hits.forEach(([nr,text])=>{
+      const it=state.items[nr];
+      let line=`- **${nr} ${text}**`;
+      if(it.notiz) line+=` — ${it.notiz.trim()}`;
+      if(it.fotos&&it.fotos.length) line+=`  _[Fotos: ${it.fotos.map((f,i)=>`${nr}_${i+1}`).join(", ")}]_`;
+      L.push(line);
+    });
+    L.push("");
+  });
+  if(!any) L.push('_Keine Gefährdung als „ja" markiert._','');
+  // Mängelliste (Maschinensicherheit T 008-2)
+  const maengel=[];
+  PRUEFLISTE.forEach(g=>g.items.forEach(([id,text])=>{ const p=state.pruefung&&state.pruefung[id]; if(p&&p.b==="n") maengel.push({id:id.slice(1),text,sev:p.s==="s"?"schwerwiegend":(p.s==="g"?"geringfügig":"–"),mm:p.m,kk:p.k,rq:""}); }));
+  const _SEV={g:"gering",m:"mittel",h:"hoch"};
+  (state.maengel||[]).forEach((m,i)=>maengel.push({id:"M"+(i+1),text:m.label+(m.mass?` (${m.mass})`:""),sev:_SEV[m.schwere]||"–",mm:m.notiz,kk:m.kosten,rq:m.rq}));
+  if(maengel.length){
+    L.push("## Mängelliste & Bepreisung","");
+    L.push("| Nr. | Mangel | Rechtsquelle | Schwere | Kosten netto | Maßnahme |","|---|---|---|---|---|---|");
+    maengel.forEach(x=>L.push(`| ${x.id} | ${x.text} | ${x.rq||"–"} | ${x.sev} | ${x.kk?parseKosten(x.kk).toLocaleString("de-DE")+" €":"–"} | ${(x.mm||"").trim()||"–"} |`));
+    const hoch=maengel.filter(x=>x.sev==="hoch"||x.sev==="schwerwiegend").length;
+    const summe=maengel.reduce((a,x)=>a+parseKosten(x.kk),0);
+    L.push("", `**${maengel.length} Mängel${hoch?`, davon ${hoch} hoch/schwerwiegend → Stilllegung prüfen`:""}. Geschätzte Behebung gesamt: ${summe.toLocaleString("de-DE")} € (netto, Richtwert).**`, "");
+    L.push("> Aus dieser Mängelliste leiten sich **BdA** (Gefährdung + Rechtsquelle + Maßnahme/TOP) und **BA** je Maschine ab.","");
+  }
+  if(state.audio&&state.audio.data){
+    const d=state.audio.dauer||0;
+    L.push("## Sprachnotiz","",`Sprachnotiz vorhanden (${Math.floor(d/60)}:${String(d%60).padStart(2,"0")} min) – im JSON-Export enthalten; Transkription am PC: \`python tools/transkribiere.py "<Export>.json"\``,"");
+  }
+  if(m.allg_notiz){ L.push("## Allgemeine Notizen", "", m.allg_notiz.trim(), ""); }
+  const allgF=(state.fotosAllg||[]).length;
+  if(allgF) L.push(`## Fotos zur Maschine`, "", `${allgF} Foto(s): ${state.fotosAllg.map((f,i)=>`Foto ${i+1}`).join(", ")} – Nummern entsprechen den Referenzen in der Sprachnotiz (Reihenfolge = Aufnahmereihenfolge im JSON-Export).`, "");
+  L.push("---", `*Erfasst mit OAK Begehungsbogen · Export ${new Date().toLocaleString("de-DE")}*`);
+  return L.join("\n");
+}
+
+document.getElementById("btnPrint").addEventListener("click",()=>{ document.querySelectorAll("details.grp").forEach(d=>d.open=true); window.print(); });
+
+/* Import */
+document.getElementById("btnImport").addEventListener("click",()=>document.getElementById("importInput").click());
+document.getElementById("importInput").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=async()=>{ try{ const s=JSON.parse(r.result);
+    if(s._typ==="OAK-Begehung-Sammlung" && Array.isArray(s.maschinen)){
+      if(collection.length && !confirm("Import ersetzt "+collection.length+" bereits gesicherte Maschine(n). Fortfahren?\n(Tipp: vorher '⬇︎ Export alle')")) return;
+      collection=s.maschinen.slice(); const last=collection.pop()||blankState();
+      state={meta:last.meta,items:last.items||{},pruefung:last.pruefung||{},maengel:last.maengel||[],fotosAllg:last.fotosAllg||[],audio:last.audio||null};
+      await persistAll(); location.reload(); return;
+    }
+    if(!s.meta) throw 0;
+    if((state.meta.maschine||"").trim() && !confirm("Import überschreibt den aktuellen Bogen („"+state.meta.maschine+"“). Fortfahren?")) return;
+    state={meta:s.meta,items:s.items||{},pruefung:s.pruefung||{},maengel:s.maengel||[],fotosAllg:s.fotosAllg||[],audio:s.audio||null};
+    await persistAll(); location.reload();
+  }catch(err){ alert("Datei konnte nicht gelesen werden (kein gültiger Begehungsbogen)."); } };
+  r.readAsText(f);
+});
+
+/* Reset */
+document.getElementById("btnReset").addEventListener("click",async()=>{
+  if(confirm("ALLES verwerfen (aktuelle + alle gesicherten Maschinen)?\n(Tipp: vorher exportieren!)")){
+    state=blankState(); collection=[];
+    localStorage.removeItem(LSKEY); localStorage.removeItem(COLLKEY);
+    await idbDel(LSKEY); await idbDel(COLLKEY);
+    location.reload();
+  }
+});
+
+/* Start: neuesten Stand aus localStorage vs. IndexedDB-Backup wählen, dann rendern */
+(async function boot(){
+  await idbReady;
+  try{ const raw=await idbGet(LSKEY);
+    if(raw){ const s=JSON.parse(raw); if(s&&s.meta&&((s._ts||0)>(state._ts||0))) state=s; } }catch(e){}
+  try{ const raw=await idbGet(COLLKEY);
+    if(raw){ const c=JSON.parse(raw); if(Array.isArray(c)&&c.length>collection.length) collection=c; } }catch(e){}
+  init();
+})();
+</script>
+</body>
+</html>
