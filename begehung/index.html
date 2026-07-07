@@ -181,7 +181,8 @@
   .kostin{width:84px;font-size:15px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#fcfdfc}
   .chip.kq{padding:6px 10px;font-size:12px}
   .mpal{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 12px}
-  .mpal .btn{font-size:13px;padding:8px 12px}
+  .mpal .btn{font-size:13px;padding:10px 12px;text-align:left}
+  .mpal .btn.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
   .mcard{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:10px;background:#fbfdfb}
   .mhead{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--dunkel)}
   .mhead b{flex:1;font-size:14.5px}
@@ -273,10 +274,9 @@
   <!-- MÄNGEL (grounded: DGUV 113-606 / T 009) -->
   <details class="card">
     <summary><h2>4 · Mängel</h2><span class="chev">›</span></summary>
-    <div class="desc">Mangel antippen → wird übernommen. Rechtsquelle, Einstufung und Bepreisung laufen
+    <div class="desc">Antippen = Mangel vorhanden (grün). Rechtsquelle, Einstufung und Bepreisung laufen
       im Hintergrund mit; passende Gefährdungsfaktoren (5) und Prüfpunkte (6) werden automatisch gesetzt.</div>
     <div class="mpal" id="mPalette"></div>
-    <div id="mList"></div>
   </details>
 
   <!-- GEFÄHRDUNGEN -->
@@ -599,7 +599,6 @@ function init(){
   renderAudio();
   renderPruefliste();
   renderPalette();
-  renderMaengel();
   updateMachineCount();
 
   // Default Datum heute
@@ -719,11 +718,17 @@ const MAENGEL_KATALOG = [
  {id:"E3", label:"Kennzeichnung fehlt (Gebinde/Sicherheitszeichen)", rq:"TRGS 201 · ASR A1.3", mn:"Kennzeichnung anbringen", rate:150, gf:["8.4"], pf:["P4"]},
  {id:"X", label:"Sonstiger Mangel", rq:"", mass:"Beschreibung", mn:"", rate:0, gf:[], pf:[]},
 ];
-function katById(id){ return MAENGEL_KATALOG.find(k=>k.id===id)||{}; }
 function renderPalette(){
   const pal=document.getElementById("mPalette"); if(!pal) return; pal.innerHTML="";
-  MAENGEL_KATALOG.forEach(k=>{ const b=document.createElement("button"); b.className="btn"; b.textContent="+ "+k.label;
-    b.addEventListener("click",()=>addMangel(k)); pal.appendChild(b); });
+  MAENGEL_KATALOG.forEach(k=>{
+    const b=document.createElement("button"); b.type="button"; b.className="btn"; b.textContent=k.label;
+    if((state.maengel||[]).some(m=>m.typ===k.id)) b.classList.add("on");
+    b.addEventListener("click",()=>{
+      toggleMangel(k);
+      b.classList.toggle("on",(state.maengel||[]).some(m=>m.typ===k.id));
+    });
+    pal.appendChild(b);
+  });
 }
 /* Mangel setzt automatisch passende Gefährdungsfaktoren + Prüfpunkte (N) */
 function setzeGefahr(nr){
@@ -739,41 +744,18 @@ function setzePruefpunktN(id){
   pgroupCount(id);
   return true;
 }
-function addMangel(k){
+function toggleMangel(k){
+  const idx=(state.maengel||[]).findIndex(m=>m.typ===k.id);
+  if(idx>=0){ state.maengel.splice(idx,1); save(); return; }   // Abwahl: abgeleitete Punkte bleiben (bewusst)
   state.maengel.push({typ:k.id,label:k.label,rq:k.rq||"",mass:"",schwere:"",kosten:k.rate?String(k.rate):"",notiz:k.mn||"",fotos:[]});
   let nGef=0, nPf=0;
   (k.gf||[]).forEach(nr=>{ if(setzeGefahr(nr)) nGef++; });
   (k.pf||[]).forEach(id=>{ if(setzePruefpunktN(id)) nPf++; });
-  renderMaengel(); save();
+  save();
   if(nGef||nPf) toast("Automatisch gesetzt: "
     +(nGef?nGef+" Gefährdungsfaktor(en)":"")
     +(nGef&&nPf?" + ":"")
     +(nPf?nPf+" Prüfpunkt(e) auf N":""));
-}
-let mFotoTarget=null;
-const mFile=document.createElement("input"); mFile.type="file"; mFile.accept="image/*"; mFile.hidden=true; document.body.appendChild(mFile);
-mFile.addEventListener("change",()=>handleFile(mFile.files[0],obj=>{ if(mFotoTarget==null) return; state.maengel[mFotoTarget].fotos.push(obj); renderMThumbs(mFotoTarget); save(); }));
-function renderMThumbs(i){ const box=document.getElementById("mth-"+i); if(!box) return; const m=state.maengel[i]; box.innerHTML="";
-  m.fotos.forEach((f,j)=>box.appendChild(thumb(f,()=>{ m.fotos.splice(j,1); renderMThumbs(i); save(); }))); }
-function renderMaengel(){
-  const wrap=document.getElementById("mList"); if(!wrap) return; wrap.innerHTML="";
-  (state.maengel||[]).forEach((m,i)=>{
-    const k=katById(m.typ);
-    const c=document.createElement("div"); c.className="mcard";
-    c.innerHTML=
-      `<div class="mhead"><b>${esc(m.label)}</b><button class="mdel" data-del="${i}">×</button></div>`
-      +(m.rq?`<div style="color:var(--muted);font-size:11px;margin:0 0 6px">${esc(m.rq)}</div>`:"")
-      +(k.mass?`<input type="text" class="kostin" style="width:100%" id="mm-${i}" placeholder="${esc(k.mass)}" value="${esc(m.mass)}">`:"")
-      +`<div class="toolrow"><button class="btn" data-mfoto="${i}">📷 Foto</button></div>`
-      +`<div class="thumbs" id="mth-${i}"></div>`;
-    wrap.appendChild(c);
-  });
-  wrap.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{ state.maengel.splice(+b.dataset.del,1); renderMaengel(); save(); }));
-  // Maß (z. B. Zaunlänge) → Hintergrund-Bepreisung über den Katalogsatz
-  wrap.querySelectorAll("[id^=mm-]").forEach(inp=>{ const i=+inp.id.slice(3); inp.addEventListener("input",()=>{ const m=state.maengel[i]; m.mass=inp.value; const k=katById(m.typ);
-    if(k.perUnit){ const n=parseFloat(inp.value.replace(",","."))||0; m.kosten=String(Math.round(n*k.rate)); } save(); }); });
-  wrap.querySelectorAll("[data-mfoto]").forEach(b=>b.addEventListener("click",()=>{ mFotoTarget=+b.dataset.mfoto; mFile.value=""; mFile.click(); }));
-  (state.maengel||[]).forEach((m,i)=>renderMThumbs(i));
 }
 
 /* ===== Fotos ===== */
