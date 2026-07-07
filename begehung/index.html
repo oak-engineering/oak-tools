@@ -89,9 +89,11 @@
   .item.on .idetail{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px}
 
   .toolrow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
-  .btn{font-family:var(--body);font-size:13.5px;border:1px solid var(--gruen);background:#fff;
-    color:var(--gruen);border-radius:10px;padding:9px 13px;cursor:pointer;font-weight:500;
+  .btn{font-family:var(--body);font-size:15px;border:1px solid var(--gruen);background:#fff;
+    color:var(--gruen);border-radius:10px;padding:12px 15px;cursor:pointer;font-weight:500;
     display:inline-flex;align-items:center;gap:6px}
+  .btn.big{display:flex;justify-content:center;width:100%;padding:16px;font-size:17px;
+    margin:10px 0 8px;border-width:2px;font-weight:600}
   .btn:active{transform:scale(.97)}
   .btn.primary{background:var(--gruen);color:#fff}
   .btn.rec{border-color:#b5462f;color:#b5462f}
@@ -116,6 +118,21 @@
   .hint{font-size:12px;color:var(--muted);background:#f0f6f2;border-left:3px solid var(--hell);
     padding:8px 11px;border-radius:0 8px 8px 0;margin:8px 0}
   .req{color:#b5462f}
+
+  /* ---- Ausklappbare Karten (Abschnitte 2-6) ---- */
+  details.card>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;
+    margin:-14px;padding:14px;-webkit-tap-highlight-color:transparent}
+  details.card>summary::-webkit-details-marker{display:none}
+  details.card>summary h2{flex:1;color:var(--gruen);font-size:21px;margin:0}
+  details.card>summary .chev{color:var(--muted);font-size:22px;transition:transform .2s}
+  details.card[open]>summary{margin-bottom:10px;border-bottom:1px solid var(--line)}
+  details.card[open]>summary .chev{transform:rotate(90deg)}
+
+  /* ---- Bestätigungs-Toast ---- */
+  #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;background:var(--dunkel);
+    color:#fff;padding:13px 20px;border-radius:12px;font-size:15px;z-index:99;max-width:90%;
+    box-shadow:0 4px 16px rgba(0,0,0,.35);opacity:0;transition:opacity .3s;pointer-events:none}
+  #toast.show{opacity:1}
 
   /* ---- Prüfliste J/N/E ---- */
   .jne{display:flex;gap:6px;flex:0 0 auto}
@@ -171,55 +188,35 @@
 <main>
   <!-- SCHNELLERFASSUNG -->
   <section class="card">
-    <h2>1 · Schnellerfassung: erst Fotos, dann Sprachnotiz</h2>
-    <div class="desc">Der schnelle Weg je Maschine: <b>erst 2–5 Fotos, dann max. 2 min diktieren</b>.
-      Alles Weitere (Abschnitte 2–6) ist optional – was dort fehlt, wird zuhause aus Fotos +
-      Sprachnotiz abgeleitet (Transkription offline am PC). Nur den <b>Kunden</b> einmal je Begehung
-      in Abschnitt 2 eintragen.</div>
-    <label class="f">Schritt 1 · 📷 Fotos machen (Nummer steht auf dem Vorschaubild)</label>
-    <div class="hint"><b>Foto 1 = Gesamtansicht</b> · <b>Foto 2 = Typenschild</b> (CE-Zeichen mit drauf –
-      erspart das Diktieren von Hersteller, Typ, Baujahr, Serien-Nr.) · <b>Foto 3+ = je Befund/Mangel eins</b>.<br>
-      <i>Misslungenes Foto sofort löschen und neu machen – sonst verrutschen die Nummern.</i></div>
-    <div class="toolrow">
-      <button class="btn" id="allgFotoBtn">📷 Foto</button>
-    </div>
-    <input type="file" accept="image/*" id="allgFotoInput" hidden>
+    <h2>1 · Schnellerfassung</h2>
+    <div class="hint">📷 <b>Foto 1</b> Gesamtansicht · <b>Foto 2</b> Typenschild (mit CE) ·
+      <b>Foto 3+</b> je Befund eins. Misslungenes Foto sofort löschen.</div>
+    <button class="btn big" id="allgFotoBtn">📷 Foto aufnehmen</button>
+    <input type="file" accept="image/*" capture="environment" id="allgFotoInput" hidden>
     <div class="thumbs" id="allgThumbs"></div>
-    <label class="f">Schritt 2 · 🎙 Sprachnotiz (≈ 90 Sekunden)</label>
-    <div class="hint"><b>Diktier-Protokoll:</b><br>
-      1. <b>Maschine:</b> Bezeichnung + Standort/Halle. Dazu: Betriebsanleitung vorhanden / fehlt / unklar.<br>
-      2. <b>Tätigkeiten:</b> was kommt vor – Normalbetrieb, Rüsten, Reinigung, Wartung, Störungsbeseitigung …<br>
-      3. <b>Je Befund:</b> „<b>Foto N zeigt</b> …" + was passieren kann + wer betroffen ist (Bediener,
-         Instandhalter, Reinigung …) + Schwere <b>gering/mittel/hoch</b> + Eintritt
-         <b>unwahrscheinlich/möglich/wahrscheinlich</b> + geschätzte Kosten.<br>
-      4. <b>Abschluss:</b> Sofortmaßnahme? Stilllegung nötig? Gesamteindruck.</div>
-    <div class="toolrow">
-      <button class="btn rec" id="audioRecBtn">🎙 Aufnahme starten</button>
-    </div>
+    <div class="hint">🎙 <b>Sprechen (max. 2 min):</b> ① Maschine + Standort &nbsp;② Betriebsanleitung da?
+      &nbsp;③ Tätigkeiten (Rüsten, Reinigung, Wartung …) &nbsp;④ je Befund: „<b>Foto N zeigt</b> …" –
+      was kann passieren · wer ist betroffen · Schwere g/m/h · Eintritt unwahrsch./möglich/wahrsch. · Kosten
+      &nbsp;⑤ Sofortmaßnahme / Stilllegung?</div>
+    <button class="btn rec big" id="audioRecBtn">🎙 Aufnahme starten</button>
     <div id="audioBox"></div>
-    <label class="f">Freie Notizen (Besonderheiten, Vorfälle, Eindruck)</label>
-    <textarea data-meta="allg_notiz" id="allgNotiz" placeholder="z. B. Lärm subjektiv hoch, Wartungsklappe ohne Zuhaltung, …"></textarea>
-    <div class="toolrow">
-      <button class="btn rec" data-dictate="allgNotiz">🎤 Diktieren</button>
-    </div>
   </section>
 
   <!-- STAMMDATEN -->
-  <section class="card">
-    <h2>2 · Stammdaten (optional)</h2>
-    <div class="desc"><b>Optional</b> – Hersteller, Typ, Baujahr und Serien-Nr. stehen auf Foto 2 (Typenschild),
-      der Rest kommt aus der Sprachnotiz. <b>Kunde einmal je Begehung eintragen</b> – bleibt beim
-      Maschinenwechsel erhalten. <span class="req">*</span> = empfohlen.</div>
+  <details class="card">
+    <summary><h2>2 · Stammdaten</h2><span class="chev">›</span></summary>
+    <div class="desc">Alles optional – Maschinendaten stehen auf Foto 2 (Typenschild).
+      Kunde &amp; Begeher bleiben dauerhaft gespeichert.</div>
     <div class="grid2">
-      <div><label class="f">Kunde / Firma <span class="req">*</span></label><input type="text" data-meta="kunde" placeholder="z. B. Wibo Kunststofftechnik GmbH"></div>
-      <div><label class="f">Maschine / Anlage <span class="req">*</span></label><input type="text" data-meta="maschine" placeholder="z. B. Kunststoffmühle"></div>
+      <div><label class="f">Kunde / Firma</label><input type="text" data-meta="kunde" placeholder="z. B. Wibo Kunststofftechnik GmbH"></div>
+      <div><label class="f">Maschine / Anlage</label><input type="text" data-meta="maschine" placeholder="leer = „Maschine 1, 2, …“"></div>
       <div><label class="f">Hersteller</label><input type="text" data-meta="hersteller"></div>
       <div><label class="f">Typ / Modell</label><input type="text" data-meta="typ"></div>
       <div><label class="f">Baujahr</label><input type="text" data-meta="baujahr" inputmode="numeric"></div>
       <div><label class="f">Serien-Nr.</label><input type="text" data-meta="seriennr"></div>
       <div><label class="f">Standort / Halle</label><input type="text" data-meta="standort"></div>
       <div><label class="f">Bereich / Kostenstelle</label><input type="text" data-meta="bereich"></div>
-      <div><label class="f">Datum der Begehung <span class="req">*</span></label><input type="date" data-meta="datum"></div>
+      <div><label class="f">Datum der Begehung</label><input type="date" data-meta="datum"></div>
       <div><label class="f">Begeher (Name)</label><input type="text" data-meta="begeher" placeholder="N. Krawielitzki"></div>
     </div>
     <label class="f">CE-Kennzeichnung / Konformitätserklärung</label>
@@ -234,40 +231,37 @@
       <span class="chip" data-val="fehlt">fehlt</span>
       <span class="chip" data-val="unklar">unklar</span>
     </div>
-  </section>
+  </details>
 
   <!-- LEBENSPHASEN -->
-  <section class="card">
-    <h2>3 · Betriebszustände / Lebensphasen</h2>
-    <div class="desc">Welche Tätigkeiten kommen real vor? (Mehrfachauswahl) – jede ist gesondert zu betrachten.
-      <b>Optional</b> – entfällt, wenn in der Sprachnotiz (1) genannt.</div>
+  <details class="card">
+    <summary><h2>3 · Betriebszustände</h2><span class="chev">›</span></summary>
+    <div class="desc">Welche Tätigkeiten kommen real vor? (Mehrfachauswahl)</div>
     <div class="chips" data-multi="lebensphasen" id="phasenChips"></div>
-  </section>
+  </details>
 
   <!-- GEFÄHRDUNGEN -->
-  <section class="card">
-    <h2>4 · Gefährdungsfaktoren</h2>
-    <div class="desc"><b>Optional</b> (entfällt, wenn per Sprachnotiz abgedeckt). Klassifikation BGHM (ID-40380). Schalter auf <b>Ja</b>, wenn die Gefährdung an dieser Maschine vorhanden/relevant ist – dann Notiz, Foto &amp; Sprachnotiz möglich.</div>
-    <div class="hint">Geh die Liste komplett durch. Was du auf <b>Ja</b> stellst, bewertest du später am PC (Risiko + Maßnahmen nach TOP). Nicht gesetzte Punkte = nicht vorhanden / nicht relevant.</div>
+  <details class="card">
+    <summary><h2>4 · Gefährdungsfaktoren</h2><span class="chev">›</span></summary>
+    <div class="desc">Klassifikation BGHM. Schalter auf <b>Ja</b> = vorhanden → Notiz + Foto möglich.</div>
     <div id="hazards"></div>
-  </section>
+  </details>
 
   <!-- MASCHINENSICHERHEIT / PRÜFLISTE -->
-  <section class="card">
-    <h2>5 · Maschinensicherheit (Prüfliste)</h2>
-    <div class="desc">Optional vor Ort: Mindestanforderungen nach <b>BG RCI T 008-2</b> (BetrSichV/Maschinenrichtlinie). <b>J</b> = erfüllt · <b>N</b> = Mangel · <b>E</b> = entfällt.</div>
-    <div class="hint">„N" erzeugt einen Mangel-Eintrag (geringfügig/schwerwiegend) → später die Mängelliste. Maßnahme per 🎤 diktierbar. Schwerwiegende Mängel = Stilllegung prüfen.</div>
+  <details class="card">
+    <summary><h2>5 · Maschinensicherheit</h2><span class="chev">›</span></summary>
+    <div class="desc">Prüfliste BG RCI T 008-2. <b>J</b> = erfüllt · <b>N</b> = Mangel · <b>E</b> = entfällt.</div>
     <div id="pruefliste"></div>
-  </section>
+  </details>
 
   <!-- MÄNGEL & BEPREISUNG (grounded: DGUV 113-606 / T 009) -->
-  <section class="card">
-    <h2>6 · Mängel &amp; Bepreisung</h2>
-    <div class="desc">Häufige Mängel (DGUV 113-606 / T 009) antippen → erscheint als Karte mit hinterlegter <b>Rechtsquelle + Maßnahme</b>. Du ergänzt nur <b>Schwere (gering–hoch)</b>, ggf. <b>Maß</b> (z. B. Zaunlänge) und <b>Kosten</b>. Summe → Mängelliste; daraus leiten sich BdA &amp; BA ab.</div>
+  <details class="card">
+    <summary><h2>6 · Mängel &amp; Bepreisung</h2><span class="chev">›</span></summary>
+    <div class="desc">Mangel antippen → Karte mit Rechtsquelle + Maßnahme. Nur Schwere, ggf. Maß und Kosten ergänzen.</div>
     <div class="mpal" id="mPalette"></div>
     <div id="mList"></div>
     <div class="msum" id="mSum"></div>
-  </section>
+  </details>
 
 </main>
 
@@ -296,6 +290,18 @@ function parseKosten(s){
 }
 /* Nutzereingaben vor Einbau in innerHTML/Attribute entschärfen */
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+/* Promise mit Notausgang – ein hängender IndexedDB-Zugriff darf die App nie blockieren */
+function mitTimeout(p, ms, fallback){
+  return Promise.race([p, new Promise(res=>setTimeout(()=>res(fallback), ms))]);
+}
+/* Kurze Bestätigung unten im Bild */
+let toastT;
+function toast(msg){
+  let el=document.getElementById("toast");
+  if(!el){ el=document.createElement("div"); el.id="toast"; document.body.appendChild(el); }
+  el.textContent=msg; el.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("show"), 3000);
+}
 
 /* ===== Datenbasis: BGHM-Gefährdungsklassifikation (ID-40380) ===== */
 const HAZARDS = [
@@ -431,6 +437,7 @@ const PRUEFLISTE = [
 
 const LSKEY = "oak_begehung_v1";
 const COLLKEY = "oak_begehung_coll_v1";
+const PREFSKEY = "oak_begehung_prefs_v1";   // Kunde/Begeher überleben auch „✕ Neu"
 
 /* ===== Persistenz: localStorage (Schnellpfad) + IndexedDB-Spiegel (großes Quota) =====
    localStorage fasst nur ~5 MB – mit Fotos+Audio je Maschine schnell voll. IndexedDB
@@ -466,8 +473,9 @@ async function persistAll(){
   let lsState=true, lsColl=true;
   try{ localStorage.setItem(LSKEY, sState); }catch(e){ lsState=false; }
   try{ localStorage.setItem(COLLKEY, sColl); }catch(e){ lsColl=false; }
-  const idbState=await idbPut(LSKEY, sState);
-  const idbColl=await idbPut(COLLKEY, sColl);
+  try{ localStorage.setItem(PREFSKEY, JSON.stringify({kunde:state.meta.kunde||"", begeher:state.meta.begeher||""})); }catch(e){}
+  const idbState=await mitTimeout(idbPut(LSKEY, sState), 1500, false);
+  const idbColl=await mitTimeout(idbPut(COLLKEY, sColl), 1500, false);
   updateMachineCount();
   const ok=(lsState||idbState)&&(lsColl||idbColl);
   const hint=document.getElementById("savehint");
@@ -479,13 +487,18 @@ async function persistAll(){
   return ok;
 }
 async function saveAndClone(){
-  if(!(state.meta.maschine||"").trim()){
-    if(state.audio&&state.audio.data){ state.meta.maschine="Maschine "+(collection.length+1); }
-    else { alert("Bitte zuerst Maschine/Anlage benennen (oder Sprachnotiz aufnehmen)."); return; }
-  }
+  const btn=document.getElementById("btnClone");
+  const leer = !(state.meta.maschine||"").trim() && !(state.audio&&state.audio.data)
+    && !(state.fotosAllg||[]).length && !Object.values(state.items).some(i=>i.ja)
+    && !(state.maengel||[]).length && !Object.values(state.pruefung).some(p=>p.b);
+  if(leer){ toast("Noch nichts erfasst – erst Fotos oder Sprachnotiz aufnehmen."); return; }
+  if(!(state.meta.maschine||"").trim()) state.meta.maschine="Maschine "+(collection.length+1);
+  const name=state.meta.maschine;
+  if(btn){ btn.disabled=true; btn.textContent="Sichere…"; }
   collection.push(JSON.parse(JSON.stringify(state)));   // aktuelle Maschine sichern
   if(!await persistAll()){
     collection.pop(); rescueExport();
+    if(btn){ btn.disabled=false; btn.textContent="✓ Sichern & nächste Maschine"; }
     alert("Speicher voll – die Maschine konnte NICHT im Browser gesichert werden.\nEin Rettungs-Export (JSON) wurde soeben heruntergeladen – nichts ist verloren.\nDanach: Export prüfen, '✕ Neu' drücken, ggf. mit '⬆︎ Laden' fortsetzen.");
     return;
   }
@@ -496,11 +509,14 @@ async function saveAndClone(){
   (state.maengel||[]).forEach(m=>{ m.fotos=[]; });
   state.fotosAllg=[]; state.audio=null;
   await persistAll();          // erst sicher schreiben, DANN neu laden (sonst Duplikat + Foto-Verschleppung)
+  try{ localStorage.setItem("oak_begehung_toast","✓ „"+name+"“ gesichert – "+collection.length+" Maschine(n) insgesamt"); }catch(e){}
   location.reload();
 }
+function ladePrefs(){ try{ return JSON.parse(localStorage.getItem(PREFSKEY))||{}; }catch(e){ return {}; } }
 function blankState(){
-  return { meta:{ kunde:"",maschine:"",hersteller:"",typ:"",baujahr:"",seriennr:"",
-    standort:"",bereich:"",datum:"",begeher:"",ce:"",anleitung:"",lebensphasen:[],allg_notiz:"" },
+  const p=ladePrefs();
+  return { meta:{ kunde:p.kunde||"",maschine:"",hersteller:"",typ:"",baujahr:"",seriennr:"",
+    standort:"",bereich:"",datum:"",begeher:p.begeher||"",ce:"",anleitung:"",lebensphasen:[],allg_notiz:"" },
     items:{}, pruefung:{}, maengel:[], fotosAllg:[], audio:null };
 }
 function loadState(){
@@ -571,7 +587,6 @@ function init(){
          <div class="idetail">
            <textarea id="nt-${nr}" placeholder="Beobachtung / Quelle der Gefährdung …">${esc(it.notiz)}</textarea>
            <div class="toolrow">
-             <button class="btn rec" data-dictate="nt-${nr}">🎤 Diktieren</button>
              <button class="btn" data-foto="${nr}">📷 Foto</button>
            </div>
            <div class="thumbs" id="th-${nr}"></div>
@@ -594,9 +609,6 @@ function init(){
   });
   document.querySelectorAll("[data-foto]").forEach(b=>{
     b.addEventListener("click",()=>pickPhoto(b.dataset.foto));
-  });
-  document.querySelectorAll("[data-dictate]").forEach(b=>{
-    b.addEventListener("click",()=>dictate(b, b.dataset.dictate));
   });
   // Thumbs initial
   Object.keys(state.items).forEach(nr=>renderThumbs(nr));
@@ -644,7 +656,7 @@ function renderPruefliste(){
           <div class="chips"><span class="chip${p.s==="g"?" on":""}" data-ps="${id}:g">geringfügig</span><span class="chip${p.s==="s"?" on":""}" data-ps="${id}:s">schwerwiegend</span></div>
           <div class="kostrow"><span class="kostlbl">geschätzte Behebungskosten (netto)</span><input type="text" inputmode="numeric" id="pk-${id}" class="kostin" placeholder="€" value="${esc(p.k)}"><span class="chip kq" data-pk="${id}:150">150€</span><span class="chip kq" data-pk="${id}:300">300€</span><span class="chip kq" data-pk="${id}:500">500€</span><span class="chip kq" data-pk="${id}:1000">1000€</span></div>
           <textarea id="pm-${id}" placeholder="Maßnahme / Bemerkung …">${esc(p.m)}</textarea>
-          <div class="toolrow"><button class="btn rec" data-dictate="pm-${id}">🎤 Diktieren</button><button class="btn" data-pfoto="${id}">📷 Foto</button></div>
+          <div class="toolrow"><button class="btn" data-pfoto="${id}">📷 Foto</button></div>
           <div class="thumbs" id="pth-${id}"></div></div>`;
       d.appendChild(row);
     });
@@ -664,7 +676,6 @@ function renderPruefliste(){
   wrap.querySelectorAll("[id^=pk-]").forEach(inp=>{ const id=inp.id.slice(3); inp.addEventListener("input",()=>{ pitem(id).k=inp.value.replace(/[^0-9.,]/g,""); save(); }); });
   wrap.querySelectorAll("[data-pk]").forEach(c=>c.addEventListener("click",()=>{ const [id,v]=c.dataset.pk.split(":"); pitem(id).k=v; const inp=document.getElementById("pk-"+id); if(inp) inp.value=v; save(); }));
   wrap.querySelectorAll("[data-pfoto]").forEach(b=>b.addEventListener("click",()=>pickPhotoP(b.dataset.pfoto)));
-  wrap.querySelectorAll("[data-dictate]").forEach(b=>b.addEventListener("click",()=>dictate(b,b.dataset.dictate)));
   Object.keys(state.pruefung).forEach(id=>renderPThumbs(id));
   PRUEFLISTE.forEach(g=>pgroupCount(g.items[0][0]));
 }
@@ -726,7 +737,7 @@ function renderMaengel(){
       +`<div class="sev"><button class="sevb g${m.schwere==="g"?" on":""}" data-msev="${i}:g">gering</button><button class="sevb m${m.schwere==="m"?" on":""}" data-msev="${i}:m">mittel</button><button class="sevb h${m.schwere==="h"?" on":""}" data-msev="${i}:h">hoch</button></div>`
       +`<div class="kostrow"><span class="kostlbl">Kosten netto (€)${k.perUnit?` · ${k.rate} €/m`:""}</span><input type="text" inputmode="numeric" class="kostin" id="mk-${i}" placeholder="€" value="${esc(m.kosten)}"><span class="chip kq" data-mk="${i}:150">150</span><span class="chip kq" data-mk="${i}:300">300</span><span class="chip kq" data-mk="${i}:500">500</span><span class="chip kq" data-mk="${i}:1000">1000</span></div>`
       +`<textarea id="mn-${i}" placeholder="Maßnahme / Notiz …">${esc(m.notiz)}</textarea>`
-      +`<div class="toolrow"><button class="btn rec" data-dictate="mn-${i}">🎤 Diktieren</button><button class="btn" data-mfoto="${i}">📷 Foto</button></div>`
+      +`<div class="toolrow"><button class="btn" data-mfoto="${i}">📷 Foto</button></div>`
       +`<div class="thumbs" id="mth-${i}"></div>`;
     wrap.appendChild(c);
   });
@@ -739,7 +750,6 @@ function renderMaengel(){
   wrap.querySelectorAll("[data-mk]").forEach(c=>c.addEventListener("click",()=>{ const a=c.dataset.mk.split(":"); const i=a[0], v=a[1]; state.maengel[+i].kosten=v; const ke=document.getElementById("mk-"+i); if(ke) ke.value=v; updateMSum(); save(); }));
   wrap.querySelectorAll("[id^=mn-]").forEach(ta=>{ const i=+ta.id.slice(3); ta.addEventListener("input",()=>{ state.maengel[i].notiz=ta.value; save(); }); });
   wrap.querySelectorAll("[data-mfoto]").forEach(b=>b.addEventListener("click",()=>{ mFotoTarget=+b.dataset.mfoto; mFile.value=""; mFile.click(); }));
-  wrap.querySelectorAll("[data-dictate]").forEach(b=>b.addEventListener("click",()=>dictate(b,b.dataset.dictate)));
   (state.maengel||[]).forEach((m,i)=>renderMThumbs(i));
   updateMSum();
 }
@@ -857,37 +867,6 @@ function renderAudio(){
 }
 document.getElementById("audioRecBtn").addEventListener("click",toggleAudioRec);
 
-/* ===== Sprachnotiz (Diktat) ===== */
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let activeRec=null, activeBtn=null, diktatEinwilligung=false;
-function dictate(btn, targetId){
-  const ta=document.getElementById(targetId);
-  if(activeRec){ activeRec.stop(); return; }
-  if(!SR){
-    ta.focus();
-    alert("Live-Diktat wird von diesem Browser nicht unterstützt.\nNutze einfach das Mikrofon deiner Tastatur (Tippen ins Feld → Mikro-Taste).");
-    return;
-  }
-  if(!diktatEinwilligung){
-    if(!confirm("Datenschutz-Hinweis: Das Live-Diktat nutzt die Spracherkennung des Browsers – das Audio geht dabei an dessen Anbieter (z. B. Google).\nFür vertrauliche Inhalte besser die 🎙 Sprachnotiz nutzen (bleibt komplett offline).\n\nDiktat trotzdem verwenden?")) return;
-    diktatEinwilligung=true;
-  }
-  const rec=new SR(); rec.lang="de-DE"; rec.interimResults=false; rec.continuous=true;
-  activeRec=rec; activeBtn=btn; btn.classList.add("active"); btn.textContent="⏹ Stop";
-  rec.onresult=e=>{
-    let txt="";
-    for(let i=e.resultIndex;i<e.results.length;i++) if(e.results[i].isFinal) txt+=e.results[i][0].transcript;
-    if(txt){ ta.value=(ta.value?ta.value.trim()+" ":"")+txt.trim(); ta.dispatchEvent(new Event("input")); }
-  };
-  rec.onerror=()=>stopRec();
-  rec.onend=()=>stopRec();
-  try{ rec.start(); }catch(e){ stopRec(); }
-}
-function stopRec(){
-  if(activeBtn){ activeBtn.classList.remove("active"); activeBtn.textContent="🎤 Diktieren"; }
-  activeRec=null; activeBtn=null;
-}
-
 /* ===== Export ===== */
 function slug(s){ return (s||"begehung").toLowerCase().replace(/[äöüß]/g,m=>({"ä":"ae","ö":"oe","ü":"ue","ß":"ss"}[m]))
   .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40)||"begehung"; }
@@ -996,7 +975,7 @@ function buildMarkdown(){
   return L.join("\n");
 }
 
-document.getElementById("btnPrint").addEventListener("click",()=>{ document.querySelectorAll("details.grp").forEach(d=>d.open=true); window.print(); });
+document.getElementById("btnPrint").addEventListener("click",()=>{ document.querySelectorAll("details").forEach(d=>d.open=true); window.print(); });
 
 /* Import */
 document.getElementById("btnImport").addEventListener("click",()=>document.getElementById("importInput").click());
@@ -1028,14 +1007,19 @@ document.getElementById("btnReset").addEventListener("click",async()=>{
   }
 });
 
-/* Start: neuesten Stand aus localStorage vs. IndexedDB-Backup wählen, dann rendern */
+/* Start: neuesten Stand aus localStorage vs. IndexedDB-Backup wählen, dann rendern.
+   Alles mit Timeout – ein hängendes IndexedDB (z. B. iOS-Bug) darf die App nie lahmlegen. */
 (async function boot(){
-  await idbReady;
-  try{ const raw=await idbGet(LSKEY);
-    if(raw){ const s=JSON.parse(raw); if(s&&s.meta&&((s._ts||0)>(state._ts||0))) state=s; } }catch(e){}
-  try{ const raw=await idbGet(COLLKEY);
-    if(raw){ const c=JSON.parse(raw); if(Array.isArray(c)&&c.length>collection.length) collection=c; } }catch(e){}
+  try{
+    await mitTimeout(idbReady, 1500, null);
+    const raw=await mitTimeout(idbGet(LSKEY), 1500, null);
+    if(raw){ const s=JSON.parse(raw); if(s&&s.meta&&((s._ts||0)>(state._ts||0))) state=s; }
+    const rawC=await mitTimeout(idbGet(COLLKEY), 1500, null);
+    if(rawC){ const c=JSON.parse(rawC); if(Array.isArray(c)&&c.length>collection.length) collection=c; }
+  }catch(e){}
   init();
+  try{ const t=localStorage.getItem("oak_begehung_toast");
+    if(t){ localStorage.removeItem("oak_begehung_toast"); toast(t); } }catch(e){}
 })();
 </script>
 </body>
