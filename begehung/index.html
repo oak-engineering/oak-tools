@@ -140,6 +140,16 @@
   details.card[open]>summary{margin-bottom:10px;border-bottom:1px solid var(--line)}
   details.card[open]>summary .chev{transform:rotate(90deg)}
 
+  /* ---- Foto-Markierung (Mängel auf Gesamtansicht) ---- */
+  #mark{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:90;display:flex;flex-direction:column;
+    padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
+  #mark canvas{flex:1;min-height:0;display:block;margin:auto;max-width:100%;max-height:100%;touch-action:manipulation}
+  #mark .markhint{color:#fff;font-size:13px;text-align:center;padding:6px 0 0}
+  .markchips{display:flex;gap:6px;overflow-x:auto;padding-top:8px;flex:0 0 auto}
+  .markchips .chip{background:#fff;white-space:nowrap}
+  .markbar{display:flex;gap:8px;padding-top:10px;flex:0 0 auto}
+  .markbar .btn{background:#fff}
+
   /* ---- Bestätigungs-Toast ---- */
   #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;background:var(--dunkel);
     color:#fff;padding:13px 20px;border-radius:12px;font-size:15px;z-index:99;max-width:90%;
@@ -277,6 +287,7 @@
     <div class="desc">Antippen = Mangel vorhanden (grün). Rechtsquelle, Einstufung und Bepreisung laufen
       im Hintergrund mit; passende Gefährdungsfaktoren (5) und Prüfpunkte (6) werden automatisch gesetzt.</div>
     <div class="mpal" id="mPalette"></div>
+    <button class="btn big" id="btnMarkieren">🖼 Mängel auf Gesamtansicht markieren</button>
   </details>
 
   <!-- GEFÄHRDUNGEN -->
@@ -608,12 +619,6 @@ function init(){
 
 /* ===== Prüfliste Maschinensicherheit ===== */
 function pitem(id){ if(!state.pruefung[id]) state.pruefung[id]={b:"",s:"",m:"",k:"",fotos:[]}; return state.pruefung[id]; }
-let pfotoTarget=null;
-const pFileInput=document.createElement("input"); pFileInput.type="file"; pFileInput.accept="image/*"; pFileInput.hidden=true; document.body.appendChild(pFileInput);
-function pickPhotoP(id){ pfotoTarget=id; pFileInput.value=""; pFileInput.click(); }
-pFileInput.addEventListener("change",()=>handleFile(pFileInput.files[0], obj=>{ if(!pfotoTarget) return; pitem(pfotoTarget).fotos.push(obj); renderPThumbs(pfotoTarget); save(); }));
-function renderPThumbs(id){ const box=document.getElementById("pth-"+id); if(!box) return; const p=pitem(id); box.innerHTML="";
-  p.fotos.forEach((f,i)=>box.appendChild(thumb(f,()=>{ p.fotos.splice(i,1); renderPThumbs(id); save(); }))); }
 function pgroupCount(anyId){
   const g=PRUEFLISTE.find(g=>g.items.some(([id])=>id===anyId)); if(!g) return;
   let n=0; g.items.forEach(([id])=>{ if(state.pruefung[id]&&state.pruefung[id].b==="n") n++; });
@@ -632,10 +637,7 @@ function renderPruefliste(){
           <button class="jbtn j${p.b==="j"?" on":""}" data-pb="${id}:j">J</button>
           <button class="jbtn n${p.b==="n"?" on":""}" data-pb="${id}:n">N</button>
           <button class="jbtn e${p.b==="e"?" on":""}" data-pb="${id}:e">E</button></div></div>
-        <div class="pinfo" id="pi-${id}">${text}</div>
-        <div class="pdetail">
-          <div class="toolrow"><button class="btn" data-pfoto="${id}">📷 Foto</button></div>
-          <div class="thumbs" id="pth-${id}"></div></div>`;
+        <div class="pinfo" id="pi-${id}">${text}</div>`;
       d.appendChild(row);
     });
     wrap.appendChild(d);
@@ -646,7 +648,6 @@ function renderPruefliste(){
     document.getElementById("p-"+id).classList.toggle("mangel", p.b==="n");
     pgroupCount(id); save();
   }));
-  wrap.querySelectorAll("[data-pfoto]").forEach(b=>b.addEventListener("click",()=>pickPhotoP(b.dataset.pfoto)));
   // Tipp aufs Label = Volltext ein-/ausblenden
   wrap.querySelectorAll("[data-info]").forEach(l=>l.addEventListener("click",()=>{
     const el=document.getElementById("pi-"+l.dataset.info); if(el) el.classList.toggle("show");
@@ -659,7 +660,6 @@ function renderPruefliste(){
       if(!p.b){ p.b="j"; const jb=wrap.querySelector(`[data-pb="${id}:j"]`); if(jb) jb.classList.add("on"); } });
     save();
   }));
-  Object.keys(state.pruefung).forEach(id=>renderPThumbs(id));
   PRUEFLISTE.forEach(g=>pgroupCount(g.items[0][0]));
 }
 
@@ -712,7 +712,8 @@ const MAENGEL_KATALOG = [
  {id:"C3", label:"Leckage / Boden rutschig (Öl/Granulat)", rq:"DGUV 113-606 3.1.2/3.1.5", mn:"Leckage beheben; Reinigung; Sicherheitsschuhe", rate:300, gf:["1.5"], pf:[]},
  {id:"C4", label:"Beleuchtung unzureichend (Werkzeugraum)", rq:"T 009 4.3.3 · ASR A3.4", mn:"LED-Maschinenleuchte (IP67)", rate:250, gf:["8.2"], pf:["P52"]},
  {id:"D1", label:"E-Prüfung (DGUV V3) überfällig / Elektrik mangelhaft", rq:"DGUV 113-606 3.1.13 · DGUV V3", mn:"DGUV-V3-Prüfung durch Elektrofachkraft", rate:200, gf:["2.1"], pf:["P27","P28"]},
- {id:"D2", label:"Hydraulik/Pneumatik undicht / Schlauch defekt", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Schläuche tauschen; Druckentlastung prüfen", rate:500, gf:["1.4"], pf:[]},
+ {id:"D2", label:"Hydraulik undicht / Schlauch defekt (Leckage)", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Schläuche tauschen; Druckentlastung prüfen", rate:500, gf:["1.4"], pf:["P33","P34"]},
+ {id:"D3", label:"Pneumatik undicht / Leitung defekt (Leckage)", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Leitungen tauschen; Druckentlastung prüfen", rate:400, gf:["1.4"], pf:["P44","P45"]},
  {id:"E1", label:"CE/Konformität/Betriebsanleitung fehlt", rq:"T 009 Kap. 2", mn:"Unterlagen beschaffen/nachfordern", rate:150, gf:[], pf:["P2","P3"]},
  {id:"E2", label:"BA/Unterweisung fehlt", rq:"DGUV 113-606 Kap. 2 · T 009 4.1.2", mn:"BA erstellen; Unterweisung + Dokumentation", rate:150, gf:[], pf:["P54","P55"]},
  {id:"E3", label:"Kennzeichnung fehlt (Gebinde/Sicherheitszeichen)", rq:"TRGS 201 · ASR A1.3", mn:"Kennzeichnung anbringen", rate:150, gf:["8.4"], pf:["P4"]},
@@ -795,6 +796,71 @@ function thumb(f, onDel, num){
   if(num){ const n=document.createElement("span"); n.className="tnum"; n.textContent=num; d.appendChild(n); }
   return d;
 }
+
+/* ===== Mängel auf der Gesamtansicht markieren =====
+   Foto 1 groß anzeigen, Antippen setzt Marker (Beschriftung = gewählter Mangel-Code oder
+   laufende Nummer). Ergebnis wird als ZUSÄTZLICHES Foto gespeichert – die Nummern der
+   Original-Fotos (Sprachnotiz-Referenzen!) bleiben unverändert. */
+let markMarker=[], markAktiv=null, markCanvas=null, markImg=null;
+function zeichneMarker(){
+  if(!markCanvas||!markImg) return;
+  const ctx=markCanvas.getContext("2d");
+  ctx.drawImage(markImg,0,0);
+  const rr=Math.max(16,Math.round(Math.min(markCanvas.width,markCanvas.height)*0.045));
+  markMarker.forEach(m=>{
+    ctx.beginPath(); ctx.arc(m.x,m.y,rr,0,2*Math.PI);
+    ctx.fillStyle="rgba(198,40,40,.85)"; ctx.fill();
+    ctx.lineWidth=Math.max(2,Math.round(rr*0.12)); ctx.strokeStyle="#fff"; ctx.stroke();
+    ctx.fillStyle="#fff"; ctx.font="bold "+Math.round(rr*(m.label.length>1?0.72:0.95))+"px sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(m.label,m.x,m.y);
+  });
+}
+document.getElementById("btnMarkieren").addEventListener("click",()=>{
+  if(!(state.fotosAllg||[]).length){ toast("Erst Foto 1 (Gesamtansicht) in Abschnitt 1 aufnehmen."); return; }
+  const ov=document.createElement("div"); ov.id="mark";
+  ov.innerHTML=`<canvas></canvas>`
+    +`<div class="markhint">Antippen = Marker setzen · unten Mangel-Code wählen (sonst 1, 2, 3 …)</div>`
+    +`<div class="markchips" id="markChips"></div>`
+    +`<div class="markbar">`
+    +`<button class="btn" id="markUndo">↩ Rückgängig</button>`
+    +`<button class="btn" id="markAbbr">✕ Abbrechen</button>`
+    +`<button class="btn primary" id="markOk" style="margin-left:auto">✓ Als Foto speichern</button></div>`;
+  document.body.appendChild(ov);
+  markMarker=[]; markAktiv=null;
+  const chips=ov.querySelector("#markChips");
+  (state.maengel||[]).forEach(m=>{
+    const c=document.createElement("span"); c.className="chip"; c.textContent=m.typ; c.title=m.label;
+    c.addEventListener("click",()=>{ markAktiv=(markAktiv===m.typ?null:m.typ);
+      chips.querySelectorAll(".chip").forEach(x=>x.classList.toggle("on",x.textContent===markAktiv)); });
+    chips.appendChild(c);
+  });
+  markCanvas=ov.querySelector("canvas");
+  markImg=new Image();
+  markImg.onload=()=>{ markCanvas.width=markImg.naturalWidth; markCanvas.height=markImg.naturalHeight; zeichneMarker(); };
+  markImg.src=state.fotosAllg[0].data;   // Foto 1 = Gesamtansicht (Konvention)
+  markCanvas.addEventListener("click",e=>{
+    const r=markCanvas.getBoundingClientRect();
+    if(!r.width||!r.height) return;
+    const x=(e.clientX-r.left)/r.width*markCanvas.width;
+    const y=(e.clientY-r.top)/r.height*markCanvas.height;
+    markMarker.push({x,y,label:markAktiv||String(markMarker.length+1)});
+    zeichneMarker();
+  });
+  ov.querySelector("#markUndo").addEventListener("click",()=>{ markMarker.pop(); zeichneMarker(); });
+  ov.querySelector("#markAbbr").addEventListener("click",()=>ov.remove());
+  ov.querySelector("#markOk").addEventListener("click",()=>{
+    if(markMarker.length){
+      try{
+        const data=markCanvas.toDataURL("image/jpeg",0.8);
+        state.fotosAllg.push({name:"gesamtansicht_markiert.jpg",data});
+        renderAllgThumbs(); save();
+        toast("Markierte Gesamtansicht als Foto "+state.fotosAllg.length+" gespeichert.");
+      }catch(e){ alert("Speichern fehlgeschlagen."); }
+    }
+    ov.remove();
+  });
+});
 
 /* ===== Sprachnotiz (Audio-Aufnahme je Maschine, offline) ===== */
 const AUDIO_MAX_S = 180;   // Sicherheitslimit; Ziel sind 1-2 min
