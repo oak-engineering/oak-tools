@@ -193,6 +193,8 @@
   .mpal{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 12px}
   .mpal .btn{font-size:13px;padding:10px 12px;text-align:left}
   .mpal .btn.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
+  .stufenrow{flex-basis:100%;display:flex;align-items:center;gap:7px;padding:1px 0 4px}
+  .stufenlbl{font-size:12px;color:var(--muted)}
   .mcard{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:10px;background:#fbfdfb}
   .mhead{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--dunkel)}
   .mhead b{flex:1;font-size:14.5px}
@@ -712,23 +714,38 @@ const MAENGEL_KATALOG = [
  {id:"C3", label:"Leckage / Boden rutschig (Öl/Granulat)", rq:"DGUV 113-606 3.1.2/3.1.5", mn:"Leckage beheben; Reinigung; Sicherheitsschuhe", rate:300, gf:["1.5"], pf:[]},
  {id:"C4", label:"Beleuchtung unzureichend (Werkzeugraum)", rq:"T 009 4.3.3 · ASR A3.4", mn:"LED-Maschinenleuchte (IP67)", rate:250, gf:["8.2"], pf:["P52"]},
  {id:"D1", label:"E-Prüfung (DGUV V3) überfällig / Elektrik mangelhaft", rq:"DGUV 113-606 3.1.13 · DGUV V3", mn:"DGUV-V3-Prüfung durch Elektrofachkraft", rate:200, gf:["2.1"], pf:["P27","P28"]},
- {id:"D2", label:"Hydraulik undicht / Schlauch defekt (Leckage)", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Schläuche tauschen; Druckentlastung prüfen", rate:500, gf:["1.4"], pf:["P33","P34"]},
- {id:"D3", label:"Pneumatik undicht / Leitung defekt (Leckage)", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Leitungen tauschen; Druckentlastung prüfen", rate:400, gf:["1.4"], pf:["P44","P45"]},
+ {id:"D2", label:"Hydraulik undicht / Schlauch defekt (Leckage)", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Schläuche tauschen; Druckentlastung prüfen", rate:500, gf:["1.4"], pf:["P33","P34"], stufen:true},
+ {id:"D3", label:"Pneumatik undicht / Leitung defekt (Leckage)", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Leitungen tauschen; Druckentlastung prüfen", rate:400, gf:["1.4"], pf:["P44","P45"], stufen:true},
  {id:"E1", label:"CE/Konformität/Betriebsanleitung fehlt", rq:"T 009 Kap. 2", mn:"Unterlagen beschaffen/nachfordern", rate:150, gf:[], pf:["P2","P3"]},
  {id:"E2", label:"BA/Unterweisung fehlt", rq:"DGUV 113-606 Kap. 2 · T 009 4.1.2", mn:"BA erstellen; Unterweisung + Dokumentation", rate:150, gf:[], pf:["P54","P55"]},
  {id:"E3", label:"Kennzeichnung fehlt (Gebinde/Sicherheitszeichen)", rq:"TRGS 201 · ASR A1.3", mn:"Kennzeichnung anbringen", rate:150, gf:["8.4"], pf:["P4"]},
  {id:"X", label:"Sonstiger Mangel", rq:"", mass:"Beschreibung", mn:"", rate:0, gf:[], pf:[]},
 ];
+const STUFEN_FAKTOR={klein:0.5, mittel:1, "groß":1.8};   // skaliert den Katalog-Richtpreis
 function renderPalette(){
   const pal=document.getElementById("mPalette"); if(!pal) return; pal.innerHTML="";
   MAENGEL_KATALOG.forEach(k=>{
-    const b=document.createElement("button"); b.type="button"; b.className="btn"; b.textContent=k.label;
-    if((state.maengel||[]).some(m=>m.typ===k.id)) b.classList.add("on");
-    b.addEventListener("click",()=>{
-      toggleMangel(k);
-      b.classList.toggle("on",(state.maengel||[]).some(m=>m.typ===k.id));
-    });
+    const eintrag=(state.maengel||[]).find(m=>m.typ===k.id);
+    const b=document.createElement("button"); b.type="button"; b.className="btn"+(eintrag?" on":"");
+    b.textContent=k.label;
+    b.addEventListener("click",()=>{ toggleMangel(k); renderPalette(); });
     pal.appendChild(b);
+    // Einstufung (z. B. Leckage klein/mittel/groß) direkt unter dem aktiven Button
+    if(eintrag && k.stufen){
+      const row=document.createElement("div"); row.className="stufenrow";
+      const lbl=document.createElement("span"); lbl.className="stufenlbl"; lbl.textContent="Einstufung:";
+      row.appendChild(lbl);
+      ["klein","mittel","groß"].forEach(s=>{
+        const c=document.createElement("span"); c.className="chip"+(eintrag.stufe===s?" on":""); c.textContent=s;
+        c.addEventListener("click",()=>{
+          eintrag.stufe=(eintrag.stufe===s?"":s);
+          eintrag.kosten=String(Math.round((k.rate||0)*(STUFEN_FAKTOR[eintrag.stufe]||1)));
+          save(); renderPalette();
+        });
+        row.appendChild(c);
+      });
+      pal.appendChild(row);
+    }
   });
 }
 /* Mangel setzt automatisch passende Gefährdungsfaktoren + Prüfpunkte (N) */
@@ -748,7 +765,7 @@ function setzePruefpunktN(id){
 function toggleMangel(k){
   const idx=(state.maengel||[]).findIndex(m=>m.typ===k.id);
   if(idx>=0){ state.maengel.splice(idx,1); save(); return; }   // Abwahl: abgeleitete Punkte bleiben (bewusst)
-  state.maengel.push({typ:k.id,label:k.label,rq:k.rq||"",mass:"",schwere:"",kosten:k.rate?String(k.rate):"",notiz:k.mn||"",fotos:[]});
+  state.maengel.push({typ:k.id,label:k.label,rq:k.rq||"",mass:"",stufe:"",schwere:"",kosten:k.rate?String(k.rate):"",notiz:k.mn||"",fotos:[]});
   let nGef=0, nPf=0;
   (k.gf||[]).forEach(nr=>{ if(setzeGefahr(nr)) nGef++; });
   (k.pf||[]).forEach(id=>{ if(setzePruefpunktN(id)) nPf++; });
