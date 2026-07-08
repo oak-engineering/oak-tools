@@ -192,6 +192,7 @@
   .markchips .chip{background:#fff;white-space:nowrap}
   .markbar{display:flex;gap:8px;padding-top:10px;flex:0 0 auto}
   .markbar .btn{background:#fff}
+  .markbar .btn.primary{background:var(--gruen);color:#fff}
 
   /* ---- Bestätigungs-Toast ---- */
   #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;background:var(--dunkel);
@@ -298,13 +299,17 @@
 
   <!-- SCHNELL-ANSICHT -->
   <section class="card mode-schnell" id="cardSchnell">
-    <div class="hint">📷 <b>Foto 1</b> Gesamtansicht · <b>Foto 2</b> Typenschild (mit CE) ·
-      <b>Foto 3+</b> je Befund eins. Misslungenes Foto sofort löschen.</div>
-    <button class="btn big" data-addfoto>📷 Foto aufnehmen</button>
+    <div class="hint">📷 <b>Gesamtansicht</b> + <b>Typenschild</b> (mit CE) + je Befund ein <b>Mangel-Foto</b>.
+      Getrennt aufnehmen – Gesamtansicht &amp; Typenschild ersetzen sich, Mangel-Fotos werden gesammelt.</div>
+    <div class="toolrow">
+      <button class="btn" data-addfoto="gesamt">📷 Gesamtansicht</button>
+      <button class="btn" data-addfoto="typenschild">📷 Typenschild</button>
+      <button class="btn" data-addfoto="mangel">📷 Mangel-Foto</button>
+    </div>
     <div class="thumbs allgThumbs"></div>
     <button class="btn" data-mark>🖼 Mängel auf Gesamtansicht markieren</button>
     <div class="hint">🎙 <b>Sprechen (max. 2 min):</b> ① Maschine + Standort &nbsp;② Betriebsanleitung da?
-      &nbsp;③ Tätigkeiten (Rüsten, Reinigung, Wartung …) &nbsp;④ je Befund: „<b>Foto N zeigt</b> …" –
+      &nbsp;③ Tätigkeiten (Rüsten, Reinigung, Wartung …) &nbsp;④ je Befund: „<b>Mangel-Foto N zeigt</b> …" –
       was kann passieren · wer ist betroffen · Schwere g/m/h · Eintritt unwahrsch./möglich/wahrsch. · Kosten
       &nbsp;⑤ Sofortmaßnahme / Stilllegung?</div>
     <button class="btn rec big" id="audioRecBtn">🎙 Aufnahme starten</button>
@@ -322,8 +327,8 @@
     <section class="card step" data-step="0">
       <h2>2.1 · Stammdaten</h2>
       <div class="desc">Maschinendaten stehen auf dem Typenschild. Kunde &amp; Begeher bleiben gespeichert.</div>
-      <button class="btn big" data-addfoto>📷 Gesamtansicht der Maschine</button>
-      <button class="btn big" data-addfoto>📷 Typenschild aufnehmen</button>
+      <button class="btn big" data-addfoto="gesamt">📷 Gesamtansicht der Maschine</button>
+      <button class="btn big" data-addfoto="typenschild">📷 Typenschild aufnehmen</button>
       <div class="thumbs allgThumbs"></div>
       <div class="grid2">
         <div><label class="f">Kunde / Firma</label><input type="text" data-meta="kunde" placeholder="z. B. Wibo Kunststofftechnik GmbH"></div>
@@ -364,7 +369,7 @@
         im Hintergrund mit; passende Gefährdungsfaktoren (2.5) und Prüfpunkte (2.4) werden automatisch gesetzt.</div>
       <div class="mpal" id="mPalette"></div>
       <button class="btn big" data-mark>🖼 Auf Gesamtansicht markieren</button>
-      <button class="btn big" data-addfoto>📷 Mangel-Foto aufnehmen</button>
+      <button class="btn big" data-addfoto="mangel">📷 Mangel-Foto aufnehmen</button>
       <div class="thumbs allgThumbs"></div>
     </section>
 
@@ -402,7 +407,6 @@
 <div class="actionbar">
   <button class="btn primary" id="btnClone">✓ Speichern</button>
   <button class="btn" id="btnReset">✕ Neu</button>
-  <button class="btn" id="btnShare">📤 Alle</button>
   <button class="btn" id="btnList">📋 <span id="machCount">0</span></button>
   <input type="file" accept="application/json,.json" id="importInput" multiple hidden>
 </div>
@@ -627,6 +631,7 @@ const PRUEFLISTE = [
 const LSKEY = "oak_begehung_v1";
 const COLLKEY = "oak_begehung_coll_v1";
 const PREFSKEY = "oak_begehung_prefs_v1";   // Kunde/Begeher überleben auch „✕ Neu"
+const UPLOADKEY = "oak_begehung_uploadurl"; // Apps-Script Web-App-URL für Auto-Upload (pro Gerät)
 
 /* ===== Persistenz: localStorage (Schnellpfad) + IndexedDB-Spiegel (großes Quota) =====
    localStorage fasst nur ~5 MB – mit Fotos+Audio je Maschine schnell voll. IndexedDB
@@ -680,6 +685,18 @@ function machineFileName(m){
   const sys=((m.meta||{}).arbeitssystem||"").trim();
   return "Begehung_"+(sys?slug(sys)+"__":"")+slug((m.meta||{}).maschine||(m.meta||{}).kunde)+"_"+((m.meta||{}).datum||"")+".json";
 }
+/* Auto-Upload einer Maschine an den Apps-Script-Endpoint (→ Drive eingang, ohne Teilen-Dialog).
+   no-cors + text/plain = kein CORS-Preflight; fire-and-forget mit Timeout. */
+async function driveUpload(m){
+  const url=(localStorage.getItem(UPLOADKEY)||"").trim(); if(!url) return false;
+  const paket={ _typ:"OAK-Begehung-Maschine", _version:1, _exportiert:new Date().toISOString(),
+    dateiname:machineFileName(m), maschine:m };
+  try{
+    await mitTimeout(fetch(url,{method:"POST",mode:"no-cors",
+      headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(paket)}).catch(()=>{}), 15000, null);
+    return true;
+  }catch(e){ return false; }
+}
 /* Einzelne Maschine als eigene Datei teilen (→ Drive eingang) bzw. herunterladen */
 async function teileEinzel(m){
   const name=machineFileName(m);
@@ -704,11 +721,12 @@ async function saveAndClone(){
   if(leer){ toast("Noch nichts erfasst – erst Fotos oder Sprachnotiz aufnehmen."); return; }
   if(!(state.meta.maschine||"").trim()) state.meta.maschine="Maschine "+(collection.length+1);
   const name=state.meta.maschine;
-  if(!confirm("„"+name+"“ speichern und als Datei teilen (→ Drive)?")) return;
+  const hatUpload=!!(localStorage.getItem(UPLOADKEY)||"").trim();
+  if(!confirm("„"+name+"“ speichern"+(hatUpload?" und automatisch in Drive ablegen?":" und als Datei teilen (→ Drive)?"))) return;
   const editIdx=(typeof state._editIdx==="number")?state._editIdx:null;
   const rec=JSON.parse(JSON.stringify(state)); delete rec._editIdx; delete rec._ts;
-  // 1) Datei-Share ZUERST (solange die Nutzer-Geste aktiv ist – vor den IDB-Awaits)
-  await teileEinzel(rec);
+  // 1) Ohne Auto-Upload: Datei-Share ZUERST (solange die Nutzer-Geste aktiv ist – vor den IDB-Awaits)
+  if(!hatUpload) await teileEinzel(rec);
   // 2) lokal in die Sammlung übernehmen (an alter Position beim Nachschärfen, sonst anhängen)
   if(btn){ btn.disabled=true; btn.textContent="Sichere…"; }
   if(editIdx!=null) collection.splice(Math.min(editIdx,collection.length),0,rec);
@@ -717,10 +735,13 @@ async function saveAndClone(){
     collection.splice(editIdx!=null?Math.min(editIdx,collection.length-1):collection.length-1,1);
     rescueExport();
     if(btn){ btn.disabled=false; btn.textContent="✓ Speichern"; }
-    alert("Speicher voll – lokal NICHT gesichert.\nDie Einzeldatei wurde aber geteilt/heruntergeladen – nichts ist verloren.");
+    alert("Speicher voll – lokal NICHT gesichert. Ein Rettungs-Export wurde heruntergeladen – nichts ist verloren.");
     return;
   }
-  // 3) für die nächste Maschine leeren: Bewertungsmuster behalten, Spezifisches + Marker + Edit-Bezug weg
+  // 3) Auto-Upload nach Drive (nach dem sicheren lokalen Speichern, vor dem Reload)
+  let hochgeladen=false;
+  if(hatUpload){ if(btn) btn.textContent="Lade hoch…"; hochgeladen=await driveUpload(rec); }
+  // 4) für die nächste Maschine leeren: Bewertungsmuster behalten, Spezifisches + Marker + Edit-Bezug weg
   delete state._editIdx;
   state.meta.maschine=""; state.meta.seriennr=""; state.meta.baujahr="";
   state.meta.allg_notiz=""; state.meta.ma_hinweise=""; state.meta.teilschritt="";
@@ -729,7 +750,8 @@ async function saveAndClone(){
   (state.maengel||[]).forEach(m=>{ m.fotos=[]; });
   state.fotosAllg=[]; state.markierungen=[]; state.audio=null;
   await persistAll();
-  try{ localStorage.setItem("oak_begehung_toast","✓ „"+name+"“ gesichert & geteilt – "+collection.length+" Maschine(n)"); }catch(e){}
+  const suffix = hatUpload ? (hochgeladen?" → Drive gesendet":" (Drive-Upload unklar – prüfen)") : " & geteilt";
+  try{ localStorage.setItem("oak_begehung_toast","✓ „"+name+"“ gesichert"+suffix+" · über 📋 mit ✎ wieder öffnen"); }catch(e){}
   location.reload();
 }
 function ladePrefs(){ try{ return JSON.parse(localStorage.getItem(PREFSKEY))||{}; }catch(e){ return {}; } }
@@ -741,7 +763,7 @@ function blankState(){
     items:{}, pruefung:{}, maengel:[], fotosAllg:[], markierungen:[], audio:null };
 }
 function loadState(){
-  try{ const s=JSON.parse(localStorage.getItem(LSKEY)); if(s&&s.meta){ if(!Array.isArray(s.maengel)) s.maengel=[]; if(!Array.isArray(s.markierungen)) s.markierungen=[]; if(!s.meta.modus) s.meta.modus="schnell"; return s; } }catch(e){}
+  try{ const s=JSON.parse(localStorage.getItem(LSKEY)); if(s&&s.meta){ if(!Array.isArray(s.maengel)) s.maengel=[]; if(!Array.isArray(s.markierungen)) s.markierungen=[]; if(!s.meta.modus) s.meta.modus="schnell"; migrateFotos(s); return s; } }catch(e){}
   return blankState();
 }
 let saveT;
@@ -1075,12 +1097,25 @@ function toggleMangel(k){
     +(nPf?nPf+" Prüfpunkt(e) auf N":""));
 }
 
-/* ===== Fotos ===== */
+/* ===== Fotos (kategorisiert) =====
+   kat: "gesamt" | "typenschild" | "mangel" | "gesamt_markiert".
+   gesamt/typenschild/gesamt_markiert sind Singletons (ersetzen sich); mangel wird gesammelt. */
+function fotoByKat(kat){ return (state.fotosAllg||[]).find(f=>f.kat===kat)||null; }
+function addFotoKat(kat,obj){
+  obj.kat=kat;
+  if(kat==="gesamt"||kat==="typenschild"||kat==="gesamt_markiert"){
+    const i=state.fotosAllg.findIndex(f=>f.kat===kat);
+    if(i>=0) state.fotosAllg[i]=obj; else state.fotosAllg.push(obj);
+  } else state.fotosAllg.push(obj);
+}
+function migrateFotos(s){ (s.fotosAllg||[]).forEach(f=>{ if(!f.kat) f.kat=(f.name==="gesamtansicht_markiert.jpg"?"gesamt_markiert":"sonstige"); }); }
 /* Alle [data-addfoto]-Buttons öffnen die In-App-Kamera (Fallback: Datei/Galerie) */
 document.addEventListener("click",e=>{
   const b=e.target.closest && e.target.closest("[data-addfoto]");
   if(!b) return;
-  openCamera(obj=>{ state.fotosAllg.push(obj); renderAllgThumbs(); save(); });
+  const kat=b.dataset.addfoto||"sonstige";
+  openCamera(obj=>{ addFotoKat(kat,obj); renderAllgThumbs(); save();
+    if(kat==="gesamt"||kat==="typenschild") toast(kat==="gesamt"?"Gesamtansicht gesetzt.":"Typenschild gesetzt."); });
 });
 function dateiInput(){ const ai=document.getElementById("allgFotoInput"); ai.value=""; ai.click(); }
 document.getElementById("allgFotoInput").addEventListener("change",e=>{
@@ -1135,7 +1170,13 @@ function shrink(dataUrl, cb){
 function renderAllgThumbs(){
   document.querySelectorAll(".allgThumbs").forEach(box=>{
     box.innerHTML="";
-    state.fotosAllg.forEach((f,i)=>box.appendChild(thumb(f,()=>{ state.fotosAllg.splice(i,1); renderAllgThumbs(); save(); }, i+1)));
+    let mi=0;
+    state.fotosAllg.forEach((f,i)=>{
+      let lab;
+      if(f.kat==="mangel"){ mi++; lab="M"+mi; }
+      else lab = f.kat==="gesamt"?"G" : f.kat==="typenschild"?"T" : f.kat==="gesamt_markiert"?"⌖" : "•";
+      box.appendChild(thumb(f,()=>{ state.fotosAllg.splice(i,1); renderAllgThumbs(); save(); }, lab));
+    });
   });
 }
 function thumb(f, onDel, num){
@@ -1191,8 +1232,8 @@ function markPicker(onPick){
   });
 }
 function openMarker(){
-  if(!(state.fotosAllg||[]).length){ toast("Erst ein Foto der Gesamtansicht aufnehmen."); return; }
-  let idx=state.fotosAllg.findIndex(f=>f.name!=="gesamtansicht_markiert.jpg"); if(idx<0) idx=0;
+  const g=fotoByKat("gesamt");
+  if(!g){ toast("Erst die Gesamtansicht aufnehmen (📷 Gesamtansicht)."); return; }
   markMk=JSON.parse(JSON.stringify(state.markierungen||[]));
   const ov=document.createElement("div"); ov.id="mark";
   ov.innerHTML=`<canvas></canvas>`
@@ -1205,7 +1246,7 @@ function openMarker(){
   markCanvas=ov.querySelector("canvas");
   markImg=new Image();
   markImg.onload=()=>{ markCanvas.width=markImg.naturalWidth; markCanvas.height=markImg.naturalHeight; zeichneMarker(); };
-  markImg.src=state.fotosAllg[idx].data;
+  markImg.src=g.data;
   markCanvas.addEventListener("click",e=>{
     const r=markCanvas.getBoundingClientRect(); if(!r.width||!r.height) return;
     const rx=(e.clientX-r.left)/r.width, ry=(e.clientY-r.top)/r.height;
@@ -1218,9 +1259,7 @@ function openMarker(){
     if(markMk.length){
       try{
         const data=markCanvas.toDataURL("image/jpeg",0.8);
-        const ex=state.fotosAllg.findIndex(f=>f.name==="gesamtansicht_markiert.jpg");
-        if(ex>=0) state.fotosAllg[ex]={name:"gesamtansicht_markiert.jpg",data};
-        else state.fotosAllg.push({name:"gesamtansicht_markiert.jpg",data});
+        addFotoKat("gesamt_markiert",{name:"gesamtansicht_markiert.jpg",data});
         renderAllgThumbs();
       }catch(e){ alert("Speichern fehlgeschlagen."); }
     }
@@ -1319,29 +1358,6 @@ function download(name, content, type){
 }
 document.getElementById("btnClone").addEventListener("click", saveAndClone);
 
-/* Teilen: Export direkt in eine App geben (z. B. Google Drive → eingang/ des Kunden) */
-document.getElementById("btnShare").addEventListener("click",async()=>{
-  const out=exportPaket();
-  if(!out){ toast("Noch keine Maschine erfasst."); return; }
-  const kunden=[...new Set(out.maschinen.map(m=>((m.meta||{}).kunde||"").trim()).filter(Boolean))];
-  if(kunden.length>1) alert("Achtung: Der Export enthält Maschinen von "+kunden.length+" verschiedenen Kunden ("+kunden.join(", ")+").");
-  const name="Begehung_"+slug(state.meta.kunde||state.meta.maschine)+"_"+(state.meta.datum||"")+"_"+out.maschinen.length+"Masch.json";
-  const inhalt=JSON.stringify(out);
-  if(navigator.canShare){
-    // Chrome/Android teilt Dateien nur mit bestimmten MIME-Typen – application/json wird oft
-    // abgelehnt, text/plain geht (Dateiname bleibt .json, Inhalt identisch → Drive speichert korrekt).
-    for(const typ of ["application/json","text/plain"]){
-      const file=new File([inhalt],name,{type:typ});
-      if(navigator.canShare({files:[file]})){
-        try{ await navigator.share({files:[file],title:name}); }catch(e){ /* vom Nutzer abgebrochen */ }
-        return;
-      }
-    }
-  }
-  download(name, inhalt, "application/json");
-  alert("Direktes Teilen unterstützt dieser Browser nicht – die Datei wurde stattdessen heruntergeladen.");
-});
-
 /* Neu: nur den aktuellen Bogen verwerfen – gesicherte Maschinen bleiben erhalten */
 document.getElementById("btnReset").addEventListener("click",async()=>{
   if(!confirm("Aktuellen Bogen verwerfen und neu beginnen?\n(Die gesicherten Maschinen bleiben erhalten.)")) return;
@@ -1375,6 +1391,7 @@ function zeigeUebersicht(){
   ov.innerHTML=`<div class="ovcard"><h2>Gesicherte Maschinen (${collection.length})</h2>`
     +`<div class="ovlist">${body}</div>`
     +`<div class="toolrow" style="margin-top:12px">`
+    +`<button class="btn" id="ovUpload">⚙ Drive</button>`
     +`<button class="btn" id="ovLoad">⬆︎ Laden</button>`
     +`<button class="btn" id="ovAlle">🗑 Alles</button>`
     +`<button class="btn primary" id="ovZu" style="margin-left:auto">Schließen</button></div></div>`;
@@ -1383,6 +1400,14 @@ function zeigeUebersicht(){
   ov.querySelector("#ovZu").addEventListener("click",()=>ov.remove());
   ov.querySelector("#ovAlle").addEventListener("click",alleLoeschen);
   ov.querySelector("#ovLoad").addEventListener("click",()=>document.getElementById("importInput").click());
+  ov.querySelector("#ovUpload").addEventListener("click",()=>{
+    const cur=localStorage.getItem(UPLOADKEY)||"";
+    const v=prompt("Apps-Script Web-App-URL für automatischen Upload nach Drive/eingang.\nLeer lassen = deaktivieren (dann Teilen/Download).", cur);
+    if(v===null) return;
+    const t=v.trim();
+    if(t){ localStorage.setItem(UPLOADKEY,t); toast("Drive-Upload aktiviert."); }
+    else { localStorage.removeItem(UPLOADKEY); toast("Drive-Upload deaktiviert."); }
+  });
   ov.querySelectorAll("[data-ovedit]").forEach(b=>b.addEventListener("click",()=>bearbeiteMaschine(+b.dataset.ovedit)));
   ov.querySelectorAll("[data-ovshare]").forEach(b=>b.addEventListener("click",()=>teileEinzel(collection[+b.dataset.ovshare])));
   ov.querySelectorAll("[data-ovdel]").forEach(b=>b.addEventListener("click",async()=>{
@@ -1447,6 +1472,7 @@ async function alleLoeschen(){
   }catch(e){}
   if(!Array.isArray(state.markierungen)) state.markierungen=[];
   if(!state.meta.modus) state.meta.modus="schnell";
+  migrateFotos(state);
   init();
   try{ const t=localStorage.getItem("oak_begehung_toast");
     if(t){ localStorage.removeItem("oak_begehung_toast"); toast(t); } }catch(e){}
