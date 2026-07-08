@@ -126,6 +126,9 @@
   .ovname b{display:block;font-size:14.5px;color:var(--dunkel)}
   .ovname span{font-size:12px;color:var(--muted)}
   .ovleer{color:var(--muted);padding:14px 2px}
+  .ovgroup{font-size:12px;color:var(--muted);margin:12px 0 2px;font-weight:600}
+  .ovgroup b{color:var(--dunkel)}
+  .ovacts{display:flex;gap:6px;flex:0 0 auto}
 
   .hint{font-size:12px;color:var(--muted);background:#f0f6f2;border-left:3px solid var(--hell);
     padding:8px 11px;border-radius:0 8px 8px 0;margin:8px 0}
@@ -145,6 +148,31 @@
   details.rundgang>summary{list-style:none;cursor:pointer;font-size:13.5px;color:var(--gruen);
     font-weight:600;padding:4px 0;-webkit-tap-highlight-color:transparent}
   details.rundgang>summary::-webkit-details-marker{display:none}
+
+  /* ---- Modus-Umschalter + Detail-Stepper ---- */
+  .modusbar{display:flex;gap:8px;max-width:760px;margin:0 auto;padding:0 14px 4px}
+  .modusbar .btn{flex:1;justify-content:center;font-size:15px;padding:13px;border-width:2px;font-weight:600}
+  .modusbar .btn.on{background:var(--gruen);color:#fff;border-color:var(--gruen)}
+  .stepbar{display:flex;gap:6px;overflow-x:auto;max-width:760px;margin:0 auto;padding:6px 14px}
+  .stepchip{flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:999px;
+    padding:7px 12px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .stepchip.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
+  .stepchip.filled:not(.on){border-color:var(--hell);color:var(--gruen)}
+  .detailhead{max-width:760px;margin:0 auto;padding:0 14px}
+  .covline{font-size:12px;color:var(--dunkel);background:#f0f6f2;border-left:3px solid var(--hell);
+    padding:7px 10px;border-radius:0 8px 8px 0;margin:2px 0 8px}
+  .covline b{color:var(--gruen)}
+  .stepnav{display:flex;align-items:center;gap:10px;max-width:760px;margin:0 auto;padding:2px 14px 20px}
+  .stepnav .btn{flex:0 0 auto;padding:12px 16px}
+  .stepnav #stepInfo{flex:1;text-align:center;font-size:12.5px;color:var(--muted)}
+  .step{display:none}
+  .step.active{display:block}
+  .mode-schnell.hide,.mode-detail.hide{display:none}
+  /* Mangel-Picker nach Marker-Tap */
+  .mpicker{position:fixed;inset:0;background:rgba(27,67,50,.55);z-index:95;display:flex;align-items:flex-end;justify-content:center}
+  .mpicker .pcard{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:760px;max-height:80vh;
+    overflow-y:auto;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+  .mpicker h3{color:var(--gruen);font-size:17px;margin-bottom:8px}
 
   /* ---- Foto-Markierung (Mängel auf Gesamtansicht) ---- */
   #mark{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:90;display:flex;flex-direction:column;
@@ -235,20 +263,36 @@
 </header>
 
 <main>
-  <!-- SCHNELLERFASSUNG -->
+  <!-- MASCHINEN-KOPF (beide Modi) -->
   <section class="card">
-    <h2>1 · Schnellerfassung</h2>
-    <label class="f">Maschinentyp (setzt typische Gefährdungsfaktoren in Abschnitt 5 – dort anpassbar)</label>
+    <input type="file" accept="image/*" capture="environment" id="allgFotoInput" hidden>
+    <label class="f">Arbeitssystem (optional – verknüpft mehrere Maschinen für die BdA)</label>
+    <input type="text" list="sysList" data-meta="arbeitssystem" placeholder="z. B. Ausschuss mahlen">
+    <datalist id="sysList"></datalist>
+    <div class="grid2" style="margin-top:8px">
+      <div><label class="f">Teilschritt / Rolle</label><input type="text" data-meta="teilschritt" placeholder="z. B. Mahlen"></div>
+      <div><label class="f">Maschine / Anlage (Name)</label><input type="text" data-meta="maschine" placeholder="leer = „Maschine 1, 2, …“"></div>
+    </div>
+    <label class="f">Maschinentyp (setzt typische Gefährdungsfaktoren – im Detail-Modus anpassbar)</label>
     <div class="chips" id="typChips"></div>
     <details class="rundgang">
       <summary>🧭 Rundgang – wo finde ich was?</summary>
       <div class="hint" id="rundgangBox"></div>
     </details>
+  </section>
+
+  <!-- MODUS-UMSCHALTER -->
+  <div class="modusbar">
+    <button class="btn" id="modeSchnell">⚡ Schnell</button>
+    <button class="btn" id="modeDetail">🧭 Detailliert</button>
+  </div>
+
+  <!-- SCHNELL-ANSICHT -->
+  <section class="card mode-schnell" id="cardSchnell">
     <div class="hint">📷 <b>Foto 1</b> Gesamtansicht · <b>Foto 2</b> Typenschild (mit CE) ·
       <b>Foto 3+</b> je Befund eins. Misslungenes Foto sofort löschen.</div>
-    <button class="btn big" id="allgFotoBtn">📷 Foto aufnehmen</button>
-    <input type="file" accept="image/*" capture="environment" id="allgFotoInput" hidden>
-    <div class="thumbs" id="allgThumbs"></div>
+    <button class="btn big" data-addfoto>📷 Foto aufnehmen</button>
+    <div class="thumbs allgThumbs"></div>
     <div class="hint">🎙 <b>Sprechen (max. 2 min):</b> ① Maschine + Standort &nbsp;② Betriebsanleitung da?
       &nbsp;③ Tätigkeiten (Rüsten, Reinigung, Wartung …) &nbsp;④ je Befund: „<b>Foto N zeigt</b> …" –
       was kann passieren · wer ist betroffen · Schwere g/m/h · Eintritt unwahrsch./möglich/wahrsch. · Kosten
@@ -259,82 +303,97 @@
     <textarea data-meta="allg_notiz" placeholder="z. B. Auffälligkeiten, Vorfälle, erster Eindruck …"></textarea>
   </section>
 
-  <!-- STAMMDATEN -->
-  <details class="card">
-    <summary><h2>2 · Stammdaten</h2><span class="chev">›</span></summary>
-    <div class="desc">Alles optional – Maschinendaten stehen auf Foto 2 (Typenschild).
-      Kunde &amp; Begeher bleiben dauerhaft gespeichert.</div>
-    <div class="grid2">
-      <div><label class="f">Kunde / Firma</label><input type="text" data-meta="kunde" placeholder="z. B. Wibo Kunststofftechnik GmbH"></div>
-      <div><label class="f">Maschine / Anlage</label><input type="text" data-meta="maschine" placeholder="leer = „Maschine 1, 2, …“"></div>
-      <div><label class="f">Hersteller</label><input type="text" data-meta="hersteller"></div>
-      <div><label class="f">Typ / Modell</label><input type="text" data-meta="typ"></div>
-      <div><label class="f">Baujahr</label><input type="text" data-meta="baujahr" inputmode="numeric"></div>
-      <div><label class="f">Serien-Nr.</label><input type="text" data-meta="seriennr"></div>
-      <div><label class="f">Standort / Halle</label><input type="text" data-meta="standort"></div>
-      <div><label class="f">Bereich / Kostenstelle</label><input type="text" data-meta="bereich"></div>
-      <div><label class="f">Datum der Begehung</label><input type="date" data-meta="datum"></div>
-      <div><label class="f">Begeher (Name)</label><input type="text" data-meta="begeher" placeholder="N. Krawielitzki"></div>
+  <!-- DETAIL-ANSICHT (Stepper) -->
+  <div class="mode-detail" id="detailWrap">
+    <div class="stepbar" id="stepBar"></div>
+    <div class="detailhead" id="detailHead"></div>
+
+    <!-- 2.1 STAMMDATEN -->
+    <section class="card step" data-step="0">
+      <h2>2.1 · Stammdaten</h2>
+      <div class="desc">Maschinendaten stehen auf dem Typenschild. Kunde &amp; Begeher bleiben gespeichert.</div>
+      <button class="btn big" data-addfoto>📷 Typenschild aufnehmen</button>
+      <div class="thumbs allgThumbs"></div>
+      <div class="grid2">
+        <div><label class="f">Kunde / Firma</label><input type="text" data-meta="kunde" placeholder="z. B. Wibo Kunststofftechnik GmbH"></div>
+        <div><label class="f">Hersteller</label><input type="text" data-meta="hersteller"></div>
+        <div><label class="f">Typ / Modell</label><input type="text" data-meta="typ"></div>
+        <div><label class="f">Baujahr</label><input type="text" data-meta="baujahr" inputmode="numeric"></div>
+        <div><label class="f">Serien-Nr.</label><input type="text" data-meta="seriennr"></div>
+        <div><label class="f">Standort / Halle</label><input type="text" data-meta="standort"></div>
+        <div><label class="f">Bereich / Kostenstelle</label><input type="text" data-meta="bereich"></div>
+        <div><label class="f">Datum der Begehung</label><input type="date" data-meta="datum"></div>
+        <div><label class="f">Begeher (Name)</label><input type="text" data-meta="begeher" placeholder="N. Krawielitzki"></div>
+      </div>
+      <label class="f">CE-Kennzeichnung / Konformitätserklärung</label>
+      <div class="chips" data-single="ce">
+        <span class="chip" data-val="vorhanden">vorhanden</span>
+        <span class="chip" data-val="fehlt">fehlt</span>
+        <span class="chip" data-val="unklar">unklar</span>
+      </div>
+      <label class="f">Hersteller-Betriebsanleitung</label>
+      <div class="chips" data-single="anleitung">
+        <span class="chip" data-val="vorhanden">vorhanden</span>
+        <span class="chip" data-val="fehlt">fehlt</span>
+        <span class="chip" data-val="unklar">unklar</span>
+      </div>
+    </section>
+
+    <!-- 2.2 BETRIEBSZUSTÄNDE -->
+    <section class="card step" data-step="1">
+      <h2>2.2 · Betriebszustände</h2>
+      <div class="desc">Welche Tätigkeiten kommen real vor? (Mehrfachauswahl – wichtig für die BA)</div>
+      <div class="chips" data-multi="lebensphasen" id="phasenChips"></div>
+    </section>
+
+    <!-- 2.3 MÄNGEL -->
+    <section class="card step" data-step="2">
+      <h2>2.3 · Mängel</h2>
+      <div class="desc">Antippen = Mangel vorhanden (grün). Rechtsquelle, Einstufung und Bepreisung laufen
+        im Hintergrund mit; passende Gefährdungsfaktoren (2.5) und Prüfpunkte (2.4) werden automatisch gesetzt.</div>
+      <div class="mpal" id="mPalette"></div>
+      <button class="btn big" id="btnMarkieren">🖼 Auf Gesamtansicht markieren</button>
+      <button class="btn big" data-addfoto>📷 Mangel-Foto aufnehmen</button>
+      <div class="thumbs allgThumbs"></div>
+    </section>
+
+    <!-- 2.4 MASCHINENSICHERHEIT -->
+    <section class="card step" data-step="3">
+      <h2>2.4 · Maschinensicherheit</h2>
+      <div class="desc">Prüfliste BG RCI T 008-2. <b>J</b> = erfüllt · <b>N</b> = Mangel · <b>E</b> = entfällt.</div>
+      <div id="pruefliste"></div>
+    </section>
+
+    <!-- 2.5 GEFÄHRDUNGSFAKTOREN -->
+    <section class="card step" data-step="4">
+      <h2>2.5 · Gefährdungsfaktoren</h2>
+      <div class="desc">Klassifikation BGHM (wichtig für BdA &amp; BA). Nummer antippen = vorhanden – die Auswahl erscheint darunter im Wortlaut.</div>
+      <div id="hazards"></div>
+    </section>
+
+    <!-- 2.6 MITARBEITERHINWEISE -->
+    <section class="card step" data-step="5">
+      <h2>2.6 · Mitarbeiterhinweise (optional)</h2>
+      <div class="desc">Aussagen/Anregungen der Beschäftigten. Geht <b>nicht</b> automatisch in BdA/BA ein –
+        wird separat festgehalten und zur Prüfung wiedervorgelegt.</div>
+      <textarea data-meta="ma_hinweise" placeholder="z. B. Bediener wünscht zweite Trittstufe · Absaugung zu schwach beim Anfahren …"></textarea>
+    </section>
+
+    <div class="stepnav">
+      <button class="btn" id="stepPrev">‹ Zurück</button>
+      <span id="stepInfo"></span>
+      <button class="btn" id="stepNext">Weiter ›</button>
     </div>
-    <label class="f">CE-Kennzeichnung / Konformitätserklärung</label>
-    <div class="chips" data-single="ce">
-      <span class="chip" data-val="vorhanden">vorhanden</span>
-      <span class="chip" data-val="fehlt">fehlt</span>
-      <span class="chip" data-val="unklar">unklar</span>
-    </div>
-    <label class="f">Hersteller-Betriebsanleitung</label>
-    <div class="chips" data-single="anleitung">
-      <span class="chip" data-val="vorhanden">vorhanden</span>
-      <span class="chip" data-val="fehlt">fehlt</span>
-      <span class="chip" data-val="unklar">unklar</span>
-    </div>
-  </details>
-
-  <!-- LEBENSPHASEN -->
-  <details class="card">
-    <summary><h2>3 · Betriebszustände</h2><span class="chev">›</span></summary>
-    <div class="desc">Welche Tätigkeiten kommen real vor? (Mehrfachauswahl)</div>
-    <div class="chips" data-multi="lebensphasen" id="phasenChips"></div>
-  </details>
-
-  <!-- MÄNGEL (grounded: DGUV 113-606 / T 009) -->
-  <details class="card">
-    <summary><h2>4 · Mängel</h2><span class="chev">›</span></summary>
-    <div class="desc">Antippen = Mangel vorhanden (grün). Rechtsquelle, Einstufung und Bepreisung laufen
-      im Hintergrund mit; passende Gefährdungsfaktoren (5) und Prüfpunkte (6) werden automatisch gesetzt.</div>
-    <div class="mpal" id="mPalette"></div>
-    <button class="btn big" id="btnMarkieren">🖼 Mängel auf Gesamtansicht markieren</button>
-  </details>
-
-  <!-- GEFÄHRDUNGEN -->
-  <details class="card">
-    <summary><h2>5 · Gefährdungsfaktoren</h2><span class="chev">›</span></summary>
-    <div class="desc">Klassifikation BGHM. Nummer antippen = Gefährdung vorhanden – die Auswahl erscheint darunter im Wortlaut.</div>
-    <div id="hazards"></div>
-  </details>
-
-  <!-- MASCHINENSICHERHEIT / PRÜFLISTE -->
-  <details class="card">
-    <summary><h2>6 · Maschinensicherheit</h2><span class="chev">›</span></summary>
-    <div class="desc">Prüfliste BG RCI T 008-2. <b>J</b> = erfüllt · <b>N</b> = Mangel · <b>E</b> = entfällt.</div>
-    <div id="pruefliste"></div>
-  </details>
-
-  <!-- MITARBEITERHINWEISE -->
-  <details class="card">
-    <summary><h2>7 · Mitarbeiterhinweise</h2><span class="chev">›</span></summary>
-    <div class="desc">Aussagen, Beschwerden und Anregungen der Beschäftigten. Geht <b>nicht</b> automatisch
-      in BdA/BA ein – wird separat festgehalten und zur Prüfung wiedervorgelegt.</div>
-    <textarea data-meta="ma_hinweise" placeholder="z. B. Bediener wünscht zweite Trittstufe · Absaugung zu schwach beim Anfahren …"></textarea>
-  </details>
+  </div>
 
 </main>
 
 <div class="actionbar">
   <button class="btn primary" id="btnClone">✓ Speichern</button>
   <button class="btn" id="btnReset">✕ Neu</button>
-  <button class="btn primary" id="btnShare">📤 Teilen</button>
+  <button class="btn" id="btnShare">📤 Alle</button>
   <button class="btn" id="btnList">📋 <span id="machCount">0</span></button>
+  <input type="file" accept="application/json,.json" id="importInput" multiple hidden>
 </div>
 
 <script>
@@ -592,7 +651,7 @@ async function persistAll(){
   let lsState=true, lsColl=true;
   try{ localStorage.setItem(LSKEY, sState); }catch(e){ lsState=false; }
   try{ localStorage.setItem(COLLKEY, sColl); }catch(e){ lsColl=false; }
-  try{ localStorage.setItem(PREFSKEY, JSON.stringify({kunde:state.meta.kunde||"", begeher:state.meta.begeher||""})); }catch(e){}
+  try{ localStorage.setItem(PREFSKEY, JSON.stringify({kunde:state.meta.kunde||"", begeher:state.meta.begeher||"", arbeitssystem:state.meta.arbeitssystem||""})); }catch(e){}
   const idbState=await mitTimeout(idbPut(LSKEY, sState), 1500, false);
   const idbColl=await mitTimeout(idbPut(COLLKEY, sColl), 1500, false);
   updateMachineCount();
@@ -605,6 +664,27 @@ async function persistAll(){
   }
   return ok;
 }
+/* Dateiname je Maschine: System-Präfix (Drive-Sortierung) + Maschinenname + Datum */
+function machineFileName(m){
+  const sys=((m.meta||{}).arbeitssystem||"").trim();
+  return "Begehung_"+(sys?slug(sys)+"__":"")+slug((m.meta||{}).maschine||(m.meta||{}).kunde)+"_"+((m.meta||{}).datum||"")+".json";
+}
+/* Einzelne Maschine als eigene Datei teilen (→ Drive eingang) bzw. herunterladen */
+async function teileEinzel(m){
+  const name=machineFileName(m);
+  const paket={ _typ:"OAK-Begehung-Maschine", _version:1, _exportiert:new Date().toISOString(), maschine:m };
+  const inhalt=JSON.stringify(paket);
+  if(navigator.canShare){
+    for(const typ of ["application/json","text/plain"]){
+      const file=new File([inhalt],name,{type:typ});
+      if(navigator.canShare({files:[file]})){
+        try{ await navigator.share({files:[file],title:name}); }catch(e){ /* abgebrochen */ }
+        return;
+      }
+    }
+  }
+  download(name, inhalt, "application/json");
+}
 async function saveAndClone(){
   const btn=document.getElementById("btnClone");
   const leer = !(state.meta.maschine||"").trim() && !(state.audio&&state.audio.data)
@@ -613,24 +693,32 @@ async function saveAndClone(){
   if(leer){ toast("Noch nichts erfasst – erst Fotos oder Sprachnotiz aufnehmen."); return; }
   if(!(state.meta.maschine||"").trim()) state.meta.maschine="Maschine "+(collection.length+1);
   const name=state.meta.maschine;
-  if(!confirm("„"+name+"“ speichern und nächste Maschine beginnen?")) return;
+  if(!confirm("„"+name+"“ speichern und als Datei teilen (→ Drive)?")) return;
+  const editIdx=(typeof state._editIdx==="number")?state._editIdx:null;
+  const rec=JSON.parse(JSON.stringify(state)); delete rec._editIdx; delete rec._ts;
+  // 1) Datei-Share ZUERST (solange die Nutzer-Geste aktiv ist – vor den IDB-Awaits)
+  await teileEinzel(rec);
+  // 2) lokal in die Sammlung übernehmen (an alter Position beim Nachschärfen, sonst anhängen)
   if(btn){ btn.disabled=true; btn.textContent="Sichere…"; }
-  collection.push(JSON.parse(JSON.stringify(state)));   // aktuelle Maschine sichern
+  if(editIdx!=null) collection.splice(Math.min(editIdx,collection.length),0,rec);
+  else collection.push(rec);
   if(!await persistAll()){
-    collection.pop(); rescueExport();
+    collection.splice(editIdx!=null?Math.min(editIdx,collection.length-1):collection.length-1,1);
+    rescueExport();
     if(btn){ btn.disabled=false; btn.textContent="✓ Speichern"; }
-    alert("Speicher voll – die Maschine konnte NICHT im Browser gesichert werden.\nEin Rettungs-Export (JSON) wurde soeben heruntergeladen – nichts ist verloren.");
+    alert("Speicher voll – lokal NICHT gesichert.\nDie Einzeldatei wurde aber geteilt/heruntergeladen – nichts ist verloren.");
     return;
   }
-  // Klon für die nächste, baugleiche Maschine: Bewertungsmuster behalten, Maschinen-Spezifisches leeren
+  // 3) für die nächste Maschine leeren: Bewertungsmuster behalten, Spezifisches + Marker + Edit-Bezug weg
+  delete state._editIdx;
   state.meta.maschine=""; state.meta.seriennr=""; state.meta.baujahr="";
-  state.meta.allg_notiz=""; state.meta.ma_hinweise="";
+  state.meta.allg_notiz=""; state.meta.ma_hinweise=""; state.meta.teilschritt="";
   Object.values(state.items).forEach(it=>{ it.fotos=[]; });
   Object.values(state.pruefung).forEach(p=>{ p.fotos=[]; });
   (state.maengel||[]).forEach(m=>{ m.fotos=[]; });
-  state.fotosAllg=[]; state.audio=null;
-  await persistAll();          // erst sicher schreiben, DANN neu laden (sonst Duplikat + Foto-Verschleppung)
-  try{ localStorage.setItem("oak_begehung_toast","✓ „"+name+"“ gesichert – "+collection.length+" Maschine(n) insgesamt"); }catch(e){}
+  state.fotosAllg=[]; state.markierungen=[]; state.audio=null;
+  await persistAll();
+  try{ localStorage.setItem("oak_begehung_toast","✓ „"+name+"“ gesichert & geteilt – "+collection.length+" Maschine(n)"); }catch(e){}
   location.reload();
 }
 function ladePrefs(){ try{ return JSON.parse(localStorage.getItem(PREFSKEY))||{}; }catch(e){ return {}; } }
@@ -638,11 +726,11 @@ function blankState(){
   const p=ladePrefs();
   return { meta:{ kunde:p.kunde||"",maschine:"",hersteller:"",typ:"",baujahr:"",seriennr:"",
     standort:"",bereich:"",datum:"",begeher:p.begeher||"",ce:"",anleitung:"",lebensphasen:[],
-    allg_notiz:"", ma_hinweise:"" },
-    items:{}, pruefung:{}, maengel:[], fotosAllg:[], audio:null };
+    allg_notiz:"", ma_hinweise:"", modus:"schnell", arbeitssystem:p.arbeitssystem||"", teilschritt:"" },
+    items:{}, pruefung:{}, maengel:[], fotosAllg:[], markierungen:[], audio:null };
 }
 function loadState(){
-  try{ const s=JSON.parse(localStorage.getItem(LSKEY)); if(s&&s.meta){ if(!Array.isArray(s.maengel)) s.maengel=[]; return s; } }catch(e){}
+  try{ const s=JSON.parse(localStorage.getItem(LSKEY)); if(s&&s.meta){ if(!Array.isArray(s.maengel)) s.maengel=[]; if(!Array.isArray(s.markierungen)) s.markierungen=[]; if(!s.meta.modus) s.meta.modus="schnell"; return s; } }catch(e){}
   return blankState();
 }
 let saveT;
@@ -696,11 +784,24 @@ function init(){
   renderAudio();
   renderPruefliste();
   renderPalette();
+  renderSysList();
   updateMachineCount();
+
+  // Modus-Umschalter + Stepper
+  document.getElementById("modeSchnell").addEventListener("click",()=>setModus("schnell"));
+  document.getElementById("modeDetail").addEventListener("click",()=>setModus("detail"));
+  document.getElementById("stepPrev").addEventListener("click",()=>setStep(curStep-1));
+  document.getElementById("stepNext").addEventListener("click",()=>setStep(curStep+1));
+  setModus(state.meta.modus||"schnell");
 
   // Default Datum heute
   const dEl=document.querySelector('[data-meta="datum"]');
   if(!state.meta.datum){ const t=new Date().toISOString().slice(0,10); dEl.value=t; state.meta.datum=t; }
+}
+function renderSysList(){
+  const dl=document.getElementById("sysList"); if(!dl) return;
+  const names=[...new Set(collection.map(m=>((m.meta||{}).arbeitssystem||"").trim()).filter(Boolean))];
+  dl.innerHTML=names.map(n=>`<option value="${esc(n)}">`).join("");
 }
 
 /* ===== Prüfliste Maschinensicherheit ===== */
@@ -801,6 +902,79 @@ function renderRundgang(){
     +(t&&t.rundgang ? "<br><br><b>Speziell "+t.label+":</b><br>"+t.rundgang.map(s=>"• "+s).join("<br>")
       : "<br><br><i>Maschinentyp oben wählen → typspezifische Prüf-Orte erscheinen hier.</i>");
 }
+/* ===== Modus (Schnell/Detail) + Stepper ===== */
+const STEP_LABELS=["Stammdaten","Betriebszustände","Mängel","Maschinensicherheit","Gefährdungsfaktoren","Mitarbeiterhinweise"];
+let curStep=0;
+function setModus(m){
+  state.meta.modus=(m==="detail")?"detail":"schnell";
+  const detail=state.meta.modus==="detail";
+  document.getElementById("cardSchnell").classList.toggle("hide",detail);
+  document.getElementById("detailWrap").classList.toggle("hide",!detail);
+  document.getElementById("modeSchnell").classList.toggle("on",!detail);
+  document.getElementById("modeDetail").classList.toggle("on",detail);
+  if(detail) setStep(curStep);
+  save();
+}
+function setStep(i){
+  curStep=Math.max(0,Math.min(STEP_LABELS.length-1,i));
+  document.querySelectorAll("#detailWrap .step").forEach(s=>s.classList.toggle("active",+s.dataset.step===curStep));
+  renderStepbar();
+  const info=document.getElementById("stepInfo");
+  if(info) info.textContent="Schritt "+(curStep+1)+"/"+STEP_LABELS.length+" · "+STEP_LABELS[curStep];
+  const prev=document.getElementById("stepPrev"), next=document.getElementById("stepNext");
+  if(prev) prev.style.visibility=curStep===0?"hidden":"visible";
+  if(next) next.style.visibility=curStep===STEP_LABELS.length-1?"hidden":"visible";
+  renderDetailHead();
+  window.scrollTo(0,0);
+}
+function renderStepbar(){
+  const bar=document.getElementById("stepBar"); if(!bar) return;
+  const cov=coverage(state);
+  const filled=[cov.stammOk, cov.phasen>0, cov.maengel>0, cov.pruef>0, cov.gef>0, cov.maHin];
+  bar.innerHTML="";
+  STEP_LABELS.forEach((lbl,i)=>{
+    const c=document.createElement("span");
+    c.className="stepchip"+(i===curStep?" on":"")+(filled[i]?" filled":"");
+    c.textContent="2."+(i+1)+" "+lbl;
+    c.addEventListener("click",()=>setStep(i));
+    bar.appendChild(c);
+  });
+}
+function renderDetailHead(){
+  const el=document.getElementById("detailHead"); if(!el) return;
+  el.innerHTML='<div class="covline">'+coverageText(coverage(state))+'</div>';
+}
+/* ===== Detaillierungsgrad ===== */
+function coverage(m){
+  const meta=m.meta||{}, items=m.items||{}, pruef=m.pruefung||{};
+  const kern=["maschine","hersteller","typ","seriennr","standort"];
+  const stammN=kern.filter(k=>(meta[k]||"").trim()).length;
+  const c={
+    stammOk: !!(meta.maschine||"").trim() && stammN>=2,
+    stammN,
+    phasen: (meta.lebensphasen||[]).length,
+    maengel: (m.maengel||[]).length,
+    pruef: Object.values(pruef).filter(p=>p.b).length,
+    pruefN: 58,
+    gef: Object.values(items).filter(it=>it.ja).length,
+    fotos: (m.fotosAllg||[]).length,
+    audio: !!(m.audio&&m.audio.data),
+    maHin: !!(meta.ma_hinweise||"").trim()
+  };
+  const kerne=[c.stammOk, c.phasen>0, (c.maengel>0||c.gef>0), c.pruef>0].filter(Boolean).length;
+  c.label = kerne>=4 ? "Ausführlich" : (kerne>=2 ? "Teilweise" : "Schnell");
+  return c;
+}
+function coverageText(c){
+  const t=(ok,s)=>(ok?"✓ ":"– ")+s;
+  return "<b>"+c.label+"</b> · "
+    + t(c.stammOk,"Stammdaten") + " · "
+    + t(c.phasen>0, c.phasen+" Betriebszust.") + " · "
+    + t(c.maengel>0, c.maengel+" Mängel") + " · "
+    + t(c.pruef>0, c.pruef+"/"+c.pruefN+" Prüf") + " · "
+    + t(c.gef>0, c.gef+" Gefähr.") + " · "
+    + c.fotos+" 📷" + (c.audio?" · 🎙":"") + (c.maHin?" · MA-Hinweis":"");
+}
 function updateHazSel(gnr){
   const g=HAZARDS.find(x=>x.nr===gnr); const el=document.getElementById("hsel-"+gnr);
   if(!g||!el) return;
@@ -891,7 +1065,10 @@ function toggleMangel(k){
 }
 
 /* ===== Fotos ===== */
-document.getElementById("allgFotoBtn").addEventListener("click",()=>{
+/* Alle [data-addfoto]-Buttons (Schnell, Typenschild, Mangel-Foto) lösen denselben Kamera-Input aus */
+document.addEventListener("click",e=>{
+  const b=e.target.closest && e.target.closest("[data-addfoto]");
+  if(!b) return;
   const ai=document.getElementById("allgFotoInput"); ai.value=""; ai.click();
 });
 document.getElementById("allgFotoInput").addEventListener("change",e=>{
@@ -917,8 +1094,10 @@ function shrink(dataUrl, cb){
   img.src=dataUrl;
 }
 function renderAllgThumbs(){
-  const box=document.getElementById("allgThumbs"); box.innerHTML="";
-  state.fotosAllg.forEach((f,i)=>box.appendChild(thumb(f,()=>{ state.fotosAllg.splice(i,1); renderAllgThumbs(); save(); }, i+1)));
+  document.querySelectorAll(".allgThumbs").forEach(box=>{
+    box.innerHTML="";
+    state.fotosAllg.forEach((f,i)=>box.appendChild(thumb(f,()=>{ state.fotosAllg.splice(i,1); renderAllgThumbs(); save(); }, i+1)));
+  });
 }
 function thumb(f, onDel, num){
   const d=document.createElement("div"); d.className="thumb";
@@ -929,67 +1108,84 @@ function thumb(f, onDel, num){
 }
 
 /* ===== Mängel auf der Gesamtansicht markieren =====
-   Foto 1 groß anzeigen, Antippen setzt Marker (Beschriftung = gewählter Mangel-Code oder
-   laufende Nummer). Ergebnis wird als ZUSÄTZLICHES Foto gespeichert – die Nummern der
-   Original-Fotos (Sprachnotiz-Referenzen!) bleiben unverändert. */
-let markMarker=[], markAktiv=null, markCanvas=null, markImg=null;
+   Punkt antippen → direkt den zugehörigen Mangel wählen (Katalog-Buttons oder Freitext).
+   Marker (relative Koordinaten) werden in state.markierungen persistiert (Re-Edit möglich); das
+   annotierte Bild wird als EINE gesamtansicht_markiert.jpg abgelegt (kein Duplikat bei Re-Open). */
+let markMk=[], markCanvas=null, markImg=null;
 function zeichneMarker(){
   if(!markCanvas||!markImg) return;
-  const ctx=markCanvas.getContext("2d");
-  ctx.drawImage(markImg,0,0);
-  const rr=Math.max(16,Math.round(Math.min(markCanvas.width,markCanvas.height)*0.045));
-  markMarker.forEach(m=>{
-    ctx.beginPath(); ctx.arc(m.x,m.y,rr,0,2*Math.PI);
+  const ctx=markCanvas.getContext("2d"); ctx.drawImage(markImg,0,0);
+  const W=markCanvas.width, H=markCanvas.height, rr=Math.max(16,Math.round(Math.min(W,H)*0.045));
+  markMk.forEach(m=>{
+    const x=m.rx*W, y=m.ry*H;
+    ctx.beginPath(); ctx.arc(x,y,rr,0,2*Math.PI);
     ctx.fillStyle="rgba(198,40,40,.85)"; ctx.fill();
     ctx.lineWidth=Math.max(2,Math.round(rr*0.12)); ctx.strokeStyle="#fff"; ctx.stroke();
-    ctx.fillStyle="#fff"; ctx.font="bold "+Math.round(rr*(m.label.length>1?0.72:0.95))+"px sans-serif";
-    ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(m.label,m.x,m.y);
+    ctx.fillStyle="#fff"; ctx.font="bold "+Math.round(rr*(String(m.label).length>1?0.62:0.95))+"px sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(m.label,x,y);
+  });
+}
+/* Picker nach jedem Tap: Katalog-Mangel oder Freitext → liefert Marker-Label */
+function markPicker(onPick){
+  const pk=document.createElement("div"); pk.className="mpicker";
+  const cat=MAENGEL_KATALOG.filter(k=>k.id!=="X")
+    .map(k=>`<button class="btn" data-mp="${k.id}">${esc(k.label)}</button>`).join("");
+  pk.innerHTML=`<div class="pcard"><h3>Welcher Mangel ist hier?</h3><div class="mpal">${cat}</div>`
+    +`<label class="f">oder Freitext</label>`
+    +`<div class="toolrow"><input type="text" id="mpFree" class="kostin" style="flex:1" placeholder="z. B. Schild verblasst">`
+    +`<button class="btn primary" id="mpFreeOk">＋ übernehmen</button></div>`
+    +`<div class="toolrow" style="margin-top:8px"><button class="btn" id="mpAbbr" style="margin-left:auto">Abbrechen</button></div></div>`;
+  document.body.appendChild(pk);
+  const fin=lbl=>{ pk.remove(); onPick(lbl); };
+  pk.addEventListener("click",e=>{ if(e.target===pk) fin(null); });
+  pk.querySelector("#mpAbbr").addEventListener("click",()=>fin(null));
+  pk.querySelectorAll("[data-mp]").forEach(b=>b.addEventListener("click",()=>{
+    const k=MAENGEL_KATALOG.find(x=>x.id===b.dataset.mp);
+    if(!(state.maengel||[]).some(m=>m.typ===k.id)) toggleMangel(k);  // aktiviert + Ableitung GF/Prüfpunkte
+    renderPalette(); fin(k.id);
+  }));
+  pk.querySelector("#mpFreeOk").addEventListener("click",()=>{
+    const t=(pk.querySelector("#mpFree").value||"").trim();
+    state.maengel.push({typ:"X",label:t?("Sonstiger Mangel: "+t):"Sonstiger Mangel",rq:"",mass:"",stufe:"",schwere:"",kosten:"",notiz:t,fotos:[]});
+    save(); renderPalette();
+    fin("F"+(markMk.filter(m=>/^F/.test(m.label)).length+1));
   });
 }
 document.getElementById("btnMarkieren").addEventListener("click",()=>{
-  if(!(state.fotosAllg||[]).length){ toast("Erst Foto 1 (Gesamtansicht) in Abschnitt 1 aufnehmen."); return; }
+  if(!(state.fotosAllg||[]).length){ toast("Erst ein Foto der Gesamtansicht aufnehmen."); return; }
+  let idx=state.fotosAllg.findIndex(f=>f.name!=="gesamtansicht_markiert.jpg"); if(idx<0) idx=0;
+  markMk=JSON.parse(JSON.stringify(state.markierungen||[]));
   const ov=document.createElement("div"); ov.id="mark";
   ov.innerHTML=`<canvas></canvas>`
-    +`<div class="markhint">Antippen = Marker setzen · unten Mangel-Code wählen (sonst 1, 2, 3 …)</div>`
-    +`<div class="markchips" id="markChips"></div>`
+    +`<div class="markhint">Punkt antippen → Mangel wählen · Marker trägt den Code</div>`
     +`<div class="markbar">`
     +`<button class="btn" id="markUndo">↩ Rückgängig</button>`
     +`<button class="btn" id="markAbbr">✕ Abbrechen</button>`
-    +`<button class="btn primary" id="markOk" style="margin-left:auto">✓ Als Foto speichern</button></div>`;
+    +`<button class="btn primary" id="markOk" style="margin-left:auto">✓ Speichern</button></div>`;
   document.body.appendChild(ov);
-  markMarker=[]; markAktiv=null;
-  const chips=ov.querySelector("#markChips");
-  (state.maengel||[]).forEach(m=>{
-    const c=document.createElement("span"); c.className="chip"; c.textContent=m.typ; c.title=m.label;
-    c.addEventListener("click",()=>{ markAktiv=(markAktiv===m.typ?null:m.typ);
-      chips.querySelectorAll(".chip").forEach(x=>x.classList.toggle("on",x.textContent===markAktiv)); });
-    chips.appendChild(c);
-  });
   markCanvas=ov.querySelector("canvas");
   markImg=new Image();
   markImg.onload=()=>{ markCanvas.width=markImg.naturalWidth; markCanvas.height=markImg.naturalHeight; zeichneMarker(); };
-  markImg.src=state.fotosAllg[0].data;   // Foto 1 = Gesamtansicht (Konvention)
+  markImg.src=state.fotosAllg[idx].data;
   markCanvas.addEventListener("click",e=>{
-    const r=markCanvas.getBoundingClientRect();
-    if(!r.width||!r.height) return;
-    const x=(e.clientX-r.left)/r.width*markCanvas.width;
-    const y=(e.clientY-r.top)/r.height*markCanvas.height;
-    markMarker.push({x,y,label:markAktiv||String(markMarker.length+1)});
-    zeichneMarker();
+    const r=markCanvas.getBoundingClientRect(); if(!r.width||!r.height) return;
+    const rx=(e.clientX-r.left)/r.width, ry=(e.clientY-r.top)/r.height;
+    markPicker(lbl=>{ if(lbl){ markMk.push({rx,ry,label:lbl}); zeichneMarker(); } });
   });
-  ov.querySelector("#markUndo").addEventListener("click",()=>{ markMarker.pop(); zeichneMarker(); });
+  ov.querySelector("#markUndo").addEventListener("click",()=>{ markMk.pop(); zeichneMarker(); });
   ov.querySelector("#markAbbr").addEventListener("click",()=>ov.remove());
   ov.querySelector("#markOk").addEventListener("click",()=>{
-    if(markMarker.length){
+    state.markierungen=markMk.slice();
+    if(markMk.length){
       try{
         const data=markCanvas.toDataURL("image/jpeg",0.8);
-        state.fotosAllg.push({name:"gesamtansicht_markiert.jpg",data});
-        renderAllgThumbs(); save();
-        toast("Markierte Gesamtansicht als Foto "+state.fotosAllg.length+" gespeichert.");
+        const ex=state.fotosAllg.findIndex(f=>f.name==="gesamtansicht_markiert.jpg");
+        if(ex>=0) state.fotosAllg[ex]={name:"gesamtansicht_markiert.jpg",data};
+        else state.fotosAllg.push({name:"gesamtansicht_markiert.jpg",data});
+        renderAllgThumbs();
       }catch(e){ alert("Speichern fehlgeschlagen."); }
     }
-    ov.remove();
+    save(); ov.remove();
   });
 });
 
@@ -1112,43 +1308,87 @@ document.getElementById("btnReset").addEventListener("click",async()=>{
   state=blankState(); await persistAll(); location.reload();
 });
 
-/* Übersicht: gesicherte Maschinen ansehen / einzeln löschen / Tag komplett abschließen */
+/* Übersicht: gesicherte Maschinen – nach Arbeitssystem gruppiert, mit Detaillierungsgrad,
+   Nachschärfen (✎), Einzel-Teilen (📤), Löschen (×) und Laden aus Drive (⬆︎). */
 document.getElementById("btnList").addEventListener("click", zeigeUebersicht);
 function zeigeUebersicht(){
   const alt=document.getElementById("ovl"); if(alt) alt.remove();
   const ov=document.createElement("div"); ov.id="ovl";
-  const rows=collection.map((m,i)=>{
-    const fotos=(m.fotosAllg||[]).length
-      + Object.values(m.items||{}).reduce((a,it)=>a+((it.fotos||[]).length),0)
-      + Object.values(m.pruefung||{}).reduce((a,p)=>a+((p.fotos||[]).length),0)
-      + (m.maengel||[]).reduce((a,x)=>a+((x.fotos||[]).length),0);
-    const d=(m.audio&&m.audio.dauer)||0;
-    const audio=(m.audio&&m.audio.data)?"🎙 "+Math.floor(d/60)+":"+String(d%60).padStart(2,"0"):"ohne 🎙";
-    const gef=Object.values(m.items||{}).filter(it=>it.ja).length;
-    const man=(m.maengel||[]).length+Object.values(m.pruefung||{}).filter(p=>p.b==="n").length;
-    return `<div class="ovrow"><div class="ovname"><b>${i+1} · ${esc((m.meta||{}).maschine||"?")}</b>`
-      +`<span>${fotos} Foto(s) · ${audio} · ${gef} Gefährdungen · ${man} Mängel</span></div>`
-      +`<button class="mdel" data-ovdel="${i}">×</button></div>`;
-  }).join("")||'<div class="ovleer">Noch keine Maschine gesichert.</div>';
+  const groups={};
+  collection.forEach((m,i)=>{ const sys=((m.meta||{}).arbeitssystem||"").trim()||"(einzeln)";
+    (groups[sys]=groups[sys]||[]).push(i); });
+  let body="";
+  Object.keys(groups).forEach(sys=>{
+    body+=`<div class="ovgroup">Arbeitssystem: <b>${esc(sys)}</b> · ${groups[sys].length} Maschine(n)</div>`;
+    groups[sys].forEach(i=>{
+      const m=collection[i], c=coverage(m), teil=((m.meta||{}).teilschritt||"").trim();
+      body+=`<div class="ovrow"><div class="ovname"><b>${esc((m.meta||{}).maschine||"?")}</b>`
+        +(teil?` <span style="color:var(--muted)">· ${esc(teil)}</span>`:"")
+        +`<span>${coverageText(c)}</span></div>`
+        +`<div class="ovacts">`
+        +`<button class="mdel" data-ovedit="${i}" title="Nachschärfen">✎</button>`
+        +`<button class="mdel" data-ovshare="${i}" title="Als Datei teilen">📤</button>`
+        +`<button class="mdel" data-ovdel="${i}" title="Löschen">×</button></div></div>`;
+    });
+  });
+  if(!collection.length) body='<div class="ovleer">Noch keine Maschine gesichert. Über „⬆︎ Laden" eine Datei aus Drive öffnen.</div>';
   ov.innerHTML=`<div class="ovcard"><h2>Gesicherte Maschinen (${collection.length})</h2>`
-    +`<div class="ovlist">${rows}</div>`
+    +`<div class="ovlist">${body}</div>`
     +`<div class="toolrow" style="margin-top:12px">`
-    +`<button class="btn" id="ovAlle">🗑 Alles löschen</button>`
+    +`<button class="btn" id="ovLoad">⬆︎ Laden</button>`
+    +`<button class="btn" id="ovAlle">🗑 Alles</button>`
     +`<button class="btn primary" id="ovZu" style="margin-left:auto">Schließen</button></div></div>`;
   document.body.appendChild(ov);
   ov.addEventListener("click",e=>{ if(e.target===ov) ov.remove(); });
   ov.querySelector("#ovZu").addEventListener("click",()=>ov.remove());
   ov.querySelector("#ovAlle").addEventListener("click",alleLoeschen);
+  ov.querySelector("#ovLoad").addEventListener("click",()=>document.getElementById("importInput").click());
+  ov.querySelectorAll("[data-ovedit]").forEach(b=>b.addEventListener("click",()=>bearbeiteMaschine(+b.dataset.ovedit)));
+  ov.querySelectorAll("[data-ovshare]").forEach(b=>b.addEventListener("click",()=>teileEinzel(collection[+b.dataset.ovshare])));
   ov.querySelectorAll("[data-ovdel]").forEach(b=>b.addEventListener("click",async()=>{
     const i=+b.dataset.ovdel;
     if(!confirm("„"+(((collection[i]||{}).meta||{}).maschine||"?")+"“ endgültig löschen?")) return;
-    collection.splice(i,1); await persistAll(); zeigeUebersicht();
+    collection.splice(i,1); await persistAll(); renderSysList(); zeigeUebersicht();
   }));
 }
-/* Tag abschließen: alles löschen (Kunde/Begeher bleiben voreingestellt) */
+/* Nachschärfen: gespeicherte Maschine in den aktuellen Bogen laden (Detail-Modus), Re-Save ersetzt sie */
+async function bearbeiteMaschine(i){
+  const m=collection[i]; if(!m) return;
+  if(!confirm("„"+((m.meta||{}).maschine||"?")+"“ zum Nachschärfen laden?\nDer aktuelle Bogen wird ersetzt.")) return;
+  const rec=JSON.parse(JSON.stringify(m));
+  collection.splice(i,1);
+  rec._editIdx=i; rec.meta.modus="detail";
+  if(!Array.isArray(rec.markierungen)) rec.markierungen=[];
+  state=rec; await persistAll(); location.reload();
+}
+/* Laden aus Drive: einzelne Maschinen-Dateien ODER Sammlungen; in die Sammlung mergen (Update bei
+   gleichem Namen+Datum → Nachschärfen überschreibt sauber). */
+document.getElementById("importInput").addEventListener("change",async e=>{
+  const files=[...(e.target.files||[])]; e.target.value="";
+  if(!files.length) return;
+  let neu=0, upd=0;
+  for(const f of files){
+    let data; try{ data=JSON.parse(await f.text()); }catch(err){ continue; }
+    let machs=[];
+    if(data._typ==="OAK-Begehung-Maschine" && data.maschine) machs=[data.maschine];
+    else if(data._typ==="OAK-Begehung-Sammlung" && Array.isArray(data.maschinen)) machs=data.maschinen;
+    else if(data.meta) machs=[data];
+    machs.forEach(m=>{
+      if(!m||!m.meta) return;
+      if(!Array.isArray(m.markierungen)) m.markierungen=[];
+      const key=x=>((x.meta||{}).maschine||"")+"|"+((x.meta||{}).datum||"");
+      const idx=collection.findIndex(x=>key(x)===key(m));
+      if(idx>=0){ collection[idx]=m; upd++; } else { collection.push(m); neu++; }
+    });
+  }
+  await persistAll(); renderSysList();
+  toast("Geladen: "+neu+" neu"+(upd?", "+upd+" aktualisiert":"")+".");
+  zeigeUebersicht();
+});
+/* Tag abschließen: alles löschen (Kunde/Begeher/Arbeitssystem bleiben voreingestellt) */
 async function alleLoeschen(){
   if(!confirm("ALLE "+collection.length+" gesicherten Maschinen UND den aktuellen Bogen löschen?")) return;
-  if(!confirm("Wirklich sicher? Vorher per 📤 Teilen exportiert?")) return;
+  if(!confirm("Wirklich sicher? Vorher gespeichert/geteilt?")) return;
   state=blankState(); collection=[];
   localStorage.removeItem(LSKEY); localStorage.removeItem(COLLKEY);
   await idbDel(LSKEY); await idbDel(COLLKEY);
@@ -1165,6 +1405,8 @@ async function alleLoeschen(){
     const rawC=await mitTimeout(idbGet(COLLKEY), 1500, null);
     if(rawC){ const c=JSON.parse(rawC); if(Array.isArray(c)&&c.length>collection.length) collection=c; }
   }catch(e){}
+  if(!Array.isArray(state.markierungen)) state.markierungen=[];
+  if(!state.meta.modus) state.meta.modus="schnell";
   init();
   try{ const t=localStorage.getItem("oak_begehung_toast");
     if(t){ localStorage.removeItem("oak_begehung_toast"); toast(t); } }catch(e){}
