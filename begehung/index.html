@@ -631,7 +631,8 @@ const PRUEFLISTE = [
 const LSKEY = "oak_begehung_v1";
 const COLLKEY = "oak_begehung_coll_v1";
 const PREFSKEY = "oak_begehung_prefs_v1";   // Kunde/Begeher überleben auch „✕ Neu"
-const UPLOADKEY = "oak_begehung_uploadurl"; // Apps-Script Web-App-URL für Auto-Upload (pro Gerät)
+const UPLOADKEY = "oak_begehung_uploadurl";     // Apps-Script Web-App-URL für Auto-Upload (pro Gerät)
+const UPLOADTOKENKEY = "oak_begehung_uploadtoken"; // Geheim-Token (muss mit dem Script übereinstimmen)
 
 /* ===== Persistenz: localStorage (Schnellpfad) + IndexedDB-Spiegel (großes Quota) =====
    localStorage fasst nur ~5 MB – mit Fotos+Audio je Maschine schnell voll. IndexedDB
@@ -690,7 +691,7 @@ function machineFileName(m){
 async function driveUpload(m){
   const url=(localStorage.getItem(UPLOADKEY)||"").trim(); if(!url) return false;
   const paket={ _typ:"OAK-Begehung-Maschine", _version:1, _exportiert:new Date().toISOString(),
-    dateiname:machineFileName(m), maschine:m };
+    token:(localStorage.getItem(UPLOADTOKENKEY)||""), dateiname:machineFileName(m), maschine:m };
   try{
     await mitTimeout(fetch(url,{method:"POST",mode:"no-cors",
       headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(paket)}).catch(()=>{}), 15000, null);
@@ -1401,12 +1402,17 @@ function zeigeUebersicht(){
   ov.querySelector("#ovAlle").addEventListener("click",alleLoeschen);
   ov.querySelector("#ovLoad").addEventListener("click",()=>document.getElementById("importInput").click());
   ov.querySelector("#ovUpload").addEventListener("click",()=>{
-    const cur=localStorage.getItem(UPLOADKEY)||"";
-    const v=prompt("Apps-Script Web-App-URL für automatischen Upload nach Drive/eingang.\nLeer lassen = deaktivieren (dann Teilen/Download).", cur);
-    if(v===null) return;
-    const t=v.trim();
-    if(t){ localStorage.setItem(UPLOADKEY,t); toast("Drive-Upload aktiviert."); }
-    else { localStorage.removeItem(UPLOADKEY); toast("Drive-Upload deaktiviert."); }
+    const curUrl=localStorage.getItem(UPLOADKEY)||"";
+    const url=prompt("Apps-Script Web-App-URL (/exec) für automatischen Upload nach Drive/eingang.\nLeer lassen = deaktivieren (dann Teilen/Download).", curUrl);
+    if(url===null) return;
+    const u=url.trim();
+    if(!u){ localStorage.removeItem(UPLOADKEY); localStorage.removeItem(UPLOADTOKENKEY); toast("Drive-Upload deaktiviert."); return; }
+    const curTok=localStorage.getItem(UPLOADTOKENKEY)||"";
+    const tok=prompt("Geheim-Token – muss exakt mit dem TOKEN im Apps-Script übereinstimmen.\nOhne passendes Token weist der Server den Upload ab.", curTok);
+    if(tok===null) return;
+    localStorage.setItem(UPLOADKEY,u);
+    localStorage.setItem(UPLOADTOKENKEY,tok.trim());
+    toast("Drive-Upload aktiviert (mit Token).");
   });
   ov.querySelectorAll("[data-ovedit]").forEach(b=>b.addEventListener("click",()=>bearbeiteMaschine(+b.dataset.ovedit)));
   ov.querySelectorAll("[data-ovshare]").forEach(b=>b.addEventListener("click",()=>teileEinzel(collection[+b.dataset.ovshare])));
