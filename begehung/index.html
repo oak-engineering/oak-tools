@@ -1468,7 +1468,21 @@ async function alleLoeschen(){
 
 /* Start: neuesten Stand aus localStorage vs. IndexedDB-Backup wählen, dann rendern.
    Alles mit Timeout – ein hängendes IndexedDB (z. B. iOS-Bug) darf die App nie lahmlegen. */
+/* Einrichtungs-Link: .../begehung/#du=<url>&dt=<token> trägt Drive-Upload einmalig selbst ein */
+function applySetupHash(){
+  try{
+    if(!location.hash||location.hash.length<2) return false;
+    const p=new URLSearchParams(location.hash.slice(1));
+    const du=p.get("du"), dt=p.get("dt");
+    if(!du) return false;
+    localStorage.setItem(UPLOADKEY, du.trim());
+    if(dt!=null) localStorage.setItem(UPLOADTOKENKEY, dt.trim());
+    history.replaceState(null,"",location.pathname+location.search); // Token aus der Adresszeile entfernen
+    return true;
+  }catch(e){ return false; }
+}
 (async function boot(){
+  const setup=applySetupHash();
   try{
     await mitTimeout(idbReady, 1500, null);
     const raw=await mitTimeout(idbGet(LSKEY), 1500, null);
@@ -1480,6 +1494,7 @@ async function alleLoeschen(){
   if(!state.meta.modus) state.meta.modus="schnell";
   migrateFotos(state);
   init();
+  if(setup) setTimeout(()=>toast("Drive-Upload eingerichtet ✓"),300);
   try{ const t=localStorage.getItem("oak_begehung_toast");
     if(t){ localStorage.removeItem("oak_begehung_toast"); toast(t); } }catch(e){}
 })();
