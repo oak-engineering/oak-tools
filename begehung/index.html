@@ -140,6 +140,12 @@
   details.card[open]>summary{margin-bottom:10px;border-bottom:1px solid var(--line)}
   details.card[open]>summary .chev{transform:rotate(90deg)}
 
+  /* ---- Rundgang-Leitfaden (Abschnitt 1) ---- */
+  details.rundgang{margin:6px 0 2px}
+  details.rundgang>summary{list-style:none;cursor:pointer;font-size:13.5px;color:var(--gruen);
+    font-weight:600;padding:4px 0;-webkit-tap-highlight-color:transparent}
+  details.rundgang>summary::-webkit-details-marker{display:none}
+
   /* ---- Foto-Markierung (Mängel auf Gesamtansicht) ---- */
   #mark{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:90;display:flex;flex-direction:column;
     padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
@@ -234,6 +240,10 @@
     <h2>1 · Schnellerfassung</h2>
     <label class="f">Maschinentyp (setzt typische Gefährdungsfaktoren in Abschnitt 5 – dort anpassbar)</label>
     <div class="chips" id="typChips"></div>
+    <details class="rundgang">
+      <summary>🧭 Rundgang – wo finde ich was?</summary>
+      <div class="hint" id="rundgangBox"></div>
+    </details>
     <div class="hint">📷 <b>Foto 1</b> Gesamtansicht · <b>Foto 2</b> Typenschild (mit CE) ·
       <b>Foto 3+</b> je Befund eins. Misslungenes Foto sofort löschen.</div>
     <button class="btn big" id="allgFotoBtn">📷 Foto aufnehmen</button>
@@ -245,6 +255,8 @@
       &nbsp;⑤ Sofortmaßnahme / Stilllegung?</div>
     <button class="btn rec big" id="audioRecBtn">🎙 Aufnahme starten</button>
     <div id="audioBox"></div>
+    <label class="f">Zusätzliche Hinweise (optional)</label>
+    <textarea data-meta="allg_notiz" placeholder="z. B. Auffälligkeiten, Vorfälle, erster Eindruck …"></textarea>
   </section>
 
   <!-- STAMMDATEN -->
@@ -306,6 +318,14 @@
     <summary><h2>6 · Maschinensicherheit</h2><span class="chev">›</span></summary>
     <div class="desc">Prüfliste BG RCI T 008-2. <b>J</b> = erfüllt · <b>N</b> = Mangel · <b>E</b> = entfällt.</div>
     <div id="pruefliste"></div>
+  </details>
+
+  <!-- MITARBEITERHINWEISE -->
+  <details class="card">
+    <summary><h2>7 · Mitarbeiterhinweise</h2><span class="chev">›</span></summary>
+    <div class="desc">Aussagen, Beschwerden und Anregungen der Beschäftigten. Geht <b>nicht</b> automatisch
+      in BdA/BA ein – wird separat festgehalten und zur Prüfung wiedervorgelegt.</div>
+    <textarea data-meta="ma_hinweise" placeholder="z. B. Bediener wünscht zweite Trittstufe · Absaugung zu schwach beim Anfahren …"></textarea>
   </details>
 
 </main>
@@ -408,14 +428,59 @@ const LEBENSPHASEN = ["Transport","Montage/Installation","Inbetriebnahme","Einri
    SSOT: references/anlagenkataster/kunststoff-spritzguss/kunststoff-spritzguss.md
    ("Maschinentyp-Profile") – Änderungen dort pflegen, dann hierher übernehmen + deployen. */
 const MASCHINENTYPEN = [
- {id:"sgm",       label:"Spritzgießmaschine",   gf:["1.1","1.4","2.1","3.2","6.1","7.1"]},
- {id:"extruder",  label:"Extruder",             gf:["1.1","2.1","3.2","6.1","7.1"]},
- {id:"muehle",    label:"Schneidmühle",         gf:["1.1","1.2","2.1","3.2","5.2","7.1"]},
- {id:"kran",      label:"Kran/Hebezeug",        gf:["1.3","1.4","9.1"]},
- {id:"kompressor",label:"Kompressor/Druckluft", gf:["2.1","6.1","7.1","7.8"]},
- {id:"temperier", label:"Temperiergerät",       gf:["2.1","6.1"]},
- {id:"saege",     label:"Säge/Werkstatt",       gf:["1.1","1.2","3.2","7.1"]},
- {id:"foerder",   label:"Fördertechnik",        gf:["1.1","1.3","7.1"]},
+ {id:"sgm",       label:"Spritzgießmaschine",   gf:["1.1","1.4","2.1","3.2","6.1","7.1"],
+  rundgang:["Not-Halt: am Bedienpult, oft zusätzlich Rückseite/Werkzeugbereich",
+    "Schutztür Schließeinheit langsam öffnen → Bewegung muss sofort stoppen (Endschalter sitzt an Türkante/Führungsschiene)",
+    "Düsenschutz: kleine Klappe an der Düse – vorhanden und verriegelt?",
+    "Heizbänder/Zylinder: Abdeckung/Isolierung vollständig? (Handrücken-Abstandstest, nicht anfassen)",
+    "Unter der Maschine: Öl-Leckage? Granulat auf dem Boden?",
+    "Blick nach oben: fährt ein Kran über den Werkzeug-/Bedienbereich?"]},
+ {id:"extruder",  label:"Extruder",             gf:["1.1","2.1","3.2","6.1","7.1"],
+  rundgang:["Not-Halt am Bedienpult + am Extruderkopf?",
+    "Einzugsbereich/Trichter: Eingreifschutz vorhanden (kommt die Hand an die Schnecke)?",
+    "Heizzonen: Abdeckungen/Isolierung vollständig?",
+    "Abzug/Nachfolgeeinheiten: Einzugsstellen zwischen Walzen gesichert?",
+    "Schmelzeaustritt/Leckagen am Kopf?"]},
+ {id:"muehle",    label:"Schneidmühle",         gf:["1.1","1.2","2.1","3.2","5.2","7.1"],
+  rundgang:["Not-Halt auch vom Befüllplatz erreichbar?",
+    "Einfülltrichter: reicht der Arm bis zu den Messern? (Einwurfhöhe/Krümmung prüfen)",
+    "Wartungs-/Rotordeckel: öffnet nur bei Stillstand? (Zuhaltung – Rotor läuft nach!)",
+    "Staubablagerungen/Austritt → Brand-/Ex-Gefahr",
+    "Gehörschutz-Gebotszeichen vorhanden?"]},
+ {id:"kran",      label:"Kran/Hebezeug",        gf:["1.3","1.4","9.1"],
+  rundgang:["Not-Halt an Steuerbirne/Funksteuerung",
+    "Haken: Sicherungsklappe intakt? Kette/Seil: Verschleiß, Prüfplakette?",
+    "Hub-Endschalter oben (Probefahrt ohne Last)",
+    "Traglastangabe lesbar? Anschlagmittel in Ordnung?",
+    "Fährt die Last über besetzte Arbeitsplätze?"]},
+ {id:"kompressor",label:"Kompressor/Druckluft", gf:["2.1","6.1","7.1","7.8"],
+  rundgang:["Hauptschalter/Not-Halt erreichbar",
+    "Riemen-/Kupplungsabdeckung geschlossen?",
+    "Druckbehälter: Sicherheitsventil, Manometer, Prüfplakette (ZÜS)",
+    "Hörbare Leckagen an Leitungen/Kupplungen?",
+    "Aufstellraum: Lüftung, heiße Flächen, Zugänglichkeit"]},
+ {id:"temperier", label:"Temperiergerät",       gf:["2.1","6.1"],
+  rundgang:["Schläuche/Anschlüsse dicht und hitzefest verlegt?",
+    "Heiße Leitungen im Griffbereich isoliert?",
+    "Kabel/Stecker unbeschädigt?"]},
+ {id:"saege",     label:"Säge/Werkstatt",       gf:["1.1","1.2","3.2","7.1"],
+  rundgang:["Not-Halt/Schalter ohne Umgreifen erreichbar?",
+    "Sägeblatt-/Werkzeugverdeckung vorhanden, selbstschließend?",
+    "Spaltkeil + Schiebestock am Platz?",
+    "Absaugung angeschlossen und wirksam?"]},
+ {id:"foerder",   label:"Fördertechnik",        gf:["1.1","1.3","7.1"],
+  rundgang:["Not-Halt/Reißleine entlang des Bandes?",
+    "Einzugsstellen an Umlenk-/Antriebstrommeln abgedeckt?",
+    "Übergabestellen: Auflauf-/Quetschstellen gesichert?",
+    "Quetschkanten zu festen Anlagenteilen?"]},
+];
+/* Grundrundgang – gilt für jede Maschine (Gedankenstütze, Reihenfolge = Laufweg) */
+const RUNDGANG_BASIS=[
+ "① Außen herum: Zäune/Abdeckungen komplett? Bodenspalt? Leckagen/Stolperstellen am Boden?",
+ "② Bedienseite: Not-Halt (wie viele? erreichbar?), Hauptschalter, Warnhinweise lesbar?",
+ "③ Schutztüren langsam öffnen: stoppt die Bewegung? (Endschalter sitzen an Türkante/Führung)",
+ "④ Rückseite/Antriebe: Riemen/Ketten abgedeckt? Hydraulik dicht? Kabel unbeschädigt?",
+ "⑤ Umfeld: Verkehrswege frei? Beleuchtung? Lärm? Zugänge/Podeste sicher?"
 ];
 
 /* ===== Prüfliste Maschinensicherheit (BG RCI T 008-2) =====
@@ -559,6 +624,7 @@ async function saveAndClone(){
   }
   // Klon für die nächste, baugleiche Maschine: Bewertungsmuster behalten, Maschinen-Spezifisches leeren
   state.meta.maschine=""; state.meta.seriennr=""; state.meta.baujahr="";
+  state.meta.allg_notiz=""; state.meta.ma_hinweise="";
   Object.values(state.items).forEach(it=>{ it.fotos=[]; });
   Object.values(state.pruefung).forEach(p=>{ p.fotos=[]; });
   (state.maengel||[]).forEach(m=>{ m.fotos=[]; });
@@ -571,7 +637,8 @@ function ladePrefs(){ try{ return JSON.parse(localStorage.getItem(PREFSKEY))||{}
 function blankState(){
   const p=ladePrefs();
   return { meta:{ kunde:p.kunde||"",maschine:"",hersteller:"",typ:"",baujahr:"",seriennr:"",
-    standort:"",bereich:"",datum:"",begeher:p.begeher||"",ce:"",anleitung:"",lebensphasen:[],allg_notiz:"" },
+    standort:"",bereich:"",datum:"",begeher:p.begeher||"",ce:"",anleitung:"",lebensphasen:[],
+    allg_notiz:"", ma_hinweise:"" },
     items:{}, pruefung:{}, maengel:[], fotosAllg:[], audio:null };
 }
 function loadState(){
@@ -715,15 +782,24 @@ function renderTypen(){
     const ch=document.createElement("span"); ch.className="chip"+(state.meta.maschinentyp===t.id?" on":"");
     ch.textContent=t.label;
     ch.addEventListener("click",()=>{
-      if(state.meta.maschinentyp===t.id){ state.meta.maschinentyp=""; ch.classList.remove("on"); save(); return; }
+      if(state.meta.maschinentyp===t.id){ state.meta.maschinentyp=""; ch.classList.remove("on"); renderRundgang(); save(); return; }
       state.meta.maschinentyp=t.id;
       box.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.textContent===t.label));
       let n=0; t.gf.forEach(nr=>{ if(setzeGefahr(nr)) n++; });
-      save();
+      renderRundgang(); save();
       toast(n ? t.label+": "+n+" typische Gefährdungsfaktoren gesetzt" : t.label+": typische Faktoren waren schon gesetzt");
     });
     box.appendChild(ch);
   });
+  renderRundgang();
+}
+/* Rundgang-Leitfaden: Grundrundgang + typspezifische Punkte (Gedankenstütze vor der Maschine) */
+function renderRundgang(){
+  const box=document.getElementById("rundgangBox"); if(!box) return;
+  const t=MASCHINENTYPEN.find(x=>x.id===state.meta.maschinentyp);
+  box.innerHTML="<b>Grundrundgang (Laufweg):</b><br>"+RUNDGANG_BASIS.join("<br>")
+    +(t&&t.rundgang ? "<br><br><b>Speziell "+t.label+":</b><br>"+t.rundgang.map(s=>"• "+s).join("<br>")
+      : "<br><br><i>Maschinentyp oben wählen → typspezifische Prüf-Orte erscheinen hier.</i>");
 }
 function updateHazSel(gnr){
   const g=HAZARDS.find(x=>x.nr===gnr); const el=document.getElementById("hsel-"+gnr);
@@ -1014,13 +1090,20 @@ document.getElementById("btnShare").addEventListener("click",async()=>{
   const kunden=[...new Set(out.maschinen.map(m=>((m.meta||{}).kunde||"").trim()).filter(Boolean))];
   if(kunden.length>1) alert("Achtung: Der Export enthält Maschinen von "+kunden.length+" verschiedenen Kunden ("+kunden.join(", ")+").");
   const name="Begehung_"+slug(state.meta.kunde||state.meta.maschine)+"_"+(state.meta.datum||"")+"_"+out.maschinen.length+"Masch.json";
-  const file=new File([JSON.stringify(out)],name,{type:"application/json"});
-  if(navigator.canShare && navigator.canShare({files:[file]})){
-    try{ await navigator.share({files:[file],title:name}); }catch(e){ /* vom Nutzer abgebrochen */ }
-  }else{
-    download(name, JSON.stringify(out), "application/json");
-    alert("Direktes Teilen unterstützt dieser Browser nicht – die Datei wurde stattdessen heruntergeladen.");
+  const inhalt=JSON.stringify(out);
+  if(navigator.canShare){
+    // Chrome/Android teilt Dateien nur mit bestimmten MIME-Typen – application/json wird oft
+    // abgelehnt, text/plain geht (Dateiname bleibt .json, Inhalt identisch → Drive speichert korrekt).
+    for(const typ of ["application/json","text/plain"]){
+      const file=new File([inhalt],name,{type:typ});
+      if(navigator.canShare({files:[file]})){
+        try{ await navigator.share({files:[file],title:name}); }catch(e){ /* vom Nutzer abgebrochen */ }
+        return;
+      }
+    }
   }
+  download(name, inhalt, "application/json");
+  alert("Direktes Teilen unterstützt dieser Browser nicht – die Datei wurde stattdessen heruntergeladen.");
 });
 
 /* Neu: nur den aktuellen Bogen verwerfen – gesicherte Maschinen bleiben erhalten */
