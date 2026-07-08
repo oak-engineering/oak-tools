@@ -174,6 +174,15 @@
     overflow-y:auto;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
   .mpicker h3{color:var(--gruen);font-size:17px;margin-bottom:8px}
 
+  /* ---- In-App-Kamera ---- */
+  #cam{position:fixed;inset:0;background:#000;z-index:96;display:flex;flex-direction:column}
+  #cam video{flex:1;min-height:0;width:100%;object-fit:cover;background:#000}
+  .cambar{display:flex;align-items:center;gap:12px;padding:12px 16px calc(14px + env(safe-area-inset-bottom));background:#111}
+  .cambar .btn{background:#fff;flex:0 0 auto}
+  #camShot{margin:0 auto;width:66px;height:66px;border-radius:50%;border:5px solid #fff;
+    background:var(--hell);flex:0 0 auto;cursor:pointer}
+  #camShot:active{transform:scale(.93)}
+
   /* ---- Foto-Markierung (Mängel auf Gesamtansicht) ---- */
   #mark{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:90;display:flex;flex-direction:column;
     padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
@@ -293,6 +302,7 @@
       <b>Foto 3+</b> je Befund eins. Misslungenes Foto sofort löschen.</div>
     <button class="btn big" data-addfoto>📷 Foto aufnehmen</button>
     <div class="thumbs allgThumbs"></div>
+    <button class="btn" data-mark>🖼 Mängel auf Gesamtansicht markieren</button>
     <div class="hint">🎙 <b>Sprechen (max. 2 min):</b> ① Maschine + Standort &nbsp;② Betriebsanleitung da?
       &nbsp;③ Tätigkeiten (Rüsten, Reinigung, Wartung …) &nbsp;④ je Befund: „<b>Foto N zeigt</b> …" –
       was kann passieren · wer ist betroffen · Schwere g/m/h · Eintritt unwahrsch./möglich/wahrsch. · Kosten
@@ -312,6 +322,7 @@
     <section class="card step" data-step="0">
       <h2>2.1 · Stammdaten</h2>
       <div class="desc">Maschinendaten stehen auf dem Typenschild. Kunde &amp; Begeher bleiben gespeichert.</div>
+      <button class="btn big" data-addfoto>📷 Gesamtansicht der Maschine</button>
       <button class="btn big" data-addfoto>📷 Typenschild aufnehmen</button>
       <div class="thumbs allgThumbs"></div>
       <div class="grid2">
@@ -352,7 +363,7 @@
       <div class="desc">Antippen = Mangel vorhanden (grün). Rechtsquelle, Einstufung und Bepreisung laufen
         im Hintergrund mit; passende Gefährdungsfaktoren (2.5) und Prüfpunkte (2.4) werden automatisch gesetzt.</div>
       <div class="mpal" id="mPalette"></div>
-      <button class="btn big" id="btnMarkieren">🖼 Auf Gesamtansicht markieren</button>
+      <button class="btn big" data-mark>🖼 Auf Gesamtansicht markieren</button>
       <button class="btn big" data-addfoto>📷 Mangel-Foto aufnehmen</button>
       <div class="thumbs allgThumbs"></div>
     </section>
@@ -1065,15 +1076,43 @@ function toggleMangel(k){
 }
 
 /* ===== Fotos ===== */
-/* Alle [data-addfoto]-Buttons (Schnell, Typenschild, Mangel-Foto) lösen denselben Kamera-Input aus */
+/* Alle [data-addfoto]-Buttons öffnen die In-App-Kamera (Fallback: Datei/Galerie) */
 document.addEventListener("click",e=>{
   const b=e.target.closest && e.target.closest("[data-addfoto]");
   if(!b) return;
-  const ai=document.getElementById("allgFotoInput"); ai.value=""; ai.click();
+  openCamera(obj=>{ state.fotosAllg.push(obj); renderAllgThumbs(); save(); });
 });
+function dateiInput(){ const ai=document.getElementById("allgFotoInput"); ai.value=""; ai.click(); }
 document.getElementById("allgFotoInput").addEventListener("change",e=>{
   handleFile(e.target.files[0], obj=>{ state.fotosAllg.push(obj); renderAllgThumbs(); save(); });
 });
+/* In-App-Kamera: Live-Bild + Auslöser. Öffnet die Kamera direkt (kein Datei-Explorer);
+   ohne Kamera-Zugriff Fallback auf den Datei-/Galerie-Input. HTTPS/localhost vorausgesetzt. */
+async function openCamera(cb){
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ dateiInput(); return; }
+  let stream;
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false}); }
+  catch(err){ toast("Kein Kamerazugriff – bitte erlauben oder Galerie nutzen."); dateiInput(); return; }
+  const ov=document.createElement("div"); ov.id="cam";
+  ov.innerHTML=`<video autoplay playsinline muted></video>`
+    +`<div class="cambar"><button class="btn" id="camCancel">✕</button>`
+    +`<button id="camShot" title="Auslösen"></button>`
+    +`<button class="btn" id="camGal">🖼 Galerie</button></div>`;
+  document.body.appendChild(ov);
+  const video=ov.querySelector("video");
+  try{ video.srcObject=stream; }catch(e){ video.src=""; }
+  const stop=()=>{ try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){} ov.remove(); };
+  ov.querySelector("#camCancel").addEventListener("click",stop);
+  ov.querySelector("#camGal").addEventListener("click",()=>{ stop(); dateiInput(); });
+  ov.querySelector("#camShot").addEventListener("click",()=>{
+    const w=video.videoWidth||1280, h=video.videoHeight||720;
+    const c=document.createElement("canvas"); c.width=w; c.height=h;
+    try{ c.getContext("2d").drawImage(video,0,0,w,h); }catch(e){}
+    let data=null; try{ data=c.toDataURL("image/jpeg",0.85); }catch(e){}
+    stop();
+    if(data) shrink(data, d=>cb({name:"foto.jpg", data:d}));
+  });
+}
 function handleFile(file, cb){
   if(!file) return;
   const r=new FileReader();
@@ -1151,7 +1190,7 @@ function markPicker(onPick){
     fin("F"+(markMk.filter(m=>/^F/.test(m.label)).length+1));
   });
 }
-document.getElementById("btnMarkieren").addEventListener("click",()=>{
+function openMarker(){
   if(!(state.fotosAllg||[]).length){ toast("Erst ein Foto der Gesamtansicht aufnehmen."); return; }
   let idx=state.fotosAllg.findIndex(f=>f.name!=="gesamtansicht_markiert.jpg"); if(idx<0) idx=0;
   markMk=JSON.parse(JSON.stringify(state.markierungen||[]));
@@ -1187,7 +1226,8 @@ document.getElementById("btnMarkieren").addEventListener("click",()=>{
     }
     save(); ov.remove();
   });
-});
+}
+document.querySelectorAll("[data-mark]").forEach(b=>b.addEventListener("click",openMarker));
 
 /* ===== Sprachnotiz (Audio-Aufnahme je Maschine, offline) ===== */
 const AUDIO_MAX_S = 180;   // Sicherheitslimit; Ziel sind 1-2 min
