@@ -681,10 +681,13 @@ async function persistAll(){
   }
   return ok;
 }
-/* Dateiname je Maschine: System-Präfix (Drive-Sortierung) + Maschinenname + Datum */
+/* Dateiname je Maschine: Kunde + System als Präfix (verhindert Namenskollision zwischen Kunden im
+   gemeinsamen eingang/ und macht den Dedup kundenspezifisch) + Maschinenname + Datum */
 function machineFileName(m){
-  const sys=((m.meta||{}).arbeitssystem||"").trim();
-  return "Begehung_"+(sys?slug(sys)+"__":"")+slug((m.meta||{}).maschine||(m.meta||{}).kunde)+"_"+((m.meta||{}).datum||"")+".json";
+  const meta=m.meta||{};
+  const kunde=(meta.kunde||"").trim(), sys=(meta.arbeitssystem||"").trim();
+  return "Begehung_"+(kunde?slug(kunde)+"__":"")+(sys?slug(sys)+"__":"")
+    +slug(meta.maschine||meta.kunde)+"_"+(meta.datum||"")+".json";
 }
 /* Auto-Upload einer Maschine an den Apps-Script-Endpoint (→ Drive eingang, ohne Teilen-Dialog).
    no-cors + text/plain = kein CORS-Preflight; fire-and-forget mit Timeout. */
@@ -740,8 +743,10 @@ async function saveAndClone(){
     return;
   }
   // 3) Auto-Upload nach Drive (nach dem sicheren lokalen Speichern, vor dem Reload)
-  let hochgeladen=false;
-  if(hatUpload){ if(btn) btn.textContent="Lade hoch…"; hochgeladen=await driveUpload(rec); }
+  if(hatUpload){
+    if(navigator.onLine===false){ rec._upload="pending"; }   // Funkloch: nicht „gesendet" behaupten
+    else { if(btn) btn.textContent="Lade hoch…"; rec._upload = (await driveUpload(rec)) ? "gesendet" : "pending"; }
+  }
   // 4) für die nächste Maschine leeren: Bewertungsmuster behalten, Spezifisches + Marker + Edit-Bezug weg
   delete state._editIdx;
   state.meta.maschine=""; state.meta.seriennr=""; state.meta.baujahr="";
@@ -751,8 +756,10 @@ async function saveAndClone(){
   (state.maengel||[]).forEach(m=>{ m.fotos=[]; });
   state.fotosAllg=[]; state.markierungen=[]; state.audio=null;
   await persistAll();
-  const suffix = hatUpload ? (hochgeladen?" → Drive gesendet":" (Drive-Upload unklar – prüfen)") : " & geteilt";
-  try{ localStorage.setItem("oak_begehung_toast","✓ „"+name+"“ gesichert"+suffix+" · über 📋 mit ✎ wieder öffnen"); }catch(e){}
+  const suffix = !hatUpload ? " & geteilt"
+    : (rec._upload==="gesendet" ? " → Drive gesendet"
+    : " · Upload ausstehend (im Funkloch – später in 📋 mit ⤴ hochladen)");
+  try{ localStorage.setItem("oak_begehung_toast","✓ „"+name+"“ gesichert"+suffix); }catch(e){}
   location.reload();
 }
 function ladePrefs(){ try{ return JSON.parse(localStorage.getItem(PREFSKEY))||{}; }catch(e){ return {}; } }
@@ -1371,6 +1378,7 @@ document.getElementById("btnList").addEventListener("click", zeigeUebersicht);
 function zeigeUebersicht(){
   const alt=document.getElementById("ovl"); if(alt) alt.remove();
   const ov=document.createElement("div"); ov.id="ovl";
+  const hatUp=!!(localStorage.getItem(UPLOADKEY)||"").trim();
   const groups={};
   collection.forEach((m,i)=>{ const sys=((m.meta||{}).arbeitssystem||"").trim()||"(einzeln)";
     (groups[sys]=groups[sys]||[]).push(i); });
@@ -1379,11 +1387,14 @@ function zeigeUebersicht(){
     body+=`<div class="ovgroup">Arbeitssystem: <b>${esc(sys)}</b> · ${groups[sys].length} Maschine(n)</div>`;
     groups[sys].forEach(i=>{
       const m=collection[i], c=coverage(m), teil=((m.meta||{}).teilschritt||"").trim();
+      const up = m._upload==="gesendet" ? ' · <b style="color:var(--gruen)">✓ Drive</b>'
+        : (m._upload==="pending" ? ' · <b style="color:#b5462f">⤴ ausstehend</b>' : "");
       body+=`<div class="ovrow"><div class="ovname"><b>${esc((m.meta||{}).maschine||"?")}</b>`
         +(teil?` <span style="color:var(--muted)">· ${esc(teil)}</span>`:"")
-        +`<span>${coverageText(c)}</span></div>`
+        +`<span>${coverageText(c)}${up}</span></div>`
         +`<div class="ovacts">`
         +`<button class="mdel" data-ovedit="${i}" title="Nachschärfen">✎</button>`
+        +(hatUp?`<button class="mdel" data-ovup="${i}" title="Nach Drive hochladen">⤴</button>`:"")
         +`<button class="mdel" data-ovshare="${i}" title="Als Datei teilen">📤</button>`
         +`<button class="mdel" data-ovdel="${i}" title="Löschen">×</button></div></div>`;
     });
@@ -1415,12 +1426,22 @@ function zeigeUebersicht(){
     toast("Drive-Upload aktiviert (mit Token).");
   });
   ov.querySelectorAll("[data-ovedit]").forEach(b=>b.addEventListener("click",()=>bearbeiteMaschine(+b.dataset.ovedit)));
+  ov.querySelectorAll("[data-ovup]").forEach(b=>b.addEventListener("click",()=>uploadEinzeln(+b.dataset.ovup)));
   ov.querySelectorAll("[data-ovshare]").forEach(b=>b.addEventListener("click",()=>teileEinzel(collection[+b.dataset.ovshare])));
   ov.querySelectorAll("[data-ovdel]").forEach(b=>b.addEventListener("click",async()=>{
     const i=+b.dataset.ovdel;
     if(!confirm("„"+(((collection[i]||{}).meta||{}).maschine||"?")+"“ endgültig löschen?")) return;
     collection.splice(i,1); await persistAll(); renderSysList(); zeigeUebersicht();
   }));
+}
+/* Ausstehende Maschine (nachträglich) nach Drive hochladen – z. B. nach dem Funkloch */
+async function uploadEinzeln(i){
+  const m=collection[i]; if(!m) return;
+  if(!(localStorage.getItem(UPLOADKEY)||"").trim()){ toast("Erst ⚙ Drive einrichten."); return; }
+  if(navigator.onLine===false){ toast("Kein Netz – später erneut versuchen."); return; }
+  toast("Lade „"+((m.meta||{}).maschine||"?")+"“ hoch…");
+  m._upload = (await driveUpload(m)) ? "gesendet" : "pending";
+  await persistAll(); zeigeUebersicht();
 }
 /* Nachschärfen: gespeicherte Maschine in den aktuellen Bogen laden (Detail-Modus), Re-Save ersetzt sie */
 async function bearbeiteMaschine(i){
