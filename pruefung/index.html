@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2D6A4F">
+<title>OAK Maschinensicherheit – Prüfung nach §14 BetrSichV</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232D6A4F'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='26' font-weight='700' fill='%23D8F3DC' text-anchor='middle'%3EOAK%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gruen:#2D6A4F; --dunkel:#1B4332; --hell:#52B788; --akzent:#D8F3DC;
+    --bg:#f4f7f5; --card:#ffffff; --line:#dbe5df; --text:#1d2b25; --muted:#6b7d74;
+    --rot:#c62828; --gelb:#e8a33d;
+    --headline:'Cormorant Garamond',Georgia,serif;
+    --body:'Jost','Segoe UI',system-ui,sans-serif;
+    --shadow:0 2px 10px rgba(27,67,50,.08);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.5}
+  header{background:var(--dunkel);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 10px}
+  .hrow{display:flex;align-items:center;gap:11px;max-width:860px;margin:0 auto}
+  .logo{width:38px;height:38px;border-radius:9px;background:var(--gruen);display:flex;align-items:center;
+    justify-content:center;font-family:var(--headline);font-weight:700;color:var(--akzent);flex:0 0 auto}
+  h1{font-family:var(--headline);font-size:21px;margin:0;font-weight:700}
+  .sub{font-size:11.5px;color:#b7cfc2}
+  .savehint{margin-left:auto;font-size:11.5px;color:#b7cfc2}
+  main{max-width:860px;margin:0 auto;padding:12px 12px 96px}
+  .card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+  h2{font-family:var(--headline);font-size:20px;color:var(--gruen);margin:0 0 3px}
+  .desc{font-size:12.5px;color:var(--muted);margin-bottom:10px}
+  label.f{display:block;margin:10px 0 4px;font-size:12.5px;font-weight:500;color:var(--dunkel)}
+  input[type=text],input[type=date],textarea,select{width:100%;font-family:var(--body);font-size:16px;
+    padding:12px;border:1px solid var(--line);border-radius:10px;background:#fcfdfc;color:var(--text)}
+  textarea{min-height:58px;resize:vertical}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  @media(max-width:520px){.grid2{grid-template-columns:1fr}}
+  .btn{font-family:var(--body);font-size:14.5px;font-weight:500;padding:13px 14px;border:1px solid var(--line);
+    border-radius:10px;background:#fff;color:var(--text);cursor:pointer}
+  .btn.big{display:block;width:100%;margin-top:8px;font-size:15.5px;padding:15px}
+  .btn.primary{background:var(--gruen);border-color:var(--gruen);color:#fff}
+  .btn:active{transform:scale(.985)}
+  .toolrow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .hint{font-size:12px;color:var(--muted);background:#f0f6f2;border-left:3px solid var(--hell);
+    border-radius:0 8px 8px 0;padding:9px 11px;margin:8px 0}
+  .warnbox{font-size:12.5px;line-height:1.45;color:#7a3b00;background:#fff6e5;
+    border-left:3px solid var(--gelb);border-radius:0 8px 8px 0;padding:9px 11px;margin:8px 0}
+
+  /* ---- Fortschritt: klebt oben, damit man nie sucht ---- */
+  .fortschritt{position:sticky;top:0;z-index:58;background:#fff;border-bottom:1px solid var(--line);
+    padding:9px 12px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .fbar{height:8px;border-radius:4px;background:#e8ede9;overflow:hidden}
+  .fbar i{display:block;height:100%;background:var(--gruen);width:0;transition:width .2s}
+  .fzahl{display:flex;gap:10px;font-size:12px;color:var(--muted);margin-top:5px;flex-wrap:wrap}
+  .fzahl b{color:var(--text)}
+  .fzahl .n{color:var(--rot);font-weight:600}
+
+  /* ---- Prüfgruppen ---- */
+  details.grp{background:var(--card);border-radius:12px;box-shadow:var(--shadow);margin-bottom:10px;overflow:hidden}
+  details.grp>summary{list-style:none;cursor:pointer;padding:14px;font-weight:600;color:var(--gruen);
+    display:flex;align-items:center;gap:9px;font-size:15.5px}
+  details.grp>summary::-webkit-details-marker{display:none}
+  details.grp[open]>summary{border-bottom:1px solid var(--line)}
+  .gzahl{margin-left:auto;font-size:12px;font-weight:500;color:var(--muted)}
+  .gzahl.hat{color:var(--rot);font-weight:700}
+  .chev{color:var(--muted);transition:transform .2s}
+  details.grp[open] .chev{transform:rotate(90deg)}
+
+  .pz{padding:12px 14px;border-bottom:1px solid var(--line)}
+  .pz:last-child{border-bottom:none}
+  .pz.mangel{background:#fff5f5}
+  .pz.entfaellt{opacity:.55}
+  .pztxt{font-size:14px;line-height:1.45;margin-bottom:9px}
+  .pznr{font-weight:700;color:var(--gruen);font-variant-numeric:tabular-nums;margin-right:6px}
+  .pzbtn{display:flex;gap:7px}
+  .pzbtn .b{flex:1;text-align:center;font-size:14.5px;font-weight:600;padding:13px 6px;border:1px solid var(--line);
+    border-radius:9px;background:#fff;cursor:pointer;color:var(--muted)}
+  .pzbtn .b.j.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
+  .pzbtn .b.n.on{background:var(--rot);border-color:var(--rot);color:#fff}
+  .pzbtn .b.e.on{background:var(--muted);border-color:var(--muted);color:#fff}
+  .pzmehr{margin-top:9px}
+  .thumbs{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+  .thumb{position:relative;width:70px;height:70px;border-radius:9px;overflow:hidden;border:1px solid var(--line)}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+  .thumb button{position:absolute;top:2px;right:2px;width:21px;height:21px;border:none;border-radius:50%;
+    background:rgba(27,67,50,.85);color:#fff;font-size:13px;line-height:1;cursor:pointer}
+
+  .actionbar{position:fixed;bottom:0;left:0;right:0;z-index:60;background:#fff;border-top:1px solid var(--line);
+    padding:9px 12px calc(9px + env(safe-area-inset-bottom));display:flex;gap:8px;box-shadow:0 -2px 12px rgba(0,0,0,.07)}
+  .actionbar .btn{flex:1;margin:0}
+  #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:92px;background:var(--dunkel);color:#fff;
+    padding:13px 20px;border-radius:12px;font-size:15px;z-index:99;max-width:90%;opacity:0;pointer-events:none;
+    transition:opacity .25s}
+  #toast.show{opacity:1}
+  #lupe{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:92;display:flex;flex-direction:column;
+    padding:calc(8px + env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom))}
+  #lupe img{flex:1;min-height:0;object-fit:contain;max-width:100%;margin:auto}
+  .lupebar{display:flex;align-items:center;gap:8px;padding:10px 4px 0;flex-wrap:wrap}
+  .lupebar .btn{background:#fff}
+  .urteil{font-size:16px;font-weight:600;border-radius:11px;padding:13px;text-align:center;margin-top:10px}
+  .urteil.gruen{background:var(--akzent);color:var(--dunkel)}
+  .urteil.gelb{background:#fdf2d0;color:#7a5b00}
+  .urteil.rot{background:#fbe0e0;color:#a01c1c}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <div class="logo">OA</div>
+    <div>
+      <h1>Maschinensicherheit</h1>
+      <div class="sub">Prüfung nach §14 BetrSichV · BG RCI T 009</div>
+    </div>
+    <div class="savehint" id="savehint">gespeichert</div>
+  </div>
+</header>
+
+<div class="fortschritt">
+  <div class="fbar"><i id="fbar"></i></div>
+  <div class="fzahl" id="fzahl"></div>
+</div>
+
+<main>
+  <input type="file" accept="image/*" capture="environment" id="fotoInput" hidden>
+
+  <section class="card">
+    <h2>Maschine &amp; Prüfung</h2>
+    <div class="desc">Angaben stehen auf dem Typenschild. Kunde und Prüfer bleiben gespeichert.</div>
+    <button class="btn big" data-addfoto="typenschild">📷 Typenschild aufnehmen</button>
+    <button class="btn big" data-addfoto="gesamt">📷 Gesamtansicht aufnehmen</button>
+    <div class="thumbs" id="kopfThumbs"></div>
+    <div class="grid2">
+      <div><label class="f">Kunde / Firma</label><input type="text" data-meta="kunde" placeholder="z. B. Wibo Kunststofftechnik GmbH"></div>
+      <div><label class="f">Maschine / Anlage</label><input type="text" data-meta="maschine" placeholder="z. B. D150/3"></div>
+      <div><label class="f">Hersteller</label><input type="text" data-meta="hersteller" placeholder="z. B. DEMAG"></div>
+      <div><label class="f">Typ / Modell</label><input type="text" data-meta="typ"></div>
+      <div><label class="f">Baujahr</label><input type="text" data-meta="baujahr" inputmode="numeric"></div>
+      <div><label class="f">Serien-Nr.</label><input type="text" data-meta="seriennr"></div>
+      <div><label class="f">Standort</label><input type="text" data-meta="standort"></div>
+      <div><label class="f">Datum der Prüfung</label><input type="date" data-meta="datum"></div>
+    </div>
+    <label class="f">Prüfer (befähigte Person n. TRBS 1203)</label>
+    <input type="text" data-meta="pruefer" placeholder="N. Krawielitzki">
+    <label class="f">Anlass der Prüfung (§14 BetrSichV)</label>
+    <select data-meta="anlass">
+      <option value="">– bitte wählen –</option>
+      <option value="wiederkehrend">Wiederkehrende Prüfung (§14 Abs. 2)</option>
+      <option value="erstmalig">Prüfung vor erstmaliger Verwendung (§14 Abs. 1)</option>
+      <option value="aenderung">Prüfung nach prüfpflichtiger Änderung (§14 Abs. 1)</option>
+      <option value="instandsetzung">Prüfung nach Instandsetzung (§14 Abs. 3)</option>
+      <option value="ausserordentlich">Außerordentliche Prüfung (§14 Abs. 3)</option>
+    </select>
+    <div class="hint">Die Prüfung ist von einer <b>befähigten Person</b> durchzuführen (§2 Abs. 6 BetrSichV,
+      TRBS 1203). Art, Umfang und Fristen legt der Arbeitgeber auf Basis der Gefährdungsbeurteilung fest (§3 Abs. 6).</div>
+  </section>
+
+  <div id="gruppen"></div>
+
+  <section class="card">
+    <h2>Ergebnis</h2>
+    <div id="urteilBox"></div>
+    <label class="f">Bemerkungen / Gesamteindruck</label>
+    <textarea data-meta="bemerkung" placeholder="z. B. Prüfung im laufenden Betrieb, Schutztüren nicht demontiert …"></textarea>
+    <label class="f">Nächste Prüfung (Frist)</label>
+    <input type="date" data-meta="naechste">
+  </section>
+</main>
+
+<div class="actionbar">
+  <button class="btn primary" id="btnTeilen">📤 Prüfung sichern</button>
+  <button class="btn" id="btnNeu">✕ Neu</button>
+</div>
+
+<script>
+/* ============================================================================
+   OAK Maschinensicherheit – Prüfung von Arbeitsmitteln nach §14 BetrSichV.
+
+   WARUM EIGENES TOOL (nicht im Begehungsbogen):
+   Eine Begehung ist ein Rundgang mit Momentaufnahme; eine Prüfung nach §14 BetrSichV ist eine
+   eigene Tätigkeit mit eigenem Anlass, eigener befähigter Person und eigenem Nachweis. Die
+   58 Punkte hingen bislang als Schritt 2.4 im Begehungsbogen und haben ihn überfrachtet.
+
+   Die Prüfliste ist identisch mit der bisherigen (BG RCI T 009); SSOT bleibt
+   references/anlagenkataster/kunststoff-spritzguss/kunststoff-spritzguss.md.
+   ========================================================================== */
+
+const PRUEFLISTE = [
+ {nr:"2", t:"Allgemeines", items:[
+   ["P1","Angaben an der Maschine: Hersteller, Typ, Nr., Baujahr, Spannung/Strom, CE (ab 1.1.1995)","Typenschild/CE-Angaben"],
+   ["P2","EG-Konformitätserklärung liegt vor","Konformitätserklärung"],
+   ["P3","Deutschsprachige Betriebsanleitung vorhanden (best. Verwendung, Schutzeinrichtungen, Restgefahren, Wartung)","Betriebsanleitung deutsch"],
+   ["P4","Beschriftungen + Sicherheits-/Warnhinweise vorhanden und erkennbar","Warnhinweise lesbar"],
+   ["P5","Dokumentation früherer Prüfungen liegt vor","Frühere Prüf-Doku"],
+   ["P6","Maschine wird weiterhin bestimmungsgemäß verwendet","Bestimmungsgemäße Nutzung"],
+   ["P7","Keine wesentlichen Veränderungen seit letzter Prüfung","Keine wesentl. Änderung"],
+   ["P8","Maschine entspricht dem Stand der Technik (kein Bestandsschutz)","Stand der Technik"]]},
+ {nr:"3", t:"Sicherheitskonzept (retrospektiv)", items:[
+   ["P9","Schutzkonzept verhinderte Folgen gefährlicher Situationen wirksam","Schutzkonzept wirksam"],
+   ["P10","Not-Halt wirkt wie in der Betriebsanleitung beschrieben","Not-Halt wirkt"],
+   ["P11","Ausreichend Arbeitsbühnen/sichere Zugänge (auch Störung/Wartung)","Sichere Zugänge/Bühnen"],
+   ["P12","Störungen beseitigbar ohne Umgehen von Schutzeinrichtungen","Störung ohne SE-Umgehung"],
+   ["P13","Sicherheitskonzept für Instandhaltung bewährt (LOTO/Tippbetrieb)","LOTO/Instandhaltung"],
+   ["P14","Schutzeinrichtungen in der Praxis bewährt","SE praxisbewährt"],
+   ["P15","Manipulation von Schutzeinrichtungen wirksam vermieden","Keine SE-Manipulation"],
+   ["P16","Kein häufiges Instandsetzen/Auswechseln von Schutzeinrichtungen nötig","SE selten defekt"]]},
+ {nr:"4", t:"Schutzeinrichtungen (Vollständigkeit/Wirksamkeit)", items:[
+   ["P17","Alle Schutzeinrichtungen (lt. Betriebsanleitung) vorhanden","SE vollständig"],
+   ["P18","Frei von äußerlich erkennbaren Beschädigungen","SE unbeschädigt"],
+   ["P19","Stabil/dauerhaft verbunden, Befestigungsmittel vollständig","SE fest verbunden"],
+   ["P20","Sicherheitsabstände trennender Schutzeinrichtungen ausreichend","Abstände trennende SE"],
+   ["P21","Sicherheitsabstände BWS/Zweihandsteuerung ausreichend","Abstände BWS/Zweihand"],
+   ["P22","Bewegl. trennende Schutzeinr. OHNE Zuhaltung funktionsfähig","Bewegl. SE ohne Zuhaltung"],
+   ["P23","Bewegl. trennende Schutzeinr. MIT Zuhaltung funktionsfähig","Bewegl. SE mit Zuhaltung"],
+   ["P24","Berührungswirkende Schutzeinr. (Schaltmatte/-leiste) funktionsfähig","Schaltmatte/-leiste"],
+   ["P25","Berührungslose Schutzeinr. (Lichtschranke/Laserscanner) funktionsfähig","Lichtschranke/Scanner"],
+   ["P26","Ortsgebundene Schutzeinr. (Zweihand/Zustimm-/Fuß-/Tippschalter) funktionsfähig","Zweihand/Zustimmschalter"]]},
+ {nr:"5", t:"Elektrische Ausrüstung", items:[
+   ["P27","Aktuelle Prüfung nach DGUV Vorschrift 3 dokumentiert","DGUV-V3-Prüfung aktuell"],
+   ["P28","Elektrik frei von offensichtlichen Mängeln (Schränke zu, Gehäuse intakt)","Elektrik ohne Mängel"],
+   ["P29","Kabel außerhalb des Schaltschranks unbeschädigt","Kabel unbeschädigt"],
+   ["P30","Schaltschrank-Inneres frei von Staub/Verunreinigung","Schaltschrank sauber"],
+   ["P31","Elektrische Bauteile gemäß Schaltplan gekennzeichnet","Bauteile gekennzeichnet"],
+   ["P32","Kein unerwarteter Anlauf nach Ausfall/Wiederkehr der Energie","Kein unerwarteter Anlauf"]]},
+ {nr:"6", t:"Hydraulische Ausrüstung", items:[
+   ["P33","Hydraulik frei von offensichtlichen Mängeln/Leckagen","Hydraulik dicht"],
+   ["P34","Hydraulikleitungen unbeschädigt (keine Scheuerstellen, Biegeradien ok)","Leitungen unbeschädigt"],
+   ["P35","Hydraulische Bauteile gemäß Schaltplan gekennzeichnet","Bauteile gekennzeichnet"],
+   ["P36","Schlauchleitungen ausreichend gekennzeichnet (Hersteller/Norm/Datum/Druck)","Schläuche gekennzeichnet"],
+   ["P37","Auswechselintervalle Schlauchleitungen beachtet (6 J / 2 J)","Schlauch-Wechselintervall"],
+   ["P38","Herumschlagen des Schlauches verhindert","Schlauch gesichert"],
+   ["P39","Austauschintervalle der Filter eingehalten","Filterintervalle"],
+   ["P40","Austreten von Hydraulikflüssigkeit verhindert (Pinholing)","Kein Austritt (Pinholing)"],
+   ["P41","Hydrospeicher nach Not-Halt druckentlastet/abgesperrt","Hydrospeicher entlastet"],
+   ["P42","Hochhalteeinrichtung bei Leitungsbruch/Energieausfall funktionsfähig","Hochhalteeinrichtung"],
+   ["P43","Keine gefahrbringenden Bewegungen bei Ausfall/Wiederkehr der Energie","Sicher bei Energieausfall"]]},
+ {nr:"7", t:"Pneumatische Ausrüstung", items:[
+   ["P44","Pneumatik frei von offensichtlichen Mängeln (kein hörbares Austreten)","Pneumatik dicht"],
+   ["P45","Pneumatikleitungen unbeschädigt","Leitungen unbeschädigt"],
+   ["P46","Pneumatische Bauteile gemäß Schaltplan gekennzeichnet","Bauteile gekennzeichnet"],
+   ["P47","Druckbehälter nach Not-Halt druckentlastet/abgesperrt","Druckbehälter entlastet"],
+   ["P48","Hochhalteeinrichtung bei Leitungsbruch/Druckausfall funktionsfähig","Hochhalteeinrichtung"],
+   ["P49","Austauschintervalle der Filter eingehalten","Filterintervalle"],
+   ["P50","Keine gefahrbringenden Bewegungen bei Ausfall/Wiederkehr der Druckluft","Sicher bei Druckausfall"]]},
+ {nr:"8", t:"Umgebung der Maschine", items:[
+   ["P51","Grenzwerte Lärm/Vibration/EMVU/Gefahrstoffe eingehalten","Grenzwerte eingehalten"],
+   ["P52","Beleuchtung ausreichend (ASR A3.4)","Beleuchtung ausreichend"],
+   ["P53","Verkehrswege bemessen, gekennzeichnet, freigehalten","Verkehrswege frei"]]},
+ {nr:"9", t:"Betriebsanweisung & Unterweisung", items:[
+   ["P54","Aktuelle Betriebsanweisung vorhanden","Betriebsanweisung aktuell"],
+   ["P55","Beschäftigte vor Tätigkeit + regelmäßig unterwiesen","Unterweisung erfolgt"],
+   ["P56","Unterweisung umfasst besondere Gefährdungen der Maschine","UW: Gefährdungen"],
+   ["P57","Unterweisung zu Funktion/Wirkung der Schutzeinrichtungen","UW: Schutzeinrichtungen"],
+   ["P58","Unterweisung zu besonderen Anforderungen bei Notfällen","UW: Notfälle"]]}
+];
+
+const LSKEY   = "oak_pruefung_v1";
+const PREFSKEY= "oak_pruefung_prefs_v1";
+const UPLOADKEY      = "oak_begehung_uploadurl";     // gemeinsam mit dem Begehungsbogen genutzt
+const UPLOADTOKENKEY = "oak_begehung_uploadtoken";
+
+/* ===== Persistenz: IndexedDB führt, localStorage ist nur das Notnetz =====
+   Fotos liegen als base64 im State und sprengen localStorage (~5 MB) sofort. Gleiche Aufteilung
+   wie im Begehungsbogen: IDB trägt alles, localStorage nur ein Skelett ohne Medien. */
+let idb=null;
+const idbReady=new Promise(res=>{ try{
+  const rq=indexedDB.open("oak_begehung",1);
+  rq.onupgradeneeded=()=>rq.result.createObjectStore("kv");
+  rq.onsuccess=()=>{ idb=rq.result; res(); };
+  rq.onerror=()=>res();
+}catch(e){ res(); } });
+function idbPut(key,val){ return new Promise(res=>{ if(!idb) return res(false);
+  try{ const tx=idb.transaction("kv","readwrite"); tx.objectStore("kv").put(val,key);
+    tx.oncomplete=()=>res(true); tx.onabort=tx.onerror=()=>res(false); }catch(e){ res(false); } }); }
+function idbGet(key){ return new Promise(res=>{ if(!idb) return res(null);
+  try{ const rq=idb.transaction("kv").objectStore("kv").get(key);
+    rq.onsuccess=()=>res(rq.result===undefined?null:rq.result); rq.onerror=()=>res(null); }catch(e){ res(null); } }); }
+function idbDel(key){ return new Promise(res=>{ if(!idb) return res(false);
+  try{ const tx=idb.transaction("kv","readwrite"); tx.objectStore("kv").delete(key);
+    tx.oncomplete=()=>res(true); tx.onabort=tx.onerror=()=>res(false); }catch(e){ res(false); } }); }
+if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function mitTimeout(p, ms, fallback){ return Promise.race([p, new Promise(res=>setTimeout(()=>res(fallback), ms))]); }
+let toastT;
+function toast(msg){
+  let el=document.getElementById("toast");
+  if(!el){ el=document.createElement("div"); el.id="toast"; document.body.appendChild(el); }
+  el.textContent=msg; el.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("show"), 3000);
+}
+function slug(s){ return (s||"pruefung").toLowerCase().replace(/[äöüß]/g,m=>({"ä":"ae","ö":"oe","ü":"ue","ß":"ss"}[m]))
+  .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40)||"pruefung"; }
+
+/* ===== State ===== */
+function ladePrefs(){ try{ return JSON.parse(localStorage.getItem(PREFSKEY))||{}; }catch(e){ return {}; } }
+function blankState(){
+  const p=ladePrefs();
+  return { meta:{ kunde:p.kunde||"", maschine:"", hersteller:"", typ:"", baujahr:"", seriennr:"",
+    standort:"", datum:"", pruefer:p.pruefer||"", anlass:"", bemerkung:"", naechste:"" },
+    punkte:{},          // P1..P58 -> {b:"j"|"n"|"e"|"", notiz:"", fotos:[]}
+    fotosKopf:[] };     // Typenschild + Gesamtansicht
+}
+function loadState(){
+  try{ const s=JSON.parse(localStorage.getItem(LSKEY)); if(s&&s.meta){ if(!s.punkte) s.punkte={}; if(!Array.isArray(s.fotosKopf)) s.fotosKopf=[]; return s; } }catch(e){}
+  return blankState();
+}
+let state = loadState();
+function punkt(id){ if(!state.punkte[id]) state.punkte[id]={b:"",notiz:"",fotos:[]}; return state.punkte[id]; }
+
+function ohneMedien(s){
+  const c=JSON.parse(JSON.stringify(s));
+  c.fotosKopf=[];
+  Object.values(c.punkte||{}).forEach(p=>{ p.fotos=[]; });
+  c._skelett=true;
+  return c;
+}
+let quotaGewarnt=false;
+async function persistAll(){
+  state._ts=Date.now();
+  const idbOk=await mitTimeout(idbPut(LSKEY, JSON.stringify(state)), 5000, false);
+  let lsOk=true;
+  try{ localStorage.setItem(LSKEY, JSON.stringify(ohneMedien(state))); }catch(e){ lsOk=false; }
+  try{ localStorage.setItem(PREFSKEY, JSON.stringify({kunde:state.meta.kunde||"", pruefer:state.meta.pruefer||""})); }catch(e){}
+  const hint=document.getElementById("savehint");
+  if(hint) hint.textContent = idbOk ? "gespeichert ✓" : (lsOk ? "NUR TEXT GESICHERT – Fotos gefährdet!" : "SPEICHER VOLL!");
+  if(!idbOk && !quotaGewarnt){
+    quotaGewarnt=true;
+    alert("Fotos können NICHT gespeichert werden (IndexedDB nicht verfügbar)!\nJETZT '📤 Prüfung sichern' drücken.");
+  }
+  return idbOk;
+}
+let saveT;
+function save(){
+  clearTimeout(saveT);
+  const h=document.getElementById("savehint"); if(h) h.textContent="speichere…";
+  saveT=setTimeout(()=>{ persistAll(); }, 350);
+}
+
+/* ===== Bildaufbereitung – wie im Begehungsbogen: native Kamera, EINMAL komprimieren.
+   Der eigene getUserMedia-Sucher lieferte dort nur 480×640; Typenschilder waren unlesbar. ===== */
+const MAXKANTE=2560, JPEGQ=0.9;
+function zeichneSkaliert(src,w,h){
+  let s=1; if(w>MAXKANTE||h>MAXKANTE) s=Math.min(MAXKANTE/w, MAXKANTE/h);
+  const c=document.createElement("canvas");
+  c.width=Math.max(1,Math.round(w*s)); c.height=Math.max(1,Math.round(h*s));
+  c.getContext("2d").drawImage(src,0,0,c.width,c.height);
+  return c.toDataURL("image/jpeg", JPEGQ);
+}
+function handleFile(file, cb){
+  if(!file) return;
+  const fertig=data=>cb({name:file.name||"foto.jpg", data});
+  if(self.createImageBitmap){
+    createImageBitmap(file,{imageOrientation:"from-image"})   // EXIF: Hochkant bleibt hochkant
+      .then(bm=>{ let d; try{ d=zeichneSkaliert(bm,bm.width,bm.height); }catch(e){ d=null; }
+        try{ bm.close&&bm.close(); }catch(e){}
+        if(d) fertig(d); else leseAlsBild(file,fertig); })
+      .catch(()=>leseAlsBild(file,fertig));
+  } else leseAlsBild(file,fertig);
+}
+function leseAlsBild(file,fertig){
+  const r=new FileReader();
+  r.onload=()=>{ const img=new Image();
+    img.onload=()=>{ try{ fertig(zeichneSkaliert(img,img.naturalWidth,img.naturalHeight)); }catch(e){ fertig(r.result); } };
+    img.onerror=()=>fertig(r.result); img.src=r.result; };
+  r.onerror=()=>toast("Foto konnte nicht gelesen werden.");
+  r.readAsDataURL(file);
+}
+/* Ziel + Callback müssen den <input>-change überleben, sonst verliert das Foto seinen Bezug. */
+let fotoZiel=null;
+function dateiInput(ziel, cb){ fotoZiel={ziel, cb:cb||null}; const i=document.getElementById("fotoInput"); i.value=""; i.click(); }
+document.getElementById("fotoInput").addEventListener("change",e=>{
+  const f=e.target.files&&e.target.files[0];
+  const z=fotoZiel; fotoZiel=null;
+  if(!f||!z) return;
+  handleFile(f, obj=>{ if(z.cb) z.cb(obj); });
+});
+document.addEventListener("click",e=>{
+  const b=e.target.closest && e.target.closest("[data-addfoto]");
+  if(!b) return;
+  const kat=b.dataset.addfoto;
+  dateiInput(kat, obj=>{
+    obj.kat=kat;
+    const i=state.fotosKopf.findIndex(x=>x.kat===kat);
+    if(i>=0) state.fotosKopf[i]=obj; else state.fotosKopf.push(obj);   // Singletons
+    renderKopfThumbs(); save();
+    toast(kat==="typenschild"?"Typenschild gesetzt.":"Gesamtansicht gesetzt.");
+  });
+});
+function thumb(f, onDel){
+  const d=document.createElement("div"); d.className="thumb";
+  const im=document.createElement("img"); im.src=f.data;
+  im.addEventListener("click",()=>openLupe(f));
+  d.appendChild(im);
+  const b=document.createElement("button"); b.textContent="×"; b.onclick=e=>{ e.stopPropagation(); onDel(); }; d.appendChild(b);
+  return d;
+}
+function renderKopfThumbs(){
+  const box=document.getElementById("kopfThumbs"); if(!box) return; box.innerHTML="";
+  state.fotosKopf.forEach((f,i)=>box.appendChild(thumb(f,()=>{ state.fotosKopf.splice(i,1); renderKopfThumbs(); save(); })));
+}
+/* Großansicht + Drehen – „Mängelfotos generell drehen können und vergrößert anschauen" */
+function openLupe(f){
+  const alt=document.getElementById("lupe"); if(alt) alt.remove();
+  const ov=document.createElement("div"); ov.id="lupe";
+  ov.innerHTML=`<img alt="Foto"><div class="lupebar">`
+    +`<button class="btn" id="luZu">✕ Schließen</button>`
+    +`<button class="btn" id="luL">↺ 90°</button>`
+    +`<button class="btn" id="luR">↻ 90°</button></div>`;
+  document.body.appendChild(ov);
+  const im=ov.querySelector("img"); im.src=f.data;
+  ov.querySelector("#luZu").addEventListener("click",()=>ov.remove());
+  ov.querySelector("#luL").addEventListener("click",()=>drehe(f,-90,im));
+  ov.querySelector("#luR").addEventListener("click",()=>drehe(f, 90,im));
+}
+function drehe(f, grad, imgEl){
+  const img=new Image();
+  img.onload=()=>{
+    const w=img.naturalWidth, h=img.naturalHeight;
+    const c=document.createElement("canvas"); c.width=h; c.height=w;
+    const ctx=c.getContext("2d");
+    ctx.translate(c.width/2, c.height/2); ctx.rotate(grad*Math.PI/180);
+    ctx.drawImage(img, -w/2, -h/2);
+    try{ f.data=c.toDataURL("image/jpeg", JPEGQ); }catch(e){ toast("Drehen fehlgeschlagen."); return; }
+    if(imgEl) imgEl.src=f.data;
+    renderKopfThumbs(); renderGruppen(); save();
+  };
+  img.onerror=()=>toast("Drehen fehlgeschlagen.");
+  img.src=f.data;
+}
+
+/* ===== Prüfliste rendern: Gruppen zugeklappt, große Ziele, kein Endlos-Scrollen ===== */
+function renderGruppen(){
+  const wrap=document.getElementById("gruppen"); if(!wrap) return;
+  const offen=new Set(Array.from(wrap.querySelectorAll("details[open]")).map(d=>d.dataset.g));
+  wrap.innerHTML="";
+  PRUEFLISTE.forEach(g=>{
+    const d=document.createElement("details"); d.className="grp"; d.dataset.g=g.nr;
+    if(offen.has(g.nr)) d.open=true;
+    const nMangel=g.items.filter(([id])=>(state.punkte[id]||{}).b==="n").length;
+    const nOffen =g.items.filter(([id])=>!((state.punkte[id]||{}).b)).length;
+    d.innerHTML=`<summary>${g.nr} · ${esc(g.t)}`
+      +`<span class="gzahl${nMangel?" hat":""}">${nMangel?nMangel+" Mangel":(nOffen?nOffen+" offen":"vollständig ✓")}</span>`
+      +`<span class="chev">›</span></summary>`;
+    g.items.forEach(([id, text])=>{
+      const p=punkt(id);
+      const z=document.createElement("div");
+      z.className="pz"+(p.b==="n"?" mangel":"")+(p.b==="e"?" entfaellt":"");
+      z.innerHTML=`<div class="pztxt"><span class="pznr">${id}</span>${esc(text)}</div>`
+        +`<div class="pzbtn">`
+        +`<span class="b j${p.b==="j"?" on":""}" data-b="${id}:j">✓ ja</span>`
+        +`<span class="b n${p.b==="n"?" on":""}" data-b="${id}:n">✕ Mangel</span>`
+        +`<span class="b e${p.b==="e"?" on":""}" data-b="${id}:e">– entfällt</span>`
+        +`</div><div class="pzmehr"></div>`;
+      const mehr=z.querySelector(".pzmehr");
+      // Notiz + Foto nur zeigen, wenn relevant – sonst 58× Kästen zum Scrollen.
+      if(p.b==="n"||p.b==="e"||p.notiz||(p.fotos||[]).length){
+        const ta=document.createElement("textarea");
+        ta.placeholder = p.b==="e" ? "Warum entfällt der Punkt?" : "Was genau ist mangelhaft? (kommt in den Prüfbericht)";
+        ta.value=p.notiz||"";
+        ta.addEventListener("input",()=>{ p.notiz=ta.value; save(); });
+        mehr.appendChild(ta);
+        const bf=document.createElement("button"); bf.className="btn"; bf.style.marginTop="8px"; bf.textContent="📷 Foto zum Punkt";
+        bf.addEventListener("click",()=>dateiInput(id, obj=>{ p.fotos.push(obj); renderGruppen(); save(); }));
+        mehr.appendChild(bf);
+        const th=document.createElement("div"); th.className="thumbs";
+        (p.fotos||[]).forEach((f,i)=>th.appendChild(thumb(f,()=>{ p.fotos.splice(i,1); renderGruppen(); save(); })));
+        mehr.appendChild(th);
+      }
+      z.querySelectorAll("[data-b]").forEach(b=>b.addEventListener("click",()=>{
+        const [pid,val]=b.dataset.b.split(":");
+        const pp=punkt(pid);
+        pp.b = (pp.b===val ? "" : val);
+        renderGruppen(); renderFortschritt(); renderUrteil(); save();
+      }));
+      d.appendChild(z);
+    });
+    wrap.appendChild(d);
+  });
+}
+function zaehle(){
+  let j=0,n=0,e=0,offen=0, gesamt=0;
+  PRUEFLISTE.forEach(g=>g.items.forEach(([id])=>{
+    gesamt++;
+    const b=(state.punkte[id]||{}).b;
+    if(b==="j") j++; else if(b==="n") n++; else if(b==="e") e++; else offen++;
+  }));
+  return {j,n,e,offen,gesamt};
+}
+function renderFortschritt(){
+  const z=zaehle();
+  const bearbeitet=z.gesamt-z.offen;
+  const bar=document.getElementById("fbar"); if(bar) bar.style.width=Math.round(bearbeitet/z.gesamt*100)+"%";
+  const el=document.getElementById("fzahl");
+  if(el) el.innerHTML=`<span><b>${bearbeitet}</b>/${z.gesamt} geprüft</span>`
+    +`<span>✓ ${z.j}</span><span class="${z.n?"n":""}">✕ ${z.n} Mangel</span>`
+    +`<span>– ${z.e} entfällt</span><span>${z.offen} offen</span>`;
+}
+/* Urteil bewusst zurückhaltend: das Tool zählt, die Bewertung bleibt bei der befähigten Person. */
+function renderUrteil(){
+  const box=document.getElementById("urteilBox"); if(!box) return;
+  const z=zaehle();
+  if(z.offen===z.gesamt){ box.innerHTML=`<div class="hint">Noch nichts geprüft.</div>`; return; }
+  let k="gruen", t="Keine Mängel festgestellt";
+  if(z.offen) { k="gelb"; t=`${z.offen} Punkt(e) noch offen`; }
+  if(z.n)     { k="rot";  t=`${z.n} Mangel/Mängel festgestellt`; }
+  if(z.n&&z.offen) t=`${z.n} Mangel/Mängel · ${z.offen} Punkt(e) offen`;
+  box.innerHTML=`<div class="urteil ${k}">${t}</div>`
+    +`<div class="hint">Die abschließende Bewertung (Weiterbetrieb, Auflagen, Stilllegung) trifft die
+       <b>befähigte Person</b> – das Tool zählt nur.</div>`;
+}
+
+/* ===== Export ===== */
+function dateiname(){
+  const m=state.meta;
+  return "Pruefung_"+(m.kunde?slug(m.kunde)+"__":"")+slug(m.maschine||"maschine")+"_"+(m.datum||"")+".json";
+}
+function paket(){
+  const z=zaehle();
+  return { _typ:"OAK-Maschinensicherheit", _version:1, _exportiert:new Date().toISOString(),
+    rechtsgrundlage:"§14 BetrSichV · Prüfliste BG RCI T 009",
+    dateiname:dateiname(),
+    zusammenfassung:{ gesamt:z.gesamt, ja:z.j, mangel:z.n, entfaellt:z.e, offen:z.offen },
+    pruefung: state };
+}
+function download(name, content){
+  const blob=new Blob([content],{type:"application/json;charset=utf-8"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500);
+}
+async function driveUpload(p){
+  const url=(localStorage.getItem(UPLOADKEY)||"").trim(); if(!url) return false;
+  p.token=(localStorage.getItem(UPLOADTOKENKEY)||"");
+  try{
+    await mitTimeout(fetch(url,{method:"POST",mode:"no-cors",
+      headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(p)}).catch(()=>{}), 15000, null);
+    return true;
+  }catch(e){ return false; }
+}
+document.getElementById("btnTeilen").addEventListener("click", async()=>{
+  if(!(state.meta.maschine||"").trim()){ toast("Bitte zuerst die Maschine benennen."); return; }
+  if(!(state.meta.pruefer||"").trim()){ toast("Bitte den Prüfer eintragen (befähigte Person)."); return; }
+  if(!(state.meta.anlass||"").trim()){ toast("Bitte den Anlass der Prüfung wählen (§14 BetrSichV)."); return; }
+  const z=zaehle();
+  if(z.offen && !confirm(z.offen+" Punkt(e) sind noch offen.\nTrotzdem sichern?")) return;
+  const p=paket();
+  const txt=JSON.stringify(p);
+  const hatUpload=!!(localStorage.getItem(UPLOADKEY)||"").trim();
+  if(hatUpload){
+    const ok=await driveUpload(p);
+    toast(ok?"→ Drive gesendet ✓":"Upload fehlgeschlagen – Datei wird geteilt.");
+    if(ok) return;
+  }
+  const datei=new File([txt], dateiname(), {type:"application/json"});
+  if(navigator.canShare && navigator.canShare({files:[datei]})){
+    try{ await navigator.share({files:[datei], title:dateiname()}); return; }catch(e){ /* abgebrochen */ }
+  }
+  download(dateiname(), txt);
+});
+document.getElementById("btnNeu").addEventListener("click", async()=>{
+  if(!confirm("Prüfung verwerfen und neu beginnen?\n(Kunde und Prüfer bleiben.)")) return;
+  state=blankState();
+  localStorage.removeItem(LSKEY); await idbDel(LSKEY);
+  location.reload();
+});
+
+/* ===== Start ===== */
+function init(){
+  document.querySelectorAll("[data-meta]").forEach(el=>{
+    const k=el.dataset.meta;
+    el.value=state.meta[k]||"";
+    el.addEventListener("input",()=>{ state.meta[k]=el.value; save(); });
+    el.addEventListener("change",()=>{ state.meta[k]=el.value; save(); });
+  });
+  const d=document.querySelector('[data-meta="datum"]');
+  if(d && !state.meta.datum){ const h=new Date().toISOString().slice(0,10); d.value=h; state.meta.datum=h; }
+  renderKopfThumbs(); renderGruppen(); renderFortschritt(); renderUrteil();
+}
+(async function boot(){
+  try{
+    await mitTimeout(idbReady, 1500, null);
+    const raw=await mitTimeout(idbGet(LSKEY), 4000, null);
+    // IndexedDB führt: übernehmen, sobald es nicht ÄLTER ist – beide tragen denselben _ts,
+    // ein ">" statt ">=" würde das medienlose Skelett gewinnen lassen (Fotos wären weg).
+    if(raw){ const s=JSON.parse(raw); if(s&&s.meta&&((s._ts||0)>=(state._ts||0)||state._skelett)) state=s; }
+    delete state._skelett;
+  }catch(e){}
+  if(!state.punkte) state.punkte={};
+  if(!Array.isArray(state.fotosKopf)) state.fotosKopf=[];
+  init();
+})();
+</script>
+</body>
+</html>

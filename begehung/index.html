@@ -101,11 +101,13 @@
   @keyframes pulse{50%{opacity:.6}}
   .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
   .thumb{position:relative;width:78px;height:78px;border-radius:9px;overflow:hidden;border:1px solid var(--line)}
-  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
   .thumb button{position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;border-radius:50%;
     background:rgba(27,67,50,.85);color:#fff;font-size:14px;line-height:1;cursor:pointer}
   .thumb .tnum{position:absolute;left:2px;bottom:2px;background:rgba(27,67,50,.85);color:#fff;
     font-size:12px;font-weight:600;border-radius:6px;padding:1px 6px;pointer-events:none}
+  .thumb .tmk{position:absolute;right:2px;bottom:2px;background:rgba(198,40,40,.9);color:#fff;
+    font-size:11px;font-weight:700;border-radius:6px;padding:1px 5px;pointer-events:none}
 
   /* ---- Fußleiste ---- */
   .actionbar{position:fixed;bottom:0;left:0;right:0;z-index:60;background:#fff;
@@ -173,17 +175,35 @@
   .mpicker .pcard{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:760px;max-height:80vh;
     overflow-y:auto;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
   .mpicker h3{color:var(--gruen);font-size:17px;margin-bottom:8px}
+  .mpicker h3.warn{color:#c62828}
+  .fehlliste{margin:2px 0 10px;padding-left:20px}
+  .fehlliste li{font-size:14.5px;color:#c62828;font-weight:600;margin:3px 0}
+  label.chk{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;line-height:1.35;
+    padding:11px;border:1px solid var(--line);border-radius:10px;background:#fcfdfc;cursor:pointer}
+  label.chk input{flex:0 0 auto;width:19px;height:19px;margin-top:1px}
 
-  /* ---- In-App-Kamera ---- */
-  #cam{position:fixed;inset:0;background:#000;z-index:96;display:flex;flex-direction:column}
-  #cam video{flex:1;min-height:0;width:100%;object-fit:cover;background:#000}
-  .cambar{display:flex;align-items:center;gap:12px;padding:12px 16px calc(14px + env(safe-area-inset-bottom));background:#111}
-  .cambar .btn{background:#fff;flex:0 0 auto}
-  #camShot{margin:0 auto;width:66px;height:66px;border-radius:50%;border:5px solid #fff;
-    background:var(--hell);flex:0 0 auto;cursor:pointer}
-  #camShot:active{transform:scale(.93)}
+  /* ---- Umgebungs-Screening (Laerm/Licht) ---- */
+  .warnbox{font-size:12.5px;line-height:1.45;color:#7a3b00;background:#fff6e5;
+    border-left:3px solid #e8a33d;border-radius:0 8px 8px 0;padding:9px 11px;margin:8px 0}
+  .messerg{margin-top:10px;border:1px solid var(--line);border-radius:11px;padding:12px;background:#fcfdfc}
+  .messwert{font-size:30px;font-weight:700;line-height:1.1;color:var(--dunkel)}
+  .messwert .einheit{font-size:15px;font-weight:500;color:var(--muted);margin-left:4px}
+  .messsub{font-size:12px;color:var(--muted);margin-top:3px}
+  .ampel{display:inline-block;font-size:12.5px;font-weight:700;border-radius:20px;padding:3px 11px;margin-top:7px}
+  .ampel.gruen{background:#D8F3DC;color:#1B4332}
+  .ampel.gelb{background:#fdf2d0;color:#7a5b00}
+  .ampel.rot{background:#fbe0e0;color:#a01c1c}
+  .messbalken{height:9px;border-radius:5px;background:#e8ede9;overflow:hidden;margin-top:9px}
+  .messbalken i{display:block;height:100%;background:var(--gruen);width:0;transition:width .1s linear}
 
-  /* ---- Foto-Markierung (Mängel auf Gesamtansicht) ---- */
+  /* ---- Foto-Lupe (Großansicht + Drehen) ---- */
+  #lupe{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:92;display:flex;flex-direction:column;
+    padding:calc(8px + env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom))}
+  #lupe img{flex:1;min-height:0;object-fit:contain;max-width:100%;margin:auto}
+  .lupebar{display:flex;align-items:center;gap:8px;padding:10px 4px 0;flex-wrap:wrap}
+  .lupebar .btn{background:#fff}
+
+  /* ---- Foto-Markierung (Mängel auf jedem Foto) ---- */
   #mark{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:90;display:flex;flex-direction:column;
     padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
   #mark canvas{flex:1;min-height:0;display:block;margin:auto;max-width:100%;max-height:100%;touch-action:manipulation}
@@ -239,6 +259,35 @@
   .mpal .btn.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
   .stufenrow{flex-basis:100%;display:flex;align-items:center;gap:7px;padding:1px 0 4px}
   .stufenlbl{font-size:12px;color:var(--muted)}
+  /* ---- Ebenen-Umschalter: Maschine vs. Begehung (mobil: gross, klebend) ---- */
+  .ebenenbar{position:sticky;top:0;z-index:58;display:flex;background:#fff;
+    padding:8px 12px;border-bottom:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.07)}
+  .ebenenbar .btn{flex:1;font-size:15.5px;font-weight:600;padding:15px 8px;border-radius:0;margin:0}
+  .ebenenbar .btn:first-child{border-radius:10px 0 0 10px}
+  .ebenenbar .btn:last-child{border-radius:0 10px 10px 0;border-left:none}
+  .ebenenbar .btn.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
+  .allgbox{font-size:12.5px;line-height:1.45;color:#1B4332;background:var(--akzent);
+    border-left:3px solid var(--gruen);border-radius:0 8px 8px 0;padding:10px 12px;margin:12px 0}
+  .allghint{flex:1;font-size:13.5px;color:var(--gruen);font-weight:600;align-self:center}
+  .maschliste{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+  .maschzeile{display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;width:100%;
+    background:#fcfdfc;border:1px solid var(--line);border-radius:11px;padding:13px 14px;cursor:pointer}
+  .maschzeile:active{background:var(--akzent)}
+  .mz-name{font-size:16px;font-weight:600;color:var(--dunkel)}
+  .mz-zahl{grid-row:1/3;align-self:center;font-size:12px;color:var(--muted);white-space:nowrap}
+  .mz-sub{font-size:12.5px;color:var(--muted)}
+  body.ebene-allg .nur-maschine{display:none!important}
+  body:not(.ebene-allg) .nur-allgemein{display:none!important}
+
+  /* ---- Gefaehrdungsfaktoren kompakt (Schnell-Modus) ---- */
+  .gfliste{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 4px}
+  .gfliste .chip{font-variant-numeric:tabular-nums;font-weight:600}
+  .gfgrp>summary{font-size:13.5px;padding:9px 11px}
+  .gfgrp .mpal .btn{font-size:12.5px;padding:8px 10px}
+
+  .stufenkrit{flex-basis:100%;font-size:11.5px;line-height:1.4;color:var(--muted);
+    background:#f0f6f2;border-left:3px solid var(--hell);border-radius:0 6px 6px 0;
+    padding:6px 9px;margin:0 0 8px}
   .mcard{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:10px;background:#fbfdfb}
   .mhead{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--dunkel)}
   .mhead b{flex:1;font-size:14.5px}
@@ -272,33 +321,71 @@
   </div>
 </header>
 
+<!-- EBENE: gehört der Befund der Maschine oder der Begehung? Klebt oben, große Ziele. -->
+<div class="ebenenbar">
+  <button class="btn" id="ebAllg">🏢 Begehung</button>
+  <button class="btn" id="ebMasch">🔧 Maschine</button>
+</div>
+
 <main>
-  <!-- MASCHINEN-KOPF (beide Modi) -->
-  <section class="card">
-    <input type="file" accept="image/*" capture="environment" id="allgFotoInput" hidden>
-    <label class="f">Arbeitssystem (optional – verknüpft mehrere Maschinen für die BdA)</label>
-    <input type="text" list="sysList" data-meta="arbeitssystem" placeholder="z. B. Ausschuss mahlen">
-    <datalist id="sysList"></datalist>
-    <div class="grid2" style="margin-top:8px">
-      <div><label class="f">Teilschritt / Rolle</label><input type="text" data-meta="teilschritt" placeholder="z. B. Mahlen"></div>
-      <div><label class="f">Maschine / Anlage (Name)</label><input type="text" data-meta="maschine" placeholder="leer = „Maschine 1, 2, …“"></div>
+  <!-- Nativer Kamera-/Galerie-Input für ALLE Foto-Buttons (muss im DOM bleiben) -->
+  <input type="file" accept="image/*" capture="environment" id="allgFotoInput" hidden>
+
+  <!-- ===== BEGEHUNGS-EBENE: hier fängt alles an ===== -->
+  <section class="card nur-allgemein">
+    <h2>🏢 Begehung</h2>
+    <div class="desc">Zuerst ausfüllen – gilt für den ganzen Tag und alle Maschinen.</div>
+    <div class="grid2">
+      <div><label class="f">Kunde / Firma</label><input type="text" data-meta="kunde" placeholder="z. B. Wibo Kunststofftechnik GmbH"></div>
+      <div><label class="f">Datum</label><input type="date" data-meta="datum"></div>
+      <div><label class="f">Begeher</label><input type="text" data-meta="begeher" placeholder="N. Krawielitzki"></div>
+      <div><label class="f">Bereich / Halle</label><input type="text" data-meta="bereich" placeholder="z. B. Halle 1"></div>
     </div>
-    <label class="f">Maschinentyp (setzt typische Gefährdungsfaktoren – im Detail-Modus anpassbar)</label>
-    <div class="chips" id="typChips"></div>
+    <label class="f" style="margin-top:12px">Hallen- / Standortplan</label>
+    <button class="btn big" id="btnPlanUpload">🗺 Plan aufnehmen oder wählen</button>
+    <div id="planBox"></div>
+  </section>
+
+  <section class="card nur-allgemein">
+    <h2>🔧 Maschinen &amp; Anlagen</h2>
+    <div id="maschListe"></div>
+    <button class="btn big primary" id="btnMaschNeu">＋ Maschine hinzufügen</button>
+  </section>
+
+  <section class="card nur-allgemein">
+    <h2>📋 Allgemeine Befunde</h2>
+    <div class="allgbox">Alles, was <b>keiner Maschine</b> gehört: ungeprüfte Leitern im ganzen Betrieb,
+      Fußbodenmarkierung, herumstehende Gebinde, abgelaufene Filter … Kommt ins
+      <b>Begehungsprotokoll</b>, nicht in eine Maschinen-GBU. Wird laufend gesichert.</div>
+    <button class="btn big" data-addfoto="mangel">📷 Foto vom Befund</button>
+    <div class="thumbs allgThumbs"></div>
+    <div class="hint">Foto antippen → <b>⌖ Mangel markieren</b> → Stelle antippen → Mangel im Pop-Up
+      wählen und beschreiben. Der Gefährdungsfaktor wird dabei automatisch gesetzt.</div>
+  </section>
+
+  <!-- ===== MASCHINEN-EBENE: reine Erfassung =====
+       Getippt wird nur der Name – alles andere steckt im Typenschild-Foto und in der Sprachnotiz
+       („DEMAG D60-151, ältere Maschine, fehlende Abdeckung an den Heizbändern") und wird daraus
+       für GBU und BA abgeleitet. Hersteller, Typ, Baujahr, Serien-Nr., CE, Maschinentyp,
+       Betriebszustände und Gefährdungsfaktoren sind deshalb aus der Oberfläche verschwunden –
+       nicht aus den Daten: der Export trägt sie weiterhin.
+       Der Rundgang-Leitfaden bleibt: er ist Gedankenstütze, kein Eingabefeld. -->
+  <section class="card nur-maschine">
+    <label class="f">Maschine / Anlage</label>
+    <input type="text" data-meta="maschine" placeholder="z. B. D150/3">
     <details class="rundgang">
       <summary>🧭 Rundgang – wo finde ich was?</summary>
       <div class="hint" id="rundgangBox"></div>
     </details>
   </section>
 
-  <!-- MODUS-UMSCHALTER -->
-  <div class="modusbar">
-    <button class="btn" id="modeSchnell">⚡ Schnell</button>
-    <button class="btn" id="modeDetail">🧭 Detailliert</button>
-  </div>
+  <!-- Modus-Umschalter raus: eine Ansicht genügt. Was früher „Detailliert" war,
+       entsteht am Schreibtisch aus Foto + Transkript. -->
 
-  <!-- SCHNELL-ANSICHT -->
-  <section class="card mode-schnell" id="cardSchnell">
+  <!-- SCHNELL-ANSICHT – nur für Maschinen. Die Begehungs-Startseite bleibt bewusst kahl:
+       allgemeine Infos · Maschinenliste · Fotos. Mängel entstehen dort ausschließlich über
+       Foto → Marker → Pop-Up; eine zweite Mängel-Palette wäre Doppelung. -->
+  <section class="card mode-schnell nur-maschine" id="cardSchnell">
     <div class="hint">📷 <b>Gesamtansicht</b> + <b>Typenschild</b> (mit CE) + je Befund ein <b>Mangel-Foto</b>.
       Getrennt aufnehmen – Gesamtansicht &amp; Typenschild ersetzen sich, Mangel-Fotos werden gesammelt.</div>
     <div class="toolrow">
@@ -307,106 +394,49 @@
       <button class="btn" data-addfoto="mangel">📷 Mangel-Foto</button>
     </div>
     <div class="thumbs allgThumbs"></div>
-    <button class="btn" data-mark>🖼 Mängel auf Gesamtansicht markieren</button>
+    <div class="hint">Foto antippen = groß ansehen, drehen und darauf markieren.</div>
+    <div class="toolrow">
+      <button class="btn" data-mark>🖼 Auf Gesamtansicht markieren</button>
+      <button class="btn" data-plan>🗺 Auf Standortplan verorten</button>
+    </div>
+
+    <!-- Lärm & Licht: gehören hierher, weil sie NUR vor Ort erfassbar sind – aus Foto oder
+         Sprachnotiz lässt sich kein Pegel ableiten. Ohne Erklärtext: Der Befund („belastbare
+         Messung veranlassen") entsteht im Hintergrund und steht ausformuliert in der GBU. -->
+    <div class="toolrow">
+      <button class="btn" id="btnLaerm">🔊 Lärm</button>
+      <button class="btn" id="btnLux">💡 Licht</button>
+    </div>
+    <div id="messBox"></div>
+
+    <!-- Gefährdungsfaktoren stehen hier NICHT mehr: Sie sind das Ergebnis der Auswertung, nicht
+         der Erfassung. Vor Ort tippt Nikolai „Ordnung & Sauberkeit" auf dem Foto an – 8.4 und 8.5
+         setzt das Tool selbst. Was kein Mangel abdeckt (9.1 Heben, 3.1 Hautkontakt), steht in der
+         Sprachnotiz und kommt beim Erstellen der GBU dazu. -->
     <div class="hint">🎙 <b>Sprechen (max. 2 min):</b> ① Maschine + Standort &nbsp;② Betriebsanleitung da?
       &nbsp;③ Tätigkeiten (Rüsten, Reinigung, Wartung …) &nbsp;④ je Befund: „<b>Mangel-Foto N zeigt</b> …" –
       was kann passieren · wer ist betroffen · Schwere g/m/h · Eintritt unwahrsch./möglich/wahrsch. · Kosten
       &nbsp;⑤ Sofortmaßnahme / Stilllegung?</div>
     <button class="btn rec big" id="audioRecBtn">🎙 Aufnahme starten</button>
     <div id="audioBox"></div>
-    <label class="f">Zusätzliche Hinweise (optional)</label>
-    <textarea data-meta="allg_notiz" placeholder="z. B. Auffälligkeiten, Vorfälle, erster Eindruck …"></textarea>
+    <!-- Tippfeld raus: Vor Ort wird gesprochen, nicht getippt. Das Feld meta.allg_notiz bleibt
+         im Datensatz, damit die Alt-Exporte 07/2026 unverändert lesbar sind. -->
   </section>
 
-  <!-- DETAIL-ANSICHT (Stepper) -->
-  <div class="mode-detail" id="detailWrap">
-    <div class="stepbar" id="stepBar"></div>
-    <div class="detailhead" id="detailHead"></div>
+  <!-- Umgebungs-Screening (Lärm/Licht) aus der Oberfläche genommen. Die Funktionen
+       bleiben im Code – bei Bedarf mit einem Block hier wieder sichtbar. -->
 
-    <!-- 2.1 STAMMDATEN -->
-    <section class="card step" data-step="0">
-      <h2>2.1 · Stammdaten</h2>
-      <div class="desc">Maschinendaten stehen auf dem Typenschild. Kunde &amp; Begeher bleiben gespeichert.</div>
-      <button class="btn big" data-addfoto="gesamt">📷 Gesamtansicht der Maschine</button>
-      <button class="btn big" data-addfoto="typenschild">📷 Typenschild aufnehmen</button>
-      <div class="thumbs allgThumbs"></div>
-      <div class="grid2">
-        <div><label class="f">Kunde / Firma</label><input type="text" data-meta="kunde" placeholder="z. B. Wibo Kunststofftechnik GmbH"></div>
-        <div><label class="f">Hersteller</label><input type="text" data-meta="hersteller"></div>
-        <div><label class="f">Typ / Modell</label><input type="text" data-meta="typ"></div>
-        <div><label class="f">Baujahr</label><input type="text" data-meta="baujahr" inputmode="numeric"></div>
-        <div><label class="f">Serien-Nr.</label><input type="text" data-meta="seriennr"></div>
-        <div><label class="f">Standort / Halle</label><input type="text" data-meta="standort"></div>
-        <div><label class="f">Bereich / Kostenstelle</label><input type="text" data-meta="bereich"></div>
-        <div><label class="f">Datum der Begehung</label><input type="date" data-meta="datum"></div>
-        <div><label class="f">Begeher (Name)</label><input type="text" data-meta="begeher" placeholder="N. Krawielitzki"></div>
-      </div>
-      <label class="f">CE-Kennzeichnung / Konformitätserklärung</label>
-      <div class="chips" data-single="ce">
-        <span class="chip" data-val="vorhanden">vorhanden</span>
-        <span class="chip" data-val="fehlt">fehlt</span>
-        <span class="chip" data-val="unklar">unklar</span>
-      </div>
-      <label class="f">Hersteller-Betriebsanleitung</label>
-      <div class="chips" data-single="anleitung">
-        <span class="chip" data-val="vorhanden">vorhanden</span>
-        <span class="chip" data-val="fehlt">fehlt</span>
-        <span class="chip" data-val="unklar">unklar</span>
-      </div>
-    </section>
-
-    <!-- 2.2 BETRIEBSZUSTÄNDE -->
-    <section class="card step" data-step="1">
-      <h2>2.2 · Betriebszustände</h2>
-      <div class="desc">Welche Tätigkeiten kommen real vor? (Mehrfachauswahl – wichtig für die BA)</div>
-      <div class="chips" data-multi="lebensphasen" id="phasenChips"></div>
-    </section>
-
-    <!-- 2.3 MÄNGEL -->
-    <section class="card step" data-step="2">
-      <h2>2.3 · Mängel</h2>
-      <div class="desc">Antippen = Mangel vorhanden (grün). Rechtsquelle, Einstufung und Bepreisung laufen
-        im Hintergrund mit; passende Gefährdungsfaktoren (2.5) und Prüfpunkte (2.4) werden automatisch gesetzt.</div>
-      <div class="mpal" id="mPalette"></div>
-      <button class="btn big" data-mark>🖼 Auf Gesamtansicht markieren</button>
-      <button class="btn big" data-addfoto="mangel">📷 Mangel-Foto aufnehmen</button>
-      <div class="thumbs allgThumbs"></div>
-    </section>
-
-    <!-- 2.4 MASCHINENSICHERHEIT -->
-    <section class="card step" data-step="3">
-      <h2>2.4 · Maschinensicherheit</h2>
-      <div class="desc">Prüfliste BG RCI T 008-2. <b>J</b> = erfüllt · <b>N</b> = Mangel · <b>E</b> = entfällt.</div>
-      <div id="pruefliste"></div>
-    </section>
-
-    <!-- 2.5 GEFÄHRDUNGSFAKTOREN -->
-    <section class="card step" data-step="4">
-      <h2>2.5 · Gefährdungsfaktoren</h2>
-      <div class="desc">Klassifikation BGHM (wichtig für BdA &amp; BA). Nummer antippen = vorhanden – die Auswahl erscheint darunter im Wortlaut.</div>
-      <div id="hazards"></div>
-    </section>
-
-    <!-- 2.6 MITARBEITERHINWEISE -->
-    <section class="card step" data-step="5">
-      <h2>2.6 · Mitarbeiterhinweise (optional)</h2>
-      <div class="desc">Aussagen/Anregungen der Beschäftigten. Geht <b>nicht</b> automatisch in BdA/BA ein –
-        wird separat festgehalten und zur Prüfung wiedervorgelegt.</div>
-      <textarea data-meta="ma_hinweise" placeholder="z. B. Bediener wünscht zweite Trittstufe · Absaugung zu schwach beim Anfahren …"></textarea>
-    </section>
-
-    <div class="stepnav">
-      <button class="btn" id="stepPrev">‹ Zurück</button>
-      <span id="stepInfo"></span>
-      <button class="btn" id="stepNext">Weiter ›</button>
-    </div>
-  </div>
+  <!-- Detail-Stepper raus. Er enthielt nur Felder, die am Schreibtisch aus Foto und
+       Sprachnotiz entstehen: Stammdaten/CE, Mängel-Palette, Gefährdungsfaktoren,
+       Betriebszustände, Mitarbeiterhinweise. Die Ableitung Mangel→GF→Prüfpunkt läuft
+       im Hintergrund weiter und reist im Export mit. -->
 
 </main>
 
 <div class="actionbar">
-  <button class="btn primary" id="btnClone">✓ Speichern</button>
-  <button class="btn" id="btnReset">✕ Neu</button>
+  <button class="btn primary nur-maschine" id="btnSave">✓ Speichern &amp; neu</button>
+  <span class="allghint nur-allgemein">🏢 wird laufend gesichert</span>
+  <button class="btn nur-maschine" id="btnReset">✕ Neu</button>
   <button class="btn" id="btnList">📋 <span id="machCount">0</span></button>
   <input type="file" accept="application/json,.json" id="importInput" multiple hidden>
 </div>
@@ -631,12 +661,28 @@ const PRUEFLISTE = [
 const LSKEY = "oak_begehung_v1";
 const COLLKEY = "oak_begehung_coll_v1";
 const PREFSKEY = "oak_begehung_prefs_v1";   // Kunde/Begeher überleben auch „✕ Neu"
+const PLANKEY = "oak_begehung_plan_v1";     // Standortplan-Bild (je Kunde, nur IndexedDB – zu groß für LS)
+/* ===== Zwei Ebenen: Begehung vs. Maschine =====
+   Eine Begehung findet EINMAL statt und enthält N Maschinen. Befunde, die keiner Maschine gehören
+   (ungeprüfte Leitern im ganzen Betrieb, Fußbodenmarkierung, herumstehende Gebinde, abgelaufene
+   Filter), gehören ins Begehungsprotokoll – NICHT in die GBU der zufällig danebenstehenden
+   Maschine. In der Begehung 07/2026 landeten genau solche Befunde an einzelnen Maschinen und
+   hätten deren GBU verfälscht (z. B. die Aria-Thermofluid-Kanister an der D150/9).
+   Technisch: derselbe Bogen-Aufbau, nur ein anderer Datensatz – der inaktive wird geparkt. */
+const ALLGKEY  = "oak_begehung_allg_v1";    // geparkte Begehungs-Ebene
+const MASCHKEY = "oak_begehung_masch_v1";   // geparkter Maschinen-Bogen
+const EBENEKEY = "oak_begehung_ebene";      // "masch" | "allg"
 const UPLOADKEY = "oak_begehung_uploadurl";     // Apps-Script Web-App-URL für Auto-Upload (pro Gerät)
 const UPLOADTOKENKEY = "oak_begehung_uploadtoken"; // Geheim-Token (muss mit dem Script übereinstimmen)
 
-/* ===== Persistenz: localStorage (Schnellpfad) + IndexedDB-Spiegel (großes Quota) =====
-   localStorage fasst nur ~5 MB – mit Fotos+Audio je Maschine schnell voll. IndexedDB
-   fasst hunderte MB und dient als zweite Senke; beim Start gewinnt der neuere Stand. */
+/* ===== Persistenz: IndexedDB führt, localStorage ist nur das Notnetz =====
+   Fotos/Audio liegen als base64 im State; localStorage fasst nur ~5 MB und war damit
+   schon bei wenigen Maschinen voll. Deshalb:
+   - IndexedDB (Gigabyte-Quota) trägt state UND collection vollständig inkl. Medien.
+   - localStorage hält nur die aktuelle Maschine als Skelett OHNE Fotos/Audio – falls
+     IndexedDB fehlt oder blockiert (z. B. Safari Privat), sind wenigstens die Eingaben da.
+   - Die Sammlung liegt nie in localStorage.
+   Beim Start gewinnt IndexedDB, sobald es nicht älter ist (siehe boot()). */
 let idb=null;
 const idbReady=new Promise(res=>{ try{
   const rq=indexedDB.open("oak_begehung",1);
@@ -657,27 +703,44 @@ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().cat
 
 /* ===== State ===== */
 let state = loadState();
-let collection = (function(){ try{ const c=JSON.parse(localStorage.getItem(COLLKEY)); return Array.isArray(c)?c:[]; }catch(e){ return []; } })();
+/* Sammlung kommt ausschließlich aus IndexedDB (boot()) – für localStorage ist sie zu groß. */
+let collection = [];
+/* Die jeweils INAKTIVE Ebene, damit der Export beide kennt (boot() füllt sie). */
+let allgemeinGeparkt = null;
 function updateMachineCount(){ const el=document.getElementById("machCount"); if(el) el.textContent=collection.length; }
 
 let quotaGewarnt=false;
-/* Schreibt state + collection in BEIDE Senken. true, wenn beides mindestens einmal gesichert ist. */
+/* Kopie ohne Medien – das passt auch bei vielen Fotos noch in localStorage. */
+function ohneMedien(s){
+  const c=JSON.parse(JSON.stringify(s));
+  c.fotosAllg=[]; c.audio=null;
+  Object.values(c.items||{}).forEach(i=>{ i.fotos=[]; });
+  Object.values(c.pruefung||{}).forEach(p=>{ p.fotos=[]; });
+  (c.maengel||[]).forEach(m=>{ m.fotos=[]; });
+  c._skelett=true;
+  return c;
+}
+/* IndexedDB trägt alles; localStorage bekommt nur die aktuelle Maschine ohne Medien.
+   true, wenn der vollständige Stand (inkl. Fotos) sicher in IndexedDB liegt. */
 async function persistAll(){
   state._ts=Date.now();
-  const sState=JSON.stringify(state), sColl=JSON.stringify(collection);
-  let lsState=true, lsColl=true;
-  try{ localStorage.setItem(LSKEY, sState); }catch(e){ lsState=false; }
-  try{ localStorage.setItem(COLLKEY, sColl); }catch(e){ lsColl=false; }
-  try{ localStorage.setItem(PREFSKEY, JSON.stringify({kunde:state.meta.kunde||"", begeher:state.meta.begeher||"", arbeitssystem:state.meta.arbeitssystem||""})); }catch(e){}
-  const idbState=await mitTimeout(idbPut(LSKEY, sState), 1500, false);
-  const idbColl=await mitTimeout(idbPut(COLLKEY, sColl), 1500, false);
+  const idbState=await mitTimeout(idbPut(LSKEY, JSON.stringify(state)), 5000, false);
+  const idbColl=await mitTimeout(idbPut(COLLKEY, JSON.stringify(collection)), 5000, false);
+  let lsState=true;
+  try{ localStorage.setItem(LSKEY, JSON.stringify(ohneMedien(state))); }catch(e){ lsState=false; }
+  try{ localStorage.removeItem(COLLKEY); }catch(e){}   // Altlast: früher lag die Sammlung hier
+  /* Prefs = was der ganzen BEGEHUNG gehört und jede neue Maschine erbt. Datum und Bereich
+     gehören dazu – ohne Datum hätte der Export-Dateiname keins mehr. */
+  try{ localStorage.setItem(PREFSKEY, JSON.stringify({ kunde:state.meta.kunde||"",
+    begeher:state.meta.begeher||"", datum:state.meta.datum||"", bereich:state.meta.bereich||"",
+    arbeitssystem:state.meta.arbeitssystem||"" })); }catch(e){}
   updateMachineCount();
-  const ok=(lsState||idbState)&&(lsColl||idbColl);
+  const ok=idbState&&idbColl;
   const hint=document.getElementById("savehint");
-  if(hint) hint.textContent = ok ? ((lsState&&lsColl)?"gespeichert ✓":"gespeichert (Backup) ✓") : "SPEICHER VOLL!";
+  if(hint) hint.textContent = ok ? "gespeichert ✓" : (lsState ? "NUR TEXT GESICHERT – Fotos gefährdet!" : "SPEICHER VOLL!");
   if(!ok && !quotaGewarnt){
     quotaGewarnt=true;
-    alert("Browser-Speicher voll – Änderungen können NICHT mehr gespeichert werden!\nJETZT '📤 Teilen' drücken (sichert alles als JSON), danach aufräumen.");
+    alert("Fotos und Sprachnotiz können NICHT gespeichert werden (IndexedDB nicht verfügbar)!\nJETZT '📤 Teilen' drücken (sichert alles als JSON), danach aufräumen.");
   }
   return ok;
 }
@@ -717,14 +780,75 @@ async function teileEinzel(m){
   }
   download(name, inhalt, "application/json");
 }
-async function saveAndClone(){
-  const btn=document.getElementById("btnClone");
+/* ===== Pflichtangaben – gefordert wird die QUELLE, nicht das Tippen =====
+   Hersteller, Typ und Baujahr werden nicht mehr eingetippt: Sie stehen auf dem Typenschild-Foto
+   und in der Sprachnotiz und werden daraus für GBU/BA gelesen. Pflicht ist deshalb, dass diese
+   Quellen da sind – ein fehlendes Typenschild-Foto ist die eigentliche Lücke (Begehung 07/2026:
+   Baujahr und Serien-Nr. waren bei JEDER Maschine leer, weil kein Schild lesbar war).
+   Der Haken „Typenschild fehlt/unleserlich" gibt frei und legt Mangel E4 an. */
+function fehlendePflicht(){
+  const m=state.meta, f=[];
+  if(!(m.maschine||"").trim())            f.push({feld:"maschine", txt:"Name der Maschine"});
+  if(!fotoByKat("gesamt"))                f.push({feld:"foto",     txt:"Foto der Gesamtansicht"});
+  if(!(state.audio&&state.audio.data))    f.push({feld:"audio",    txt:"Sprachnotiz (sie trägt Hersteller, Typ und die Befunde)"});
+  if(!m.typenschild_fehlt && !fotoByKat("typenschild"))
+                                          f.push({feld:"schild",   txt:"Foto vom Typenschild"});
+  return f;
+}
+/* true = Nikolai hat den Ausnahme-Haken gesetzt und will weiter; false = zurück ins Formular. */
+function pflichtDialog(fehlt){
+  return new Promise(res=>{
+    const hakenMoeglich=fehlt.some(x=>x.feld==="schild") && !fehlt.some(x=>x.feld==="maschine");
+    const pk=document.createElement("div"); pk.className="mpicker";
+    pk.innerHTML=`<div class="pcard"><h3 class="warn">⚠ Speichern nicht möglich</h3>`
+      +`<p class="hint">Diese Angaben fehlen – ohne sie lässt sich die Maschine später nicht dokumentieren.</p>`
+      +`<ul class="fehlliste">${fehlt.map(x=>`<li>${esc(x.txt)}</li>`).join("")}</ul>`
+      +(hakenMoeglich
+        ? `<label class="chk"><input type="checkbox" id="pfTs">`
+          +`<span>Typenschild fehlt oder ist unleserlich – Hersteller/Typ sind vor Ort nicht feststellbar.`
+          +`<br><b>Wird als Mangel E4 erfasst</b> (2006/42/EG Anh. I 1.7.3).</span></label>` : "")
+      +`<div class="toolrow" style="margin-top:12px">`
+      +`<button class="btn primary" id="pfBack" style="margin-left:auto">Zum Formular</button>`
+      +(hakenMoeglich?`<button class="btn" id="pfGo" disabled>Trotzdem speichern</button>`:"")
+      +`</div></div>`;
+    document.body.appendChild(pk);
+    const fin=v=>{ pk.remove(); res(v); };
+    pk.querySelector("#pfBack").addEventListener("click",()=>fin(false));
+    pk.addEventListener("click",e=>{ if(e.target===pk) fin(false); });
+    if(hakenMoeglich){
+      const cb=pk.querySelector("#pfTs"), go=pk.querySelector("#pfGo");
+      cb.addEventListener("change",()=>{ go.disabled=!cb.checked; go.classList.toggle("primary",cb.checked); });
+      go.addEventListener("click",()=>{
+        state.meta.typenschild_fehlt=true;
+        const k=MAENGEL_KATALOG.find(x=>x.id==="E4");
+        if(k && !(state.maengel||[]).some(m=>m.typ==="E4")) toggleMangel(k);   // setzt auch Prüfpunkt P1 auf N
+        renderPalette(); save(); fin(true);
+      });
+    }
+  });
+}
+async function saveAndNeu(){
+  const btn=document.getElementById("btnSave");
+  /* Die Begehungs-Ebene ist keine Maschine – sie wird nicht in die Sammlung gelegt, sondern
+     reist als eigener Block im Sammlungs-Export mit. */
+  if(imAllgModus()){
+    await persistAll();
+    toast("Allgemeine Befunde sind gesichert – sie reisen im 📤 Sammlungs-Export mit.");
+    return;
+  }
   const leer = !(state.meta.maschine||"").trim() && !(state.audio&&state.audio.data)
     && !(state.fotosAllg||[]).length && !Object.values(state.items).some(i=>i.ja)
     && !(state.maengel||[]).length && !Object.values(state.pruefung).some(p=>p.b);
   if(leer){ toast("Noch nichts erfasst – erst Fotos oder Sprachnotiz aufnehmen."); return; }
-  if(!(state.meta.maschine||"").trim()) state.meta.maschine="Maschine "+(collection.length+1);
+  let fehlt=fehlendePflicht();
+  if(fehlt.length){
+    if(!await pflichtDialog(fehlt)) return;
+    fehlt=fehlendePflicht();
+    if(fehlt.length){ toast("Bitte noch ergänzen: "+fehlt.map(x=>x.txt).join(", ")); return; }
+  }
   const name=state.meta.maschine;
+  /* Baujahr/Serien-Nr. werden nicht mehr geprüft – sie stehen auf dem Typenschild-Foto und
+     werden beim Erstellen der GBU daraus gelesen. */
   const hatUpload=!!(localStorage.getItem(UPLOADKEY)||"").trim();
   if(!confirm("„"+name+"“ speichern"+(hatUpload?" und automatisch in Drive ablegen?":" und als Datei teilen (→ Drive)?"))) return;
   const editIdx=(typeof state._editIdx==="number")?state._editIdx:null;
@@ -747,14 +871,13 @@ async function saveAndClone(){
     if(navigator.onLine===false){ rec._upload="pending"; }   // Funkloch: nicht „gesendet" behaupten
     else { if(btn) btn.textContent="Lade hoch…"; rec._upload = (await driveUpload(rec)) ? "gesendet" : "pending"; }
   }
-  // 4) für die nächste Maschine leeren: Bewertungsmuster behalten, Spezifisches + Marker + Edit-Bezug weg
-  delete state._editIdx;
-  state.meta.maschine=""; state.meta.seriennr=""; state.meta.baujahr="";
-  state.meta.allg_notiz=""; state.meta.ma_hinweise=""; state.meta.teilschritt="";
-  Object.values(state.items).forEach(it=>{ it.fotos=[]; });
-  Object.values(state.pruefung).forEach(p=>{ p.fotos=[]; });
-  (state.maengel||[]).forEach(m=>{ m.fotos=[]; });
-  state.fotosAllg=[]; state.markierungen=[]; state.audio=null;
+  // 4) für die nächste Maschine: KOMPLETT leeren.
+  //    Früher wurde hier nur „Spezifisches" gelöscht und das Bewertungsmuster absichtlich behalten –
+  //    hersteller, typ, items, pruefung und maengel wanderten also stillschweigend in die nächste
+  //    Maschine. Ergebnis der Begehung 07/2026: 12 Maschinen mit byte-identischer Gefährdungsmatrix
+  //    und dem Hersteller der Testmaschine. blankState() übernimmt via ladePrefs() nur Kunde,
+  //    Begeher und Arbeitssystem – alles andere wird bewusst neu erfasst.
+  state=blankState();
   await persistAll();
   const suffix = !hatUpload ? " & geteilt"
     : (rec._upload==="gesendet" ? " → Drive gesendet"
@@ -763,16 +886,46 @@ async function saveAndClone(){
   location.reload();
 }
 function ladePrefs(){ try{ return JSON.parse(localStorage.getItem(PREFSKEY))||{}; }catch(e){ return {}; } }
+/* Bogen der Begehungs-Ebene – gleiche Struktur, nur ohne Maschinenbezug. */
+function blankAllg(){
+  const s=blankState();
+  s._istAllgemein=true;
+  s.meta.maschine="Allgemeine Befunde";
+  return s;
+}
+function imAllgModus(){ return !!(state && state._istAllgemein); }
+/* Ebene wechseln: aktuellen Bogen parken, Gegenstück laden, neu aufbauen.
+   Reload statt Re-Render, weil init() sonst alle Listener doppelt binden würde. */
+async function wechsleEbene(zielAllg){
+  if(zielAllg===imAllgModus()) return;
+  await mitTimeout(idbPut(imAllgModus()?ALLGKEY:MASCHKEY, JSON.stringify(state)), 5000, false);
+  const raw=await mitTimeout(idbGet(zielAllg?ALLGKEY:MASCHKEY), 4000, null);
+  let neu=null; try{ neu=raw?JSON.parse(raw):null; }catch(e){}
+  state = (neu && neu.meta) ? neu : (zielAllg ? blankAllg() : blankState());
+  if(zielAllg) state._istAllgemein=true; else delete state._istAllgemein;
+  if(!Array.isArray(state.maengel)) state.maengel=[];
+  if(!Array.isArray(state.markierungen)) state.markierungen=[];
+  migrateFotos(state);
+  try{ localStorage.setItem(EBENEKEY, zielAllg?"allg":"masch"); }catch(e){}
+  await persistAll();
+  location.reload();
+}
 function blankState(){
   const p=ladePrefs();
   return { meta:{ kunde:p.kunde||"",maschine:"",hersteller:"",typ:"",baujahr:"",seriennr:"",
-    standort:"",bereich:"",datum:"",begeher:p.begeher||"",ce:"",anleitung:"",lebensphasen:[],
-    allg_notiz:"", ma_hinweise:"", modus:"schnell", arbeitssystem:p.arbeitssystem||"", teilschritt:"" },
+    standort:"",bereich:p.bereich||"",datum:p.datum||"",begeher:p.begeher||"",ce:"",anleitung:"",lebensphasen:[],
+    allg_notiz:"", ma_hinweise:"", modus:"schnell", arbeitssystem:p.arbeitssystem||"", teilschritt:"",
+    typenschild_fehlt:false, plan_pos:null, laerm:null, lux:null },
     items:{}, pruefung:{}, maengel:[], fotosAllg:[], markierungen:[], audio:null };
 }
+/* Synchroner Sofort-Stand aus localStorage (i. d. R. das Skelett ohne Fotos).
+   boot() ersetzt ihn gleich darauf durch den vollständigen Stand aus IndexedDB.
+   Beim ALLERERSTEN Start beginnt die Begehung – nicht eine Maschine: erst Kunde, Datum,
+   Begeher und Hallenplan, danach werden Maschinen hinzugefügt. */
 function loadState(){
   try{ const s=JSON.parse(localStorage.getItem(LSKEY)); if(s&&s.meta){ if(!Array.isArray(s.maengel)) s.maengel=[]; if(!Array.isArray(s.markierungen)) s.markierungen=[]; if(!s.meta.modus) s.meta.modus="schnell"; migrateFotos(s); return s; } }catch(e){}
-  return blankState();
+  try{ localStorage.setItem(EBENEKEY,"allg"); }catch(e){}
+  return blankAllg();
 }
 let saveT;
 function save(){
@@ -805,9 +958,10 @@ function init(){
       });
     });
   });
-  // Lebensphasen
+  // Lebensphasen/Betriebszustände: Auswahlfeld entfernt (gehört in die BA). Das Feld
+  // meta.lebensphasen bleibt im Datensatz, damit Alt-Exporte unverändert lesbar sind.
   const pc=document.getElementById("phasenChips");
-  LEBENSPHASEN.forEach(p=>{
+  if(pc) LEBENSPHASEN.forEach(p=>{
     const ch=document.createElement("span"); ch.className="chip"; ch.textContent=p;
     if(state.meta.lebensphasen.includes(p)) ch.classList.add("on");
     ch.addEventListener("click",()=>{
@@ -821,23 +975,45 @@ function init(){
   // Gefährdungen (Nummern-Matrix) + Maschinentyp-Vorauswahl
   renderHazards();
   renderTypen();
+  renderRundgang();   // direkt aufrufen: renderTypen() steigt ohne Maschinentyp-Chips sofort aus
   renderAllgThumbs();
   renderAudio();
   renderPruefliste();
   renderPalette();
   renderSysList();
+  renderMess();
+  renderGfKurz();
+  const gb=document.getElementById("btnGfPick");
+  if(gb) gb.addEventListener("click", gfDirektPicker);
+  // Ebenen-Leiste: große Ziele, klebt oben – vor Ort darf man nicht suchen müssen.
+  document.body.classList.toggle("ebene-allg", imAllgModus());
+  const eM=document.getElementById("ebMasch"), eA=document.getElementById("ebAllg");
+  if(eM&&eA){
+    eM.classList.toggle("on", !imAllgModus());
+    eA.classList.toggle("on", imAllgModus());
+    eM.addEventListener("click",()=>wechsleEbene(false));
+    eA.addEventListener("click",()=>wechsleEbene(true));
+  }
+  // Begehungs-Startseite
+  renderPlanBox();
+  renderMaschListe();
+  const pu=document.getElementById("btnPlanUpload");
+  if(pu) pu.addEventListener("click",()=>{
+    dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ toast("Standortplan gesetzt."); renderPlanBox(); }); });
+  });
+  const mn=document.getElementById("btnMaschNeu");
+  if(mn) mn.addEventListener("click",()=>wechsleEbene(false));
   updateMachineCount();
 
   // Modus-Umschalter + Stepper
-  document.getElementById("modeSchnell").addEventListener("click",()=>setModus("schnell"));
-  document.getElementById("modeDetail").addEventListener("click",()=>setModus("detail"));
-  document.getElementById("stepPrev").addEventListener("click",()=>setStep(curStep-1));
-  document.getElementById("stepNext").addEventListener("click",()=>setStep(curStep+1));
+  /* Modus- und Stepper-Bedienung entfällt – es gibt nur noch eine Erfassungs-Ansicht.
+     Die Funktionen bleiben, damit Alt-Stände mit meta.modus="detail" sauber laden. */
   setModus(state.meta.modus||"schnell");
 
   // Default Datum heute
+  // Datum vorbelegen: Heute ist praktisch immer richtig – Tippen dafür wäre unnötig.
   const dEl=document.querySelector('[data-meta="datum"]');
-  if(!state.meta.datum){ const t=new Date().toISOString().slice(0,10); dEl.value=t; state.meta.datum=t; }
+  if(!state.meta.datum){ const t=new Date().toISOString().slice(0,10); if(dEl) dEl.value=t; state.meta.datum=t; }
 }
 function renderSysList(){
   const dl=document.getElementById("sysList"); if(!dl) return;
@@ -852,8 +1028,12 @@ function pgroupCount(anyId){
   let n=0; g.items.forEach(([id])=>{ if(state.pruefung[id]&&state.pruefung[id].b==="n") n++; });
   const el=document.getElementById("pgc-"+g.nr); if(el){ el.textContent=n; el.classList.toggle("show",n>0); }
 }
+/* Die 58-Punkte-Liste wird hier nicht mehr angezeigt – sie ist ein eigenes Werkzeug
+   (OAK_Maschinensicherheit.html, Prüfung n. §14 BetrSichV). PRUEFLISTE bleibt im Bogen, weil
+   die Mangel→Prüfpunkt-Ableitung (k.pf) weiterläuft und im Export mitreist. */
 function renderPruefliste(){
   const wrap=document.getElementById("pruefliste");
+  if(!wrap) return;
   PRUEFLISTE.forEach(g=>{
     const d=document.createElement("details"); d.className="grp";
     d.innerHTML=`<summary><span class="gnum">${g.nr}</span><span>${g.t}</span><button class="jall" data-jall="${g.nr}">Rest = J</button><span class="gcount" id="pgc-${g.nr}">0</span><span class="chev">›</span></summary>`;
@@ -928,20 +1108,25 @@ function renderTypen(){
       state.meta.maschinentyp=t.id;
       box.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.textContent===t.label));
       let n=0; t.gf.forEach(nr=>{ if(setzeGefahr(nr)) n++; });
-      renderRundgang(); save();
-      toast(n ? t.label+": "+n+" typische Gefährdungsfaktoren gesetzt" : t.label+": typische Faktoren waren schon gesetzt");
+      renderRundgang(); renderGfKurz(); save();
+      toast(n ? t.label+": "+n+" typische Gefährdungsfaktoren gesetzt – beim Rundgang ergänzen!"
+              : t.label+": typische Faktoren waren schon gesetzt");
     });
     box.appendChild(ch);
   });
   renderRundgang();
 }
 /* Rundgang-Leitfaden: Grundrundgang + typspezifische Punkte (Gedankenstütze vor der Maschine) */
+/* Rundgang-Leitfaden: reine Gedankenstütze („wo muss ich hinschauen"), kein Eingabefeld – und
+   damit vor Ort genau richtig. Früher hing er an der Maschinentyp-Auswahl; die ist raus, also
+   stehen jetzt alle Typen aufklappbar da. Kein Tippen, kein Vorwählen. */
 function renderRundgang(){
   const box=document.getElementById("rundgangBox"); if(!box) return;
-  const t=MASCHINENTYPEN.find(x=>x.id===state.meta.maschinentyp);
   box.innerHTML="<b>Grundrundgang (Laufweg):</b><br>"+RUNDGANG_BASIS.join("<br>")
-    +(t&&t.rundgang ? "<br><br><b>Speziell "+t.label+":</b><br>"+t.rundgang.map(s=>"• "+s).join("<br>")
-      : "<br><br><i>Maschinentyp oben wählen → typspezifische Prüf-Orte erscheinen hier.</i>");
+    +"<div style='margin-top:9px'>"+MASCHINENTYPEN.filter(t=>t.rundgang&&t.rundgang.length)
+      .map(t=>`<details class="rundgang"><summary>${esc(t.label)}</summary>`
+        +`<div style="padding:2px 0 6px">${t.rundgang.map(s=>"• "+esc(s)).join("<br>")}</div></details>`).join("")
+    +"</div>";
 }
 /* ===== Modus (Schnell/Detail) + Stepper ===== */
 const STEP_LABELS=["Stammdaten","Betriebszustände","Mängel","Maschinensicherheit","Gefährdungsfaktoren","Mitarbeiterhinweise"];
@@ -950,9 +1135,10 @@ function setModus(m){
   state.meta.modus=(m==="detail")?"detail":"schnell";
   const detail=state.meta.modus==="detail";
   document.getElementById("cardSchnell").classList.toggle("hide",detail);
-  document.getElementById("detailWrap").classList.toggle("hide",!detail);
-  document.getElementById("modeSchnell").classList.toggle("on",!detail);
-  document.getElementById("modeDetail").classList.toggle("on",detail);
+  const dw=document.getElementById("detailWrap"); if(dw) dw.classList.toggle("hide",!detail);
+  const ms=document.getElementById("modeSchnell"), md=document.getElementById("modeDetail");
+  if(ms) ms.classList.toggle("on",!detail);
+  if(md) md.classList.toggle("on",detail);
   if(detail) setStep(curStep);
   save();
 }
@@ -963,6 +1149,7 @@ function setStep(i){
   const info=document.getElementById("stepInfo");
   if(info) info.textContent="Schritt "+(curStep+1)+"/"+STEP_LABELS.length+" · "+STEP_LABELS[curStep];
   const prev=document.getElementById("stepPrev"), next=document.getElementById("stepNext");
+  if(!prev||!next) return;
   if(prev) prev.style.visibility=curStep===0?"hidden":"visible";
   if(next) next.style.visibility=curStep===STEP_LABELS.length-1?"hidden":"visible";
   renderDetailHead();
@@ -1029,43 +1216,73 @@ function updateHazSel(gnr){
    gf = Gefährdungsfaktoren (BGHM), pf = Prüfpunkte (T 008-2 → N), die der Mangel automatisch setzt.
    rate/mn = Hintergrund-Bepreisung + Standard-Maßnahme (nicht im UI, landen im Export). */
 const MAENGEL_KATALOG = [
- {id:"A1", label:"Schutzeinrichtung fehlt/unwirksam (Düsenschutz, seitlich, Antrieb)", rq:"DGUV 113-606 3.1.3 · BetrSichV Anh.1", mass:"Ort/Bauteil", mn:"Schutzhaube/Abdeckung + Endschalter/Zuhaltung nachrüsten", rate:400, gf:["1.1"], pf:["P17"]},
- {id:"A2", label:"Schutzzaun fehlt/unzureichend · Bodenspalt", rq:"DGUV 113-606 3.1.3 · EN ISO 13857", mass:"Länge (m)", perUnit:true, rate:250, mn:"Zaun n. EN ISO 13857; Spalt < 180 mm sichern", gf:["1.1"], pf:["P20"]},
- {id:"A3", label:"Not-Halt fehlt/defekt", rq:"T 009 · BetrSichV", mn:"Not-Halt nachrüsten/instand setzen", rate:500, gf:["1.1"], pf:["P10"]},
- {id:"A4", label:"Kein Wiederanlaufschutz", rq:"EN ISO 14118", mn:"Wiederanlaufsperre nachrüsten", rate:500, gf:["1.4"], pf:["P32"]},
- {id:"B1", label:"Heiße Oberflächen ungesichert (Düse/Zylinder/Heizband)", rq:"DGUV 113-606 3.1.7", mn:"Isolieren/abschirmen + Hitzeschutz-PSA", rate:400, gf:["6.1"], pf:[]},
- {id:"B2", label:"Materialstau-/Verpuffungsschutz fehlt (POM/PVC/PA)", rq:"DGUV 113-606 3.1.9/3.1.10", mn:"Materialführung sichern; Schutzvisier; Anfahrregeln", rate:300, gf:["3.4"], pf:[]},
- {id:"B3", label:"Absaugung / Zersetzungsgase (z. B. Formaldehyd)", rq:"DGUV 113-606 3.1.9 · T 009 4.6.1", mn:"Absaugung; Atemschutz bei Störung", rate:600, gf:["3.2"], pf:["P51"]},
- {id:"B4", label:"Brand-/Explosionsschutz (Staub, Ex-Bereich)", rq:"DGUV 113-606 3.1.10", mn:"Ex-Schutzdokument; ex-Absaugung; Zündquellen vermeiden", rate:800, gf:["5.2"], pf:[]},
- {id:"C1", label:"Leiter/Tritt/Podest/Zugang unsicher", rq:"DGUV 113-606 3.3.2 · T 009 4.2.4", mn:"Normkonforme Podesttreppe + Handlauf", rate:400, gf:["1.5","1.6"], pf:["P11"]},
- {id:"C2", label:"Kran/Transport über Bedienbereich ungesichert", rq:"DGUV 113-606 3.3.3", mn:"Zaun erweitern + Kran-Endschalter/Verriegelung + Warnleuchte", rate:1500, gf:["1.3"], pf:[]},
- {id:"C3", label:"Leckage / Boden rutschig (Öl/Granulat)", rq:"DGUV 113-606 3.1.2/3.1.5", mn:"Leckage beheben; Reinigung; Sicherheitsschuhe", rate:300, gf:["1.5"], pf:[]},
- {id:"C4", label:"Beleuchtung unzureichend (Werkzeugraum)", rq:"T 009 4.3.3 · ASR A3.4", mn:"LED-Maschinenleuchte (IP67)", rate:250, gf:["8.2"], pf:["P52"]},
- {id:"C5", label:"Absturzsicherung hochgelegener Plätze fehlt", rq:"ASR A2.1 · DGUV 113-606 3.3.2", mn:"Geländer/Absturzsicherung nachrüsten", rate:600, gf:["1.6"], pf:["P11"]},
- {id:"D1", label:"E-Prüfung (DGUV V3) überfällig / Elektrik mangelhaft", rq:"DGUV 113-606 3.1.13 · DGUV V3", mn:"DGUV-V3-Prüfung durch Elektrofachkraft", rate:200, gf:["2.1"], pf:["P27","P28"]},
- {id:"D2", label:"Hydraulik undicht / Schlauch defekt (Leckage)", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Schläuche tauschen; Druckentlastung prüfen", rate:500, gf:["1.4"], pf:["P33","P34"], stufen:true},
- {id:"D3", label:"Pneumatik undicht / Leitung defekt (Leckage)", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Leitungen tauschen; Druckentlastung prüfen", rate:400, gf:["1.4"], pf:["P44","P45"], stufen:true},
- {id:"E1", label:"CE/Konformität/Betriebsanleitung fehlt", rq:"T 009 Kap. 2", mn:"Unterlagen beschaffen/nachfordern", rate:150, gf:[], pf:["P2","P3"]},
- {id:"E2", label:"BA/Unterweisung fehlt", rq:"DGUV 113-606 Kap. 2 · T 009 4.1.2", mn:"BA erstellen; Unterweisung + Dokumentation", rate:150, gf:[], pf:["P54","P55"]},
- {id:"E3", label:"Kennzeichnung fehlt (Gebinde/Sicherheitszeichen)", rq:"TRGS 201 · ASR A1.3", mn:"Kennzeichnung anbringen", rate:150, gf:["8.4"], pf:["P4"]},
- {id:"X", label:"Sonstiger Mangel", rq:"", mass:"Beschreibung", mn:"", rate:0, gf:[], pf:[]},
+ {id:"A1", kurz:"Schutzeinrichtung fehlt", haeufig:true, label:"Schutzeinrichtung fehlt/unwirksam (Düsenschutz, seitlich, Antrieb)", rq:"DGUV 113-606 3.1.3 · BetrSichV Anh.1", mass:"Ort/Bauteil", mn:"Schutzhaube/Abdeckung + Endschalter/Zuhaltung nachrüsten", rate:400, gf:["1.1"], pf:["P17"]},
+ {id:"A2", kurz:"Schutzzaun / Abstand unzureichend", haeufig:true, label:"Schutzzaun fehlt/unzureichend · Bodenspalt", rq:"DGUV 113-606 3.1.3 · EN ISO 13857", mass:"Länge (m)", perUnit:true, rate:250, mn:"Zaun n. EN ISO 13857; Spalt < 180 mm sichern", gf:["1.1"], pf:["P20"]},
+ {id:"A3", kurz:"Not-Halt fehlt/defekt", haeufig:false, label:"Not-Halt fehlt/defekt", rq:"T 009 · BetrSichV", mn:"Not-Halt nachrüsten/instand setzen", rate:500, gf:["1.1"], pf:["P10"]},
+ {id:"A4", kurz:"Kein Wiederanlaufschutz", haeufig:false, label:"Kein Wiederanlaufschutz", rq:"EN ISO 14118", mn:"Wiederanlaufsperre nachrüsten", rate:500, gf:["1.4"], pf:["P32"]},
+ {id:"B1", kurz:"Heiße Oberfläche ungesichert", haeufig:true, label:"Heiße Oberflächen ungesichert (Düse/Zylinder/Heizband)", rq:"DGUV 113-606 3.1.7", mn:"Isolieren/abschirmen + Hitzeschutz-PSA", rate:400, gf:["6.1"], pf:[]},
+ {id:"B2", kurz:"Materialstau / Verpuffung", haeufig:false, label:"Materialstau-/Verpuffungsschutz fehlt (POM/PVC/PA)", rq:"DGUV 113-606 3.1.9/3.1.10", mn:"Materialführung sichern; Schutzvisier; Anfahrregeln", rate:300, gf:["3.4"], pf:[]},
+ {id:"B3", kurz:"Absaugung / Zersetzungsgase", haeufig:false, label:"Absaugung / Zersetzungsgase (z. B. Formaldehyd)", rq:"DGUV 113-606 3.1.9 · T 009 4.6.1", mn:"Absaugung; Atemschutz bei Störung", rate:600, gf:["3.2"], pf:["P51"]},
+ {id:"B4", kurz:"Brand- / Explosionsschutz", haeufig:false, label:"Brand-/Explosionsschutz (Staub, Ex-Bereich)", rq:"DGUV 113-606 3.1.10", mn:"Ex-Schutzdokument; ex-Absaugung; Zündquellen vermeiden", rate:800, gf:["5.2"], pf:[]},
+ {id:"C1", kurz:"Leiter / Tritt unsicher", haeufig:true, label:"Leiter/Tritt/Podest/Zugang unsicher", rq:"DGUV 113-606 3.3.2 · T 009 4.2.4", mn:"Normkonforme Podesttreppe + Handlauf", rate:400, gf:["1.5","1.6"], pf:["P11"]},
+ {id:"C2", kurz:"Kran/Roboter über Bedienbereich", haeufig:true, label:"Kran/Transport über Bedienbereich ungesichert", rq:"DGUV 113-606 3.3.3", mn:"Zaun erweitern + Kran-Endschalter/Verriegelung + Warnleuchte", rate:1500, gf:["1.3"], pf:[]},
+ {id:"C3", kurz:"Leckage", haeufig:true, label:"Leckage / Boden rutschig (Öl/Granulat)", rq:"DGUV 113-606 3.1.2/3.1.5 · §10 BetrSichV", mn:"Leckage beheben; Reinigung; Sicherheitsschuhe", rate:300, gf:["1.5"], pf:[], stufen:true},
+ {id:"C4", kurz:"Beleuchtung unzureichend", haeufig:false, label:"Beleuchtung unzureichend (Werkzeugraum)", rq:"T 009 4.3.3 · ASR A3.4", mn:"LED-Maschinenleuchte (IP67)", rate:250, gf:["8.2"], pf:["P52"]},
+ {id:"C5", kurz:"Absturzsicherung fehlt", haeufig:false, label:"Absturzsicherung hochgelegener Plätze fehlt", rq:"ASR A2.1 · DGUV 113-606 3.3.2", mn:"Geländer/Absturzsicherung nachrüsten", rate:600, gf:["1.6"], pf:["P11"]},
+ {id:"C6", kurz:"Lärm auffällig", haeufig:false, label:"Lärm: Auslösewert möglicherweise erreicht – belastbare Messung nötig", rq:"LärmVibrationsArbSchV §3/§6 · DIN EN ISO 9612", mn:"Lärmmessung n. DIN EN ISO 9612 beauftragen; bis dahin Gehörschutz bereitstellen", rate:600, gf:["7.1"], pf:["P51"]},
+ {id:"C7", kurz:"Ordnung & Sauberkeit", haeufig:true, label:"Ordnung & Sauberkeit unzureichend", rq:"ASR A2.3 · §4 Abs.2 ArbStättV · DGUV V1 §17", mn:"Ordnung herstellen; Reinigungsplan; Lager-/Abstellplätze festlegen und kennzeichnen", rate:200, gf:["8.4","8.5"], pf:["P53"]},
+ {id:"C8", kurz:"Stolperstelle / Verkehrsweg", haeufig:true, label:"Stolperstelle / Verkehrsweg eingeengt oder ungekennzeichnet", rq:"ASR A1.8 · ASR A1.3 · §10 BetrSichV", mn:"Stolperstelle beseitigen (Kabel/Leitungen verlegen) oder dauerhaft kennzeichnen; Verkehrsweg freihalten", rate:250, gf:["1.5","8.4"], pf:["P53"]},
+ {id:"D1", kurz:"Elektrik mangelhaft", haeufig:false, label:"E-Prüfung (DGUV V3) überfällig / Elektrik mangelhaft", rq:"DGUV 113-606 3.1.13 · DGUV V3", mn:"DGUV-V3-Prüfung durch Elektrofachkraft", rate:200, gf:["2.1"], pf:["P27","P28"]},
+ {id:"D2", kurz:"Hydraulik undicht", haeufig:false, label:"Hydraulik undicht / Schlauch defekt (Leckage)", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Schläuche tauschen; Druckentlastung prüfen", rate:500, gf:["1.4"], pf:["P33","P34"], stufen:true},
+ {id:"D3", kurz:"Pneumatik undicht", haeufig:false, label:"Pneumatik undicht / Leitung defekt (Leckage)", rq:"DGUV 113-606 3.1.12", mn:"Leckage beheben; Leitungen tauschen; Druckentlastung prüfen", rate:400, gf:["1.4"], pf:["P44","P45"], stufen:true},
+ {id:"D4", kurz:"Prüfung abgelaufen", haeufig:true, label:"Wiederkehrende Prüfung überfällig oder fehlt (Arbeitsmittel)", rq:"§14 BetrSichV · §3 Abs.6 BetrSichV", mn:"Prüffrist festlegen; Prüfung durch befähigte Person veranlassen; Prüfnachweis ablegen", rate:250, gf:[], pf:["P5"]},
+ {id:"E1", kurz:"CE / Anleitung fehlt", haeufig:false, label:"CE/Konformität/Betriebsanleitung fehlt", rq:"T 009 Kap. 2", mn:"Unterlagen beschaffen/nachfordern", rate:150, gf:[], pf:["P2","P3"]},
+ {id:"E2", kurz:"Betriebsanweisung fehlt", haeufig:true, label:"BA/Unterweisung fehlt", rq:"DGUV 113-606 Kap. 2 · T 009 4.1.2", mn:"BA erstellen; Unterweisung + Dokumentation", rate:150, gf:[], pf:["P54","P55"]},
+ {id:"E3", kurz:"Kennzeichnung fehlt/unlesbar", haeufig:true, label:"Kennzeichnung fehlt (Gebinde/Sicherheitszeichen)", rq:"TRGS 201 · ASR A1.3", mn:"Kennzeichnung anbringen", rate:150, gf:["8.4"], pf:["P4"]},
+ {id:"E4", kurz:"Typenschild fehlt/unlesbar", haeufig:true, label:"Typenschild fehlt/unleserlich (Hersteller/Typ nicht feststellbar)", rq:"2006/42/EG Anh. I 1.7.3 · T 009 Kap. 2", mn:"Angaben beim Hersteller erfragen; Maschine dauerhaft kennzeichnen", rate:150, gf:[], pf:["P1"]},
+ {id:"X", kurz:"Sonstiger Mangel", haeufig:false, label:"Sonstiger Mangel", rq:"", mass:"Beschreibung", mn:"", rate:0, gf:[], pf:[]},
 ];
 const STUFEN_FAKTOR={klein:0.5, mittel:1, "groß":1.8};   // skaliert den Katalog-Richtpreis
+/* Die Stufe beschreibt das AUSMASS (und damit die Kosten) – NICHT das Risiko. Bewusst getrennt:
+   eine kleine Leckage im Verkehrsweg kann gefährlicher sein als eine große in der Auffangwanne.
+   Das Risikoband (gering/mittel/hoch) entsteht erst in der BdA. Darum hier klein/mittel/groß.
+   Kriterium = was beim Rundgang sichtbar ist, damit die Wahl vor Ort keine Ermessensfrage ist. */
+const STUFEN_KRITERIUM={
+  klein:  "Ölfilm/Schwitzen an der Verschraubung · kein Tropfenfall, keine Lache → beobachten, planmäßig instand setzen",
+  mittel: "sichtbares Tropfen ODER Lache < DIN A4 · aufgefangen (Wanne/Bindemittel), nicht im Verkehrsweg → Instandsetzung terminieren",
+  "groß": "stetiges Tropfen/Rinnsal, Lache > DIN A4 ODER Öl im Verkehrsweg (Rutschgefahr) → sofort handeln (vgl. BGHM-Bericht 2.2 „großflächig“)"
+};
+/* Die Palette zeigt die HÄUFIGEN Mängel mit kurzem Namen (Feldtauglichkeit: kein Scrollen,
+   große Ziele). Alles Weitere steckt hinter „weitere Mängel" – nichts geht verloren, die
+   amtlichen Langtexte (label), Rechtsquellen und Ableitungen bleiben unverändert dahinter.
+   Reihenfolge der Häufigen = wie oft sie in der Begehung 07/2026 tatsächlich vorkamen. */
 function renderPalette(){
-  const pal=document.getElementById("mPalette"); if(!pal) return; pal.innerHTML="";
+  // Nur die Maschinen-Ebene hat eine Palette. Auf der Begehungs-Startseite entstehen Mängel
+  // ausschließlich über Foto → Marker → Pop-Up (markPicker) – das hält sie übersichtlich.
+  const pal=document.getElementById("mPalette");
+  if(!pal) return; pal.innerHTML="";
+  const rest=document.createElement("details"); rest.className="grp";
+  const anzRest=MAENGEL_KATALOG.filter(k=>!k.haeufig).length;
+  rest.innerHTML=`<summary>weitere Mängel (${anzRest}) <span class="chev">›</span></summary>`;
+  const restPal=document.createElement("div"); restPal.className="mpal"; rest.appendChild(restPal);
+
   MAENGEL_KATALOG.forEach(k=>{
     const eintrag=(state.maengel||[]).find(m=>m.typ===k.id);
     const b=document.createElement("button"); b.type="button"; b.className="btn"+(eintrag?" on":"");
-    b.textContent=k.label;
+    b.textContent=k.kurz||k.label;
+    b.title=k.label+(k.rq?" · "+k.rq:"");
     b.addEventListener("click",()=>{ toggleMangel(k); renderPalette(); });
-    pal.appendChild(b);
-    // Einstufung (z. B. Leckage klein/mittel/groß) direkt unter dem aktiven Button
+    // Ein aktiver Mangel bleibt immer sichtbar, auch wenn er nicht zu den häufigen zählt.
+    (k.haeufig||eintrag ? pal : restPal).appendChild(b);
+    // Ausmaß (Leckagen: klein/mittel/groß) direkt unter dem aktiven Button – mit Kriterium,
+    // damit die Stufe nicht geraten werden muss.
     if(eintrag && k.stufen){
       const row=document.createElement("div"); row.className="stufenrow";
-      const lbl=document.createElement("span"); lbl.className="stufenlbl"; lbl.textContent="Einstufung:";
+      const lbl=document.createElement("span"); lbl.className="stufenlbl"; lbl.textContent="Ausmaß:";
       row.appendChild(lbl);
       ["klein","mittel","groß"].forEach(s=>{
         const c=document.createElement("span"); c.className="chip"+(eintrag.stufe===s?" on":""); c.textContent=s;
+        c.title=STUFEN_KRITERIUM[s];
         c.addEventListener("click",()=>{
           eintrag.stufe=(eintrag.stufe===s?"":s);
           eintrag.kosten=String(Math.round((k.rate||0)*(STUFEN_FAKTOR[eintrag.stufe]||1)));
@@ -1074,8 +1291,60 @@ function renderPalette(){
         row.appendChild(c);
       });
       pal.appendChild(row);
+      const krit=document.createElement("div"); krit.className="stufenkrit";
+      krit.textContent = eintrag.stufe
+        ? STUFEN_KRITERIUM[eintrag.stufe]
+        : "klein = Ölfilm, kein Tropfen · mittel = Tropfen oder Lache < DIN A4, aufgefangen · groß = Rinnsal, Lache > DIN A4 oder Öl im Verkehrsweg";
+      pal.appendChild(krit);
     }
   });
+  if(restPal.children.length) pal.appendChild(rest);
+}
+/* ===== Gefährdungsfaktoren sichtbar machen =====
+   Sie sind der Kern der GBU, standen im Schnell-Modus aber nirgends – gesetzt wurden sie nur
+   still über den Maschinentyp und die Mangel-Ableitung. Was die Begehung 07/2026 zusätzlich
+   ergab (8.4/8.5, 9.x, 3.1), wäre so nie in die GBU gekommen. */
+function hazardText(nr){
+  for(const g of HAZARDS){ const f=g.items.find(i=>i[0]===nr); if(f) return f[1]; }
+  return nr;
+}
+function gfSortiert(){
+  return Object.keys(state.items||{}).filter(k=>state.items[k].ja)
+    .sort((a,b)=>{ const [a1,a2]=a.split(".").map(Number), [b1,b2]=b.split(".").map(Number);
+      return a1-b1 || a2-b2; });
+}
+function renderGfKurz(){
+  const box=document.getElementById("gfKurz"); if(!box) return;
+  const gesetzt=gfSortiert();
+  if(!gesetzt.length){
+    box.innerHTML=`<div class="warnbox">⚠ Noch <b>kein Gefährdungsfaktor</b> gesetzt – ohne sie hat die GBU keinen Inhalt.
+      Maschinentyp wählen (setzt die typischen) und beim Rundgang ergänzen.</div>`;
+    return;
+  }
+  box.innerHTML=`<div class="gfliste">`+gesetzt.map(nr=>
+      `<span class="chip on" data-gfdel="${nr}" title="${esc(hazardText(nr))} – antippen entfernt">${nr}</span>`).join("")
+    +`</div><div class="messsub">${gesetzt.length} Faktor(en) · aus Maschinentyp + Mängeln + deiner Auswahl · antippen entfernt</div>`;
+  box.querySelectorAll("[data-gfdel]").forEach(c=>c.addEventListener("click",()=>{
+    item(c.dataset.gfdel).ja=false; save(); renderGfKurz(); renderHazards();
+  }));
+}
+function gfDirektPicker(){
+  const pk=document.createElement("div"); pk.className="mpicker";
+  pk.innerHTML=`<div class="pcard"><h3>Gefährdungsfaktoren (BGHM)</h3>`
+    +`<p class="hint">Grün = gesetzt, Antippen schaltet um. <b>Diese Faktoren bilden die GBU</b> –
+       was hier fehlt, taucht später nicht auf.</p>`
+    +HAZARDS.map(g=>`<details class="grp gfgrp"><summary>${g.nr} · ${esc(g.kurz||g.t)}<span class="chev">›</span></summary>`
+      +`<div class="mpal">`+g.items.map(([nr,t])=>
+          `<button class="btn${(state.items[nr]&&state.items[nr].ja)?" on":""}" data-gf="${nr}">${nr} · ${esc(t)}</button>`).join("")
+      +`</div></details>`).join("")
+    +`<div class="toolrow" style="margin-top:10px"><button class="btn primary" id="gfOk" style="margin-left:auto">Fertig</button></div></div>`;
+  document.body.appendChild(pk);
+  const zu=()=>{ pk.remove(); renderGfKurz(); renderHazards(); save(); };
+  pk.querySelector("#gfOk").addEventListener("click",zu);
+  pk.addEventListener("click",e=>{ if(e.target===pk) zu(); });
+  pk.querySelectorAll("[data-gf]").forEach(b=>b.addEventListener("click",()=>{
+    const it=item(b.dataset.gf); it.ja=!it.ja; b.classList.toggle("on", it.ja);
+  }));
 }
 /* Mangel setzt automatisch passende Gefährdungsfaktoren + Prüfpunkte (N) */
 function setzeGefahr(nr){
@@ -1098,6 +1367,7 @@ function toggleMangel(k){
   let nGef=0, nPf=0;
   (k.gf||[]).forEach(nr=>{ if(setzeGefahr(nr)) nGef++; });
   (k.pf||[]).forEach(id=>{ if(setzePruefpunktN(id)) nPf++; });
+  renderGfKurz();
   save();
   if(nGef||nPf) toast("Automatisch gesetzt: "
     +(nGef?nGef+" Gefährdungsfaktor(en)":"")
@@ -1116,62 +1386,85 @@ function addFotoKat(kat,obj){
     if(i>=0) state.fotosAllg[i]=obj; else state.fotosAllg.push(obj);
   } else state.fotosAllg.push(obj);
 }
-function migrateFotos(s){ (s.fotosAllg||[]).forEach(f=>{ if(!f.kat) f.kat=(f.name==="gesamtansicht_markiert.jpg"?"gesamt_markiert":"sonstige"); }); }
-/* Alle [data-addfoto]-Buttons öffnen die In-App-Kamera (Fallback: Datei/Galerie) */
+function migrateFotos(s){
+  (s.fotosAllg||[]).forEach(f=>{
+    if(!f.kat) f.kat=(f.name==="gesamtansicht_markiert.jpg"?"gesamt_markiert":"sonstige");
+    if(!Array.isArray(f.markierungen)) f.markierungen=[];
+  });
+  /* Früher hingen die Marker global am Bogen und galten immer der Gesamtansicht. Jetzt trägt
+     jedes Foto seine eigenen – Altstände einmalig an die Gesamtansicht hängen. */
+  if(Array.isArray(s.markierungen) && s.markierungen.length){
+    const g=(s.fotosAllg||[]).find(f=>f.kat==="gesamt");
+    if(g && !g.markierungen.length) g.markierungen=JSON.parse(JSON.stringify(s.markierungen));
+  }
+}
+/* Alle [data-addfoto]-Buttons öffnen die native Kamera-App.
+   Ziel-Kategorie und Callback müssen den Umweg über den <input>-change überleben – sonst
+   landet das Foto ohne kat in fotosAllg (genau das passierte früher im Galerie-Fallback). */
+let fotoZiel=null;
+function dateiInput(kat, cb){
+  fotoZiel={ kat:kat||"sonstige", cb:cb||null };
+  const ai=document.getElementById("allgFotoInput");
+  ai.value=""; ai.click();
+}
+document.getElementById("allgFotoInput").addEventListener("change",e=>{
+  const f=e.target.files&&e.target.files[0];
+  const ziel=fotoZiel||{kat:"sonstige",cb:null}; fotoZiel=null;
+  if(!f) return;
+  handleFile(f, obj=>{
+    if(ziel.kat==="__plan"){ if(ziel.cb) ziel.cb(obj); return; }   // Standortplan ist kein Maschinenfoto
+    addFotoKat(ziel.kat, obj);
+    renderAllgThumbs(); save();
+    if(ziel.cb) ziel.cb(obj);
+  });
+});
 document.addEventListener("click",e=>{
   const b=e.target.closest && e.target.closest("[data-addfoto]");
   if(!b) return;
   const kat=b.dataset.addfoto||"sonstige";
-  openCamera(obj=>{ addFotoKat(kat,obj); renderAllgThumbs(); save();
-    if(kat==="gesamt"||kat==="typenschild") toast(kat==="gesamt"?"Gesamtansicht gesetzt.":"Typenschild gesetzt."); });
-});
-function dateiInput(){ const ai=document.getElementById("allgFotoInput"); ai.value=""; ai.click(); }
-document.getElementById("allgFotoInput").addEventListener("change",e=>{
-  handleFile(e.target.files[0], obj=>{ state.fotosAllg.push(obj); renderAllgThumbs(); save(); });
-});
-/* In-App-Kamera: Live-Bild + Auslöser. Öffnet die Kamera direkt (kein Datei-Explorer);
-   ohne Kamera-Zugriff Fallback auf den Datei-/Galerie-Input. HTTPS/localhost vorausgesetzt. */
-async function openCamera(cb){
-  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ dateiInput(); return; }
-  let stream;
-  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false}); }
-  catch(err){ toast("Kein Kamerazugriff – bitte erlauben oder Galerie nutzen."); dateiInput(); return; }
-  const ov=document.createElement("div"); ov.id="cam";
-  ov.innerHTML=`<video autoplay playsinline muted></video>`
-    +`<div class="cambar"><button class="btn" id="camCancel">✕</button>`
-    +`<button id="camShot" title="Auslösen"></button>`
-    +`<button class="btn" id="camGal">🖼 Galerie</button></div>`;
-  document.body.appendChild(ov);
-  const video=ov.querySelector("video");
-  try{ video.srcObject=stream; }catch(e){ video.src=""; }
-  const stop=()=>{ try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){} ov.remove(); };
-  ov.querySelector("#camCancel").addEventListener("click",stop);
-  ov.querySelector("#camGal").addEventListener("click",()=>{ stop(); dateiInput(); });
-  ov.querySelector("#camShot").addEventListener("click",()=>{
-    const w=video.videoWidth||1280, h=video.videoHeight||720;
-    const c=document.createElement("canvas"); c.width=w; c.height=h;
-    try{ c.getContext("2d").drawImage(video,0,0,w,h); }catch(e){}
-    let data=null; try{ data=c.toDataURL("image/jpeg",0.85); }catch(e){}
-    stop();
-    if(data) shrink(data, d=>cb({name:"foto.jpg", data:d}));
+  dateiInput(kat, ()=>{
+    if(kat==="gesamt"||kat==="typenschild") toast(kat==="gesamt"?"Gesamtansicht gesetzt.":"Typenschild gesetzt.");
   });
+});
+/* ===== Bildaufbereitung =====
+   Auf den Fotos muss ALLES erkennbar sein – vor allem das Typenschild. Der frühere eigene
+   getUserMedia-Sucher lieferte nur den Vorschau-Stream: gemessen 480×640 = 0,3 MPix bei jedem
+   Foto der Begehung 07/2026, Typenschilder darauf unlesbar. Jetzt kommt das Bild aus der
+   nativen Kamera-App (volle Sensorauflösung) und wird nur EINMAL komprimiert. */
+const MAXKANTE=2560, JPEGQ=0.9;
+function zeichneSkaliert(src, w, h){
+  let s=1;
+  if(w>MAXKANTE||h>MAXKANTE) s=Math.min(MAXKANTE/w, MAXKANTE/h);
+  const c=document.createElement("canvas");
+  c.width=Math.max(1,Math.round(w*s)); c.height=Math.max(1,Math.round(h*s));
+  c.getContext("2d").drawImage(src,0,0,c.width,c.height);
+  return c.toDataURL("image/jpeg", JPEGQ);
 }
+/* createImageBitmap wendet die EXIF-Drehung an – ohne das landen Hochkant-Fotos liegend
+   im Export. Fallback über <img> für Browser ohne imageOrientation. */
 function handleFile(file, cb){
   if(!file) return;
+  const fertig=data=>cb({name:file.name||"foto.jpg", data});
+  if(self.createImageBitmap){
+    createImageBitmap(file,{imageOrientation:"from-image"})
+      .then(bm=>{
+        let d; try{ d=zeichneSkaliert(bm,bm.width,bm.height); }catch(e){ d=null; }
+        try{ bm.close&&bm.close(); }catch(e){}
+        if(d) fertig(d); else leseAlsBild(file,fertig);
+      })
+      .catch(()=>leseAlsBild(file,fertig));
+  } else leseAlsBild(file,fertig);
+}
+function leseAlsBild(file,fertig){
   const r=new FileReader();
-  r.onload=()=>{ shrink(r.result, data=>cb({name:file.name||"foto.jpg", data})); };
+  r.onload=()=>shrink(r.result,fertig);
+  r.onerror=()=>toast("Foto konnte nicht gelesen werden.");
   r.readAsDataURL(file);
 }
-// Bild herunterskalieren (max 1600px, JPEG 0.72) – spart Speicher
+/* Skaliert eine Data-URL auf MAXKANTE @ JPEGQ. */
 function shrink(dataUrl, cb){
   const img=new Image();
-  img.onload=()=>{
-    const max=1280; let {width:w,height:h}=img;
-    if(w>max||h>max){ const s=Math.min(max/w,max/h); w=Math.round(w*s); h=Math.round(h*s); }
-    const c=document.createElement("canvas"); c.width=w; c.height=h;
-    c.getContext("2d").drawImage(img,0,0,w,h);
-    try{ cb(c.toDataURL("image/jpeg",0.72)); }catch(e){ cb(dataUrl); }
-  };
+  img.onload=()=>{ try{ cb(zeichneSkaliert(img,img.naturalWidth,img.naturalHeight)); }catch(e){ cb(dataUrl); } };
   img.onerror=()=>cb(dataUrl);
   img.src=dataUrl;
 }
@@ -1189,22 +1482,70 @@ function renderAllgThumbs(){
 }
 function thumb(f, onDel, num){
   const d=document.createElement("div"); d.className="thumb";
-  const im=document.createElement("img"); im.src=f.data; d.appendChild(im);
+  const im=document.createElement("img"); im.src=f.data;
+  im.title="Antippen: groß ansehen, drehen, markieren";
+  im.addEventListener("click",()=>openLupe(f));
+  d.appendChild(im);
   const b=document.createElement("button"); b.textContent="×"; b.onclick=onDel; d.appendChild(b);
   if(num){ const n=document.createElement("span"); n.className="tnum"; n.textContent=num; d.appendChild(n); }
+  if((f.markierungen||[]).length){ const mk=document.createElement("span"); mk.className="tmk"; mk.textContent="⌖"+f.markierungen.length; d.appendChild(mk); }
   return d;
 }
+/* ===== Lupe: Foto prüfen, drehen, markieren =====
+   Aus der Begehung 07/2026: „Ich würde gerne Mängelfotos generell drehen können und auch nochmal
+   in der vergrößerten Ansicht anschauen können." */
+function openLupe(f){
+  const alt=document.getElementById("lupe"); if(alt) alt.remove();
+  const ov=document.createElement("div"); ov.id="lupe";
+  ov.innerHTML=`<img alt="Foto in Großansicht">`
+    +`<div class="lupebar">`
+    +`<button class="btn" id="luZu">✕ Schließen</button>`
+    +`<button class="btn" id="luL">↺ 90°</button>`
+    +`<button class="btn" id="luR">↻ 90°</button>`
+    +`<button class="btn primary" id="luMark" style="margin-left:auto">⌖ Mangel markieren</button>`
+    +`</div>`;
+  document.body.appendChild(ov);
+  const im=ov.querySelector("img"); im.src=f.data;
+  const zu=()=>ov.remove();
+  ov.querySelector("#luZu").addEventListener("click",zu);
+  ov.querySelector("#luL").addEventListener("click",()=>drehe(f,-90,im));
+  ov.querySelector("#luR").addEventListener("click",()=>drehe(f, 90,im));
+  ov.querySelector("#luMark").addEventListener("click",()=>{ zu(); openMarker(f); });
+}
+/* Dreht die Pixel selbst – eine CSS-Drehung würde den Export nicht überleben.
+   Die Marker sitzen relativ (rx/ry) und werden mitgedreht. */
+function drehe(f, grad, imgEl){
+  const img=new Image();
+  img.onload=()=>{
+    const w=img.naturalWidth, h=img.naturalHeight;
+    const c=document.createElement("canvas"); c.width=h; c.height=w;
+    const ctx=c.getContext("2d");
+    ctx.translate(c.width/2, c.height/2);
+    ctx.rotate(grad*Math.PI/180);
+    ctx.drawImage(img, -w/2, -h/2);
+    try{ f.data=c.toDataURL("image/jpeg", JPEGQ); }catch(e){ toast("Drehen fehlgeschlagen."); return; }
+    (f.markierungen||[]).forEach(m=>{
+      const rx=m.rx, ry=m.ry;
+      if(grad>0){ m.rx=1-ry; m.ry=rx; }   // rechts: (rx,ry) → (1-ry, rx)
+      else       { m.rx=ry;   m.ry=1-rx; } // links:  (rx,ry) → (ry, 1-rx)
+    });
+    if(imgEl) imgEl.src=f.data;
+    aktualisiereMarkiertesGesamt(f);
+    renderAllgThumbs(); save();
+  };
+  img.onerror=()=>toast("Drehen fehlgeschlagen.");
+  img.src=f.data;
+}
 
-/* ===== Mängel auf der Gesamtansicht markieren =====
-   Punkt antippen → direkt den zugehörigen Mangel wählen (Katalog-Buttons oder Freitext).
-   Marker (relative Koordinaten) werden in state.markierungen persistiert (Re-Edit möglich); das
-   annotierte Bild wird als EINE gesamtansicht_markiert.jpg abgelegt (kein Duplikat bei Re-Open). */
-let markMk=[], markCanvas=null, markImg=null;
-function zeichneMarker(){
-  if(!markCanvas||!markImg) return;
-  const ctx=markCanvas.getContext("2d"); ctx.drawImage(markImg,0,0);
-  const W=markCanvas.width, H=markCanvas.height, rr=Math.max(16,Math.round(Math.min(W,H)*0.045));
-  markMk.forEach(m=>{
+/* ===== Mängel auf JEDEM Foto markieren =====
+   Punkt antippen → zugehörigen Mangel wählen (Katalog oder Freitext) + beschreiben.
+   Die Marker (relative Koordinaten) hängen am jeweiligen Foto (f.markierungen) und sind
+   jederzeit nachbearbeitbar. Für die Gesamtansicht entsteht zusätzlich wie bisher EIN
+   eingebranntes gesamtansicht_markiert.jpg – darauf setzen BdA/Mängelliste auf. */
+let markMk=[], markCanvas=null, markImg=null, markFoto=null;
+function zeichneMarkerAuf(ctx, W, H, mk){
+  const rr=Math.max(16,Math.round(Math.min(W,H)*0.045));
+  (mk||[]).forEach(m=>{
     const x=m.rx*W, y=m.ry*H;
     ctx.beginPath(); ctx.arc(x,y,rr,0,2*Math.PI);
     ctx.fillStyle="rgba(198,40,40,.85)"; ctx.fill();
@@ -1213,39 +1554,95 @@ function zeichneMarker(){
     ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(m.label,x,y);
   });
 }
-/* Picker nach jedem Tap: Katalog-Mangel oder Freitext → liefert Marker-Label */
+function zeichneMarker(){
+  if(!markCanvas||!markImg) return;
+  const ctx=markCanvas.getContext("2d"); ctx.drawImage(markImg,0,0);
+  zeichneMarkerAuf(ctx, markCanvas.width, markCanvas.height, markMk);
+}
+/* Hält gesamtansicht_markiert.jpg synchron – nach Markieren wie nach Drehen. */
+function aktualisiereMarkiertesGesamt(f){
+  if(!f || f.kat!=="gesamt") return;
+  const mk=f.markierungen||[];
+  if(!mk.length){
+    const i=state.fotosAllg.findIndex(x=>x.kat==="gesamt_markiert");
+    if(i>=0) state.fotosAllg.splice(i,1);
+    state.markierungen=[];
+    return;
+  }
+  const img=new Image();
+  img.onload=()=>{
+    const c=document.createElement("canvas"); c.width=img.naturalWidth; c.height=img.naturalHeight;
+    const ctx=c.getContext("2d"); ctx.drawImage(img,0,0);
+    zeichneMarkerAuf(ctx, c.width, c.height, mk);
+    try{
+      addFotoKat("gesamt_markiert",{name:"gesamtansicht_markiert.jpg",data:c.toDataURL("image/jpeg",JPEGQ),markierungen:[]});
+      state.markierungen=JSON.parse(JSON.stringify(mk));   // Altfeld weiterpflegen: Auswertung liest es noch
+      renderAllgThumbs(); save();
+    }catch(e){ toast("Markiertes Bild konnte nicht erzeugt werden."); }
+  };
+  img.src=f.data;
+}
+/* Picker nach jedem Tap: Katalog-Mangel ODER direkt ein Gefährdungsfaktor, dazu eine Beschreibung
+   → liefert {label, beschreibung}
+   WARUM auch direkt GF: Die Gefährdungsfaktoren sind der Kern der GBU, ein Mangel kann aber nur
+   13 der 44 Faktoren auslösen (Stand 17.07.2026). Alles andere – z. B. 8.5 (Bewegungsfläche),
+   9.1/9.3 (Heben/Zwangshaltung beim Granulat-Einfüllen), 3.1 (Hautkontakt Gefahrstoffe) – wäre
+   sonst nur über den Detail-Modus erreichbar und ginge beim Schnell-Rundgang still verloren. */
 function markPicker(onPick){
   const pk=document.createElement("div"); pk.className="mpicker";
-  const cat=MAENGEL_KATALOG.filter(k=>k.id!=="X")
-    .map(k=>`<button class="btn" data-mp="${k.id}">${esc(k.label)}</button>`).join("");
-  pk.innerHTML=`<div class="pcard"><h3>Welcher Mangel ist hier?</h3><div class="mpal">${cat}</div>`
-    +`<label class="f">oder Freitext</label>`
+  const cat=MAENGEL_KATALOG.filter(k=>k.id!=="X"&&k.haeufig)
+    .map(k=>`<button class="btn" data-mp="${k.id}" title="${esc(k.label)}">${esc(k.kurz||k.label)}</button>`).join("");
+  const catRest=MAENGEL_KATALOG.filter(k=>k.id!=="X"&&!k.haeufig)
+    .map(k=>`<button class="btn" data-mp="${k.id}" title="${esc(k.label)}">${esc(k.kurz||k.label)}</button>`).join("");
+  const gfBlock=HAZARDS.map(g=>`<details class="grp gfgrp"><summary>${g.nr} · ${esc(g.kurz||g.t)}<span class="chev">›</span></summary>`
+    +`<div class="mpal">`+g.items.map(([nr,t])=>
+        `<button class="btn" data-gf="${nr}">${nr} · ${esc(t)}</button>`).join("")+`</div></details>`).join("");
+  pk.innerHTML=`<div class="pcard"><h3>Was ist hier zu sehen?</h3><div class="mpal">${cat}</div>`
+    +`<label class="f">Beschreibung – was genau ist an dieser Stelle zu sehen?</label>`
+    +`<input type="text" id="mpBeschr" class="kostin" style="width:100%" placeholder="z. B. Spalt unter dem Zaun, ca. 25 cm">`
+    +`<details class="grp" style="margin-top:12px"><summary>⚠ Gefährdungsfaktor direkt setzen (BGHM) <span class="chev">›</span></summary>`
+    +`<p class="hint">Wenn kein Mangel passt, der Faktor aber in die GBU muss – z. B. 8.5 Bewegungsfläche,
+       9.1 Heben/Tragen, 3.1 Hautkontakt. Wird als Marker gesetzt und in 2.5 aktiviert.</p>`
+    +gfBlock+`</details>`
+    +`<label class="f">oder: Mangel als Freitext (nicht im Katalog)</label>`
     +`<div class="toolrow"><input type="text" id="mpFree" class="kostin" style="flex:1" placeholder="z. B. Schild verblasst">`
     +`<button class="btn primary" id="mpFreeOk">＋ übernehmen</button></div>`
     +`<div class="toolrow" style="margin-top:8px"><button class="btn" id="mpAbbr" style="margin-left:auto">Abbrechen</button></div></div>`;
   document.body.appendChild(pk);
-  const fin=lbl=>{ pk.remove(); onPick(lbl); };
+  const beschr=()=>(pk.querySelector("#mpBeschr").value||"").trim();
+  const fin=v=>{ pk.remove(); onPick(v); };
   pk.addEventListener("click",e=>{ if(e.target===pk) fin(null); });
   pk.querySelector("#mpAbbr").addEventListener("click",()=>fin(null));
   pk.querySelectorAll("[data-mp]").forEach(b=>b.addEventListener("click",()=>{
     const k=MAENGEL_KATALOG.find(x=>x.id===b.dataset.mp);
     if(!(state.maengel||[]).some(m=>m.typ===k.id)) toggleMangel(k);  // aktiviert + Ableitung GF/Prüfpunkte
-    renderPalette(); fin(k.id);
+    renderPalette(); fin({label:k.id, beschreibung:beschr()});
+  }));
+  pk.querySelectorAll("[data-gf]").forEach(b=>b.addEventListener("click",()=>{
+    const nr=b.dataset.gf;
+    setzeGefahr(nr); save(); renderGfKurz();
+    fin({label:nr, beschreibung:beschr()});
   }));
   pk.querySelector("#mpFreeOk").addEventListener("click",()=>{
     const t=(pk.querySelector("#mpFree").value||"").trim();
-    state.maengel.push({typ:"X",label:t?("Sonstiger Mangel: "+t):"Sonstiger Mangel",rq:"",mass:"",stufe:"",schwere:"",kosten:"",notiz:t,fotos:[]});
+    const b=beschr();
+    if(!t && !b){ toast("Bitte Freitext oder Beschreibung angeben."); return; }
+    state.maengel.push({typ:"X",label:t?("Sonstiger Mangel: "+t):"Sonstiger Mangel",rq:"",mass:"",stufe:"",schwere:"",kosten:"",notiz:b||t,fotos:[]});
     save(); renderPalette();
-    fin("F"+(markMk.filter(m=>/^F/.test(m.label)).length+1));
+    fin({label:"F"+(markMk.filter(m=>/^F/.test(m.label)).length+1), beschreibung:b||t});
   });
 }
-function openMarker(){
-  const g=fotoByKat("gesamt");
-  if(!g){ toast("Erst die Gesamtansicht aufnehmen (📷 Gesamtansicht)."); return; }
-  markMk=JSON.parse(JSON.stringify(state.markierungen||[]));
+/* Ohne Argument: Gesamtansicht (Button unter der Maschine). Mit Foto: aus der Lupe heraus –
+   so lässt sich jeder Befund direkt auf SEINEM Mangelfoto kennzeichnen und beschreiben. */
+function openMarker(foto){
+  const f=foto||fotoByKat("gesamt");
+  if(!f){ toast("Erst ein Foto aufnehmen (📷 Gesamtansicht)."); return; }
+  markFoto=f;
+  markMk=JSON.parse(JSON.stringify(f.markierungen||[]));
   const ov=document.createElement("div"); ov.id="mark";
+  const was = f.kat==="gesamt" ? "Gesamtansicht" : (f.kat==="typenschild" ? "Typenschild" : "Mangelfoto");
   ov.innerHTML=`<canvas></canvas>`
-    +`<div class="markhint">Punkt antippen → Mangel wählen · Marker trägt den Code</div>`
+    +`<div class="markhint">${was}: Punkt antippen → Mangel wählen + beschreiben</div>`
     +`<div class="markbar">`
     +`<button class="btn" id="markUndo">↩ Rückgängig</button>`
     +`<button class="btn" id="markAbbr">✕ Abbrechen</button>`
@@ -1254,27 +1651,342 @@ function openMarker(){
   markCanvas=ov.querySelector("canvas");
   markImg=new Image();
   markImg.onload=()=>{ markCanvas.width=markImg.naturalWidth; markCanvas.height=markImg.naturalHeight; zeichneMarker(); };
-  markImg.src=g.data;
+  markImg.src=f.data;
   markCanvas.addEventListener("click",e=>{
     const r=markCanvas.getBoundingClientRect(); if(!r.width||!r.height) return;
     const rx=(e.clientX-r.left)/r.width, ry=(e.clientY-r.top)/r.height;
-    markPicker(lbl=>{ if(lbl){ markMk.push({rx,ry,label:lbl}); zeichneMarker(); } });
+    markPicker(v=>{ if(v){ markMk.push({rx,ry,label:v.label,beschreibung:v.beschreibung||""}); zeichneMarker(); } });
   });
   ov.querySelector("#markUndo").addEventListener("click",()=>{ markMk.pop(); zeichneMarker(); });
   ov.querySelector("#markAbbr").addEventListener("click",()=>ov.remove());
   ov.querySelector("#markOk").addEventListener("click",()=>{
-    state.markierungen=markMk.slice();
-    if(markMk.length){
-      try{
-        const data=markCanvas.toDataURL("image/jpeg",0.8);
-        addFotoKat("gesamt_markiert",{name:"gesamtansicht_markiert.jpg",data});
-        renderAllgThumbs();
-      }catch(e){ alert("Speichern fehlgeschlagen."); }
-    }
-    save(); ov.remove();
+    markFoto.markierungen=markMk.slice();
+    ov.remove();
+    aktualisiereMarkiertesGesamt(markFoto);   // nur für die Gesamtansicht; speichert selbst
+    renderAllgThumbs(); save();
+    if(markMk.length) toast(markMk.length+" Markierung(en) am "+was+" gesichert.");
   });
 }
-document.querySelectorAll("[data-mark]").forEach(b=>b.addEventListener("click",openMarker));
+document.querySelectorAll("[data-mark]").forEach(b=>b.addEventListener("click",()=>openMarker()));
+
+/* ===== Standortplan =====
+   Aus der Begehung 07/2026 (neben D50/1): „Hilfreich wäre es für mich auf jeden Fall, wenn ich die
+   Maschine noch auf dem Standortplan markieren könnte."
+   Ein Planbild je Kunde – Foto, Screenshot oder Skizze genügt, ein fertiger Hallenplan ist nicht
+   nötig. Es liegt im Gerät (IndexedDB) und reist im Sammlungs-Export mit; die Position jeder
+   Maschine steckt in meta.plan_pos und geht damit auch beim Einzel-Export mit. */
+let planBild=null;   // {name, data}
+async function setzePlan(obj){ planBild=obj; await mitTimeout(idbPut(PLANKEY, JSON.stringify(obj)), 5000, false); }
+function planPunkt(ctx,x,y,rr,farbe,txt){
+  ctx.beginPath(); ctx.arc(x,y,rr,0,2*Math.PI);
+  ctx.fillStyle=farbe; ctx.fill();
+  ctx.lineWidth=Math.max(2,Math.round(rr*0.15)); ctx.strokeStyle="#fff"; ctx.stroke();
+  if(!txt) return;
+  ctx.font="bold "+Math.round(rr*0.95)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="top";
+  const w=ctx.measureText(txt).width+10, h=rr*1.5;
+  ctx.fillStyle="rgba(255,255,255,.9)"; ctx.fillRect(x-w/2, y+rr+3, w, h);
+  ctx.fillStyle="#1B4332"; ctx.fillText(txt, x, y+rr+5);
+}
+function openPlan(){
+  if(!planBild){
+    if(!confirm("Noch kein Standortplan hinterlegt.\nJetzt einen aufnehmen oder auswählen?\n(Foto, Screenshot oder Skizze genügt – gilt für diesen Kunden.)")) return;
+    dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ toast("Standortplan gesetzt."); openPlan(); }); });
+    return;
+  }
+  const alt=document.getElementById("mark"); if(alt) alt.remove();
+  const ov=document.createElement("div"); ov.id="mark";
+  const wer=(state.meta.maschine||"").trim()||"aktuelle Maschine";
+  ov.innerHTML=`<canvas></canvas>`
+    +`<div class="markhint">Antippen: „${esc(wer)}" hier verorten · grün = bereits gesicherte Maschinen</div>`
+    +`<div class="markbar">`
+    +`<button class="btn" id="plNeu">🖼 Plan ersetzen</button>`
+    +`<button class="btn" id="plWeg">✕ Punkt löschen</button>`
+    +`<button class="btn" id="plAbbr">Abbrechen</button>`
+    +`<button class="btn primary" id="plOk" style="margin-left:auto">✓ Übernehmen</button></div>`;
+  document.body.appendChild(ov);
+  const cv=ov.querySelector("canvas"), img=new Image();
+  let pos = state.meta.plan_pos ? {rx:state.meta.plan_pos.rx, ry:state.meta.plan_pos.ry} : null;
+  const zeichne=()=>{
+    if(!cv.width) return;
+    const ctx=cv.getContext("2d"); ctx.drawImage(img,0,0);
+    const W=cv.width, H=cv.height, rr=Math.max(14,Math.round(Math.min(W,H)*0.022));
+    collection.forEach(m=>{
+      const p=(m.meta||{}).plan_pos; if(!p) return;
+      planPunkt(ctx, p.rx*W, p.ry*H, rr, "rgba(45,106,79,.9)", ((m.meta||{}).maschine||"").slice(0,12));
+    });
+    if(pos) planPunkt(ctx, pos.rx*W, pos.ry*H, rr*1.2, "rgba(198,40,40,.92)", wer.slice(0,12));
+  };
+  img.onload=()=>{ cv.width=img.naturalWidth; cv.height=img.naturalHeight; zeichne(); };
+  img.src=planBild.data;
+  cv.addEventListener("click",e=>{
+    const r=cv.getBoundingClientRect(); if(!r.width||!r.height) return;
+    pos={rx:(e.clientX-r.left)/r.width, ry:(e.clientY-r.top)/r.height};
+    zeichne();
+  });
+  ov.querySelector("#plNeu").addEventListener("click",()=>{
+    dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ ov.remove(); toast("Standortplan ersetzt."); openPlan(); }); });
+  });
+  ov.querySelector("#plWeg").addEventListener("click",()=>{ pos=null; zeichne(); });
+  ov.querySelector("#plAbbr").addEventListener("click",()=>ov.remove());
+  ov.querySelector("#plOk").addEventListener("click",()=>{
+    state.meta.plan_pos=pos; save(); ov.remove();
+    toast(pos?"Auf dem Standortplan verortet.":"Verortung entfernt.");
+  });
+}
+document.querySelectorAll("[data-plan]").forEach(b=>b.addEventListener("click",openPlan));
+
+/* ===== Begehungs-Startseite: Plan + Maschinenliste ===== */
+function renderPlanBox(){
+  const box=document.getElementById("planBox"); if(!box) return;
+  if(!planBild){ box.innerHTML=`<div class="messsub">Noch kein Plan – Foto, Screenshot oder Skizze genügt.</div>`; return; }
+  const verortet=collection.filter(m=>(m.meta||{}).plan_pos).length;
+  box.innerHTML=`<div class="thumbs"></div><div class="messsub">${verortet} von ${collection.length} Maschinen verortet · Plan antippen zum Ansehen</div>`;
+  const t=document.createElement("div"); t.className="thumb";
+  const im=document.createElement("img"); im.src=planBild.data; im.addEventListener("click",openPlan);
+  t.appendChild(im);
+  box.querySelector(".thumbs").appendChild(t);
+}
+function renderMaschListe(){
+  const box=document.getElementById("maschListe"); if(!box) return;
+  if(!collection.length){
+    box.innerHTML=`<div class="messsub">Noch keine Maschine erfasst. Unten „＋ Maschine hinzufügen“.</div>`;
+    return;
+  }
+  box.innerHTML="";
+  const liste=document.createElement("div"); liste.className="maschliste";
+  collection.forEach((m,i)=>{
+    const me=m.meta||{};
+    const nGef=Object.values(m.items||{}).filter(x=>x.ja).length;
+    const nMgl=(m.maengel||[]).length;
+    const z=document.createElement("button"); z.type="button"; z.className="maschzeile";
+    z.innerHTML=`<span class="mz-name">${esc(me.maschine||"(ohne Namen)")}</span>`
+      +`<span class="mz-sub">${esc([me.hersteller,me.typ].filter(Boolean).join(" · ")||"–")}</span>`
+      +`<span class="mz-zahl">${nGef} GF · ${nMgl} Mängel${me.plan_pos?" · 🗺":""}</span>`;
+    z.addEventListener("click",()=>maschineOeffnen(i));
+    liste.appendChild(z);
+  });
+  box.appendChild(liste);
+}
+/* Gesicherte Maschine zum Nachschärfen öffnen – wechselt auf die Maschinen-Ebene. */
+async function maschineOeffnen(idx){
+  const m=collection[idx]; if(!m) return;
+  if(!confirm("„"+((m.meta||{}).maschine||"Maschine")+"“ zum Nachschärfen öffnen?\n(Sie wird aus der Liste genommen und beim Speichern wieder eingefügt.)")) return;
+  const rec=JSON.parse(JSON.stringify(m));
+  collection.splice(idx,1);
+  rec._editIdx=idx;
+  await mitTimeout(idbPut(MASCHKEY, JSON.stringify(rec)), 5000, false);
+  await mitTimeout(idbPut(ALLGKEY, JSON.stringify(state)), 5000, false);
+  state=rec; delete state._istAllgemein;
+  try{ localStorage.setItem(EBENEKEY,"masch"); }catch(e){}
+  await persistAll(); location.reload();
+}
+
+/* ===== Umgebungs-Screening: Lärm & Licht =====
+   ZWECK: eine erste Einschätzung, WO sich eine belastbare Messung lohnt – kein Messgerät.
+   Das Handy ist nicht geeicht; die Werte taugen nie als Nachweis. Deshalb gilt durchgehend:
+   sobald ein Wert in die Nähe des Grenzwerts kommt, wird der Befund „belastbare Messung
+   veranlassen" automatisch in die GBU eingetragen (C6 Lärm / C4 Licht).
+
+   Lärm:  Mikrofon → A-Bewertung (Filterkaskade) → LAeq über 10 s → dBFS + Kalibrier-Versatz.
+          Auslösewerte LärmVibrationsArbSchV §6: unterer 80, oberer 85 dB(A).
+   Licht: Die Kamera misst Leuchtdichte, nicht Beleuchtungsstärke – deshalb NICHT die
+          Bildhelligkeit auswerten (die Automatik regelt sie ohnehin auf mittelgrau), sondern
+          auslesen, wie stark die Automatik aufdrehen musste: exposureTime + ISO. Die Blende
+          ist bei Handys fest und steckt im Kalibrierfaktor. Nur Android liefert diese Werte. */
+const MESSKEY="oak_begehung_kalibrierung_v1";
+const LAERM_UNTERER=80, LAERM_OBERER=85;      // dB(A), LärmVibrationsArbSchV §6
+const A_NORM_DB=1.97;                          // A-Kurve auf 0 dB @ 1 kHz normieren (ausgemessen; Literaturwert +2,0)
+const LAERM_UNSICHER=5;                        // dB Screening-Unschärfe → Grenznähe-Band
+const LUX_UNSICHER=1.4;                        // Faktor Screening-Unschärfe → Grenznähe-Band
+/* ASR A3.4 Anhang 1 – Auswahl der hier relevanten Mindestwerte */
+const LUX_SOLL=[ {v:100,t:"Verkehrsweg / Lager (100 lx)"}, {v:200,t:"Grobe Arbeit, Maschinenbeschickung (200 lx)"},
+  {v:300,t:"Fertigung allgemein, Spritzguss (300 lx)"}, {v:500,t:"Feinere Arbeit, Werkzeugraum, Prüfplatz (500 lx)"},
+  {v:750,t:"Präzisionsarbeit / Kontrolle (750 lx)"} ];
+function ladeKalib(){ try{ return JSON.parse(localStorage.getItem(MESSKEY))||{}; }catch(e){ return {}; } }
+function speichereKalib(k){ try{ localStorage.setItem(MESSKEY, JSON.stringify(k)); }catch(e){} }
+
+/* A-Bewertung nach IEC 61672. Ohne sie zählt tieffrequentes Maschinenbrummen voll mit –
+   ein dB(A)-Gerät filtert es weg.
+   Die A-Kurve hat 4 Nullstellen bei 0 Hz und Pole bei 20,6 (doppelt) · 107,7 · 737,9 ·
+   12194 Hz (doppelt). ACHTUNG: Ein Biquad-Hochpass ist 2. Ordnung und bringt bereits ZWEI
+   Nullstellen mit – vier Hochpässe hintereinander ergäben 8 Nullstellen und damit eine
+   doppelt so steile Flanke wie die Norm. Korrekt sind genau drei Biquads:
+     1) Hochpass f=20,6  Q=0,5   → Doppelpol bei 20,6
+     2) Hochpass f=281,9 Q=1/3   → Polpaar 107,7 + 737,9  (f=√(107,7·737,9), Q=√(f1·f2)/(f1+f2))
+     3) Tiefpass f=12194 Q=0,5   → Doppelpol bei 12194
+   STOLPERFALLE: Die Web-Audio-API interpretiert Q bei lowpass/highpass in DEZIBEL, nicht als
+   linearen Gütefaktor (Q.value=0.5 wären 0,5 dB ≈ Q_linear 1,06). Deshalb qdB() – ohne die
+   Umrechnung ist die Kurve bei 250 Hz um über 7 dB daneben.
+   Der Gain normiert die Kurve auf 0 dB bei 1 kHz (per Definition). */
+function qdB(qLinear){ return 20*Math.log10(qLinear); }
+function aGewichtung(ctx, quelle){
+  const mk=(t,f,q)=>{ const b=ctx.createBiquadFilter(); b.type=t; b.frequency.value=f; b.Q.value=qdB(q); return b; };
+  const kette=[ mk("highpass",20.598997,0.5), mk("highpass",281.9,1/3), mk("lowpass",12194.217,0.5) ];
+  const g=ctx.createGain(); g.gain.value=Math.pow(10, A_NORM_DB/20);
+  let k=quelle; kette.forEach(f=>{ k.connect(f); k=f; }); k.connect(g);
+  return g;
+}
+async function laermMessen(sek, aufTick){
+  const stream=await navigator.mediaDevices.getUserMedia({audio:{
+    echoCancellation:false, noiseSuppression:false, autoGainControl:false}});   // sonst ist jeder Pegel wertlos
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const an=ctx.createAnalyser(); an.fftSize=2048;
+  aGewichtung(ctx, ctx.createMediaStreamSource(stream)).connect(an);
+  const buf=new Float32Array(an.fftSize);
+  let summe=0, n=0, spitze=0;
+  const ende=performance.now()+sek*1000;
+  await new Promise(res=>{
+    const tick=()=>{
+      an.getFloatTimeDomainData(buf);
+      let s=0;
+      for(let i=0;i<buf.length;i++){ const v=buf[i]; s+=v*v; if(Math.abs(v)>spitze) spitze=Math.abs(v); }
+      summe+=s; n+=buf.length;
+      const rms=Math.sqrt(s/buf.length);
+      if(aufTick) aufTick(rms>0?20*Math.log10(rms):-120, (sek*1000-(ende-performance.now()))/(sek*10));
+      if(performance.now()<ende) requestAnimationFrame(tick); else res();
+    };
+    tick();
+  });
+  try{ stream.getTracks().forEach(t=>t.stop()); ctx.close(); }catch(e){}
+  const rms=Math.sqrt(summe/Math.max(1,n));
+  return { dbfs: rms>0?20*Math.log10(rms):-120, spitze_dbfs: spitze>0?20*Math.log10(spitze):-120 };
+}
+/* Rohwert der Belichtung: je kürzer belichtet und je kleiner ISO, desto heller die Szene.
+   exposureTime kommt laut W3C Media Capture in 100-µs-Schritten. */
+async function lichtRoh(){
+  let stream;
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}}); }
+  catch(e){ return {fehler:"Kein Kamerazugriff."}; }
+  const track=stream.getVideoTracks()[0];
+  await new Promise(r=>setTimeout(r,1800));   // Belichtungsautomatik einschwingen lassen
+  const s=track.getSettings();
+  try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  if(s.exposureTime==null || s.iso==null)
+    return {fehler:"Dieses Gerät gibt Belichtungszeit/ISO nicht heraus (z. B. iPhone) – Licht-Check nicht möglich."};
+  const t=s.exposureTime*1e-4;                                   // → Sekunden
+  return { roh: 1/Math.max(1e-9, t*s.iso), exposureTime:s.exposureTime, iso:s.iso };
+}
+/* Grenznähe-Regel: Befund IMMER eintragen, sobald der Wert ins Unschärfeband des Grenzwerts fällt. */
+function befundEintragen(id, notiz){
+  const k=MAENGEL_KATALOG.find(x=>x.id===id); if(!k) return false;
+  let m=(state.maengel||[]).find(x=>x.typ===id);
+  if(!m){ toggleMangel(k); m=(state.maengel||[]).find(x=>x.typ===id); }   // setzt GF + Prüfpunkt mit
+  if(m) m.notiz=(k.mn||"")+" · "+notiz;
+  renderPalette(); save();
+  return true;
+}
+function renderMess(){
+  const box=document.getElementById("messBox"); if(!box) return;
+  const l=state.meta.laerm, x=state.meta.lux, teile=[];
+  /* Der Abgleich ist eine EINMAL-Sache je Gerät und hat auf dem Rundgang nichts verloren –
+     er erscheint nur, solange er fehlt. */
+  const kal=ladeKalib();
+  if(kal.laerm_offset==null && kal.lux_faktor==null && !l && !x)
+    teile.push(`<div class="messsub" style="margin-top:8px">Noch nicht abgeglichen – ohne Abgleich gibt es
+      nur eine Ampel, keine Zahl. <a href="#" id="kalibLink" style="color:var(--gruen);font-weight:600">⚙ Abgleich</a></div>`);
+  if(l){
+    const a=l.dba==null?"gelb":(l.dba>=LAERM_OBERER?"rot":l.dba>=LAERM_UNTERER-LAERM_UNSICHER?"gelb":"gruen");
+    teile.push(`<div class="messerg"><div class="messwert">`
+      +(l.dba==null?`—<span class="einheit">nicht abgeglichen</span>`:`ca. ${l.dba.toFixed(0)}<span class="einheit">dB(A) · ungeeicht</span>`)
+      +`</div><div class="messsub">LAeq über ${l.dauer_s} s · Rohpegel ${l.dbfs.toFixed(1)} dBFS · ${esc(l.zeit)}</div>`
+      +`<span class="ampel ${a}">${a==="rot"?"über oberem Auslösewert (85 dB(A))":a==="gelb"?"nahe Auslösewert – belastbare Messung":"unauffällig"}</span></div>`);
+  }
+  if(x){
+    const a=x.lux==null?"gelb":(x.lux<=x.soll?"rot":x.lux<=x.soll*LUX_UNSICHER?"gelb":"gruen");
+    teile.push(`<div class="messerg"><div class="messwert">`
+      +(x.lux==null?`—<span class="einheit">nicht abgeglichen</span>`:`ca. ${Math.round(x.lux)}<span class="einheit">lx · ungeeicht</span>`)
+      +`</div><div class="messsub">Soll ${x.soll} lx · ${esc(x.soll_txt)} · ${esc(x.zeit)}</div>`
+      +`<span class="ampel ${a}">${a==="rot"?"unter Soll – belastbare Messung":a==="gelb"?"nahe Soll – belastbare Messung":"unauffällig"}</span></div>`);
+  }
+  if(l||x) teile.push(`<div class="messsub" style="margin-top:6px"><a href="#" id="kalibLink" style="color:var(--muted)">⚙ Abgleich</a></div>`);
+  box.innerHTML=teile.join("");
+  const kl=box.querySelector("#kalibLink");
+  if(kl) kl.addEventListener("click",e=>{ e.preventDefault(); kalibrieren(); });
+}
+if(document.getElementById("btnLaerm")) document.getElementById("btnLaerm").addEventListener("click", async()=>{
+  const btn=document.getElementById("btnLaerm"), box=document.getElementById("messBox");
+  const kal=ladeKalib();
+  btn.disabled=true; btn.textContent="messe …";
+  box.innerHTML=`<div class="messerg"><div class="messsub">Handy ruhig am Arbeitsplatz halten – nicht sprechen.</div>`
+    +`<div class="messbalken"><i id="mBal"></i></div></div>`;
+  const bal=document.getElementById("mBal");
+  try{
+    const r=await laermMessen(10,(db,pct)=>{ if(bal) bal.style.width=Math.min(100,Math.max(0,pct))+"%"; });
+    const dba = kal.laerm_offset!=null ? r.dbfs+kal.laerm_offset : null;
+    state.meta.laerm={ dbfs:+r.dbfs.toFixed(2), spitze_dbfs:+r.spitze_dbfs.toFixed(2),
+      dba: dba==null?null:+dba.toFixed(1), offset: kal.laerm_offset??null, dauer_s:10,
+      zeit:new Date().toLocaleString("de-DE"), screening:true, geeicht:false };
+    save(); renderMess();
+    // Grenznähe → Befund IMMER in die GBU
+    if(dba==null) toast("Gemessen. Für dB(A) einmalig „⚙ Abgleich“ gegen ein Messgerät.");
+    else if(dba>=LAERM_UNTERER-LAERM_UNSICHER){
+      befundEintragen("C6", `Screening ca. ${dba.toFixed(0)} dB(A) (ungeeicht, ${new Date().toLocaleDateString("de-DE")})`);
+      toast("Nahe/über Auslösewert → Mangel C6 + Prüfpunkt P51 eingetragen.");
+    } else toast("Unauffällig – kein Befund.");
+  }catch(e){ toast("Kein Mikrofonzugriff – bitte erlauben."); }
+  btn.disabled=false; btn.textContent="🔊 Lärm prüfen (10 s)";
+});
+if(document.getElementById("btnLux")) document.getElementById("btnLux").addEventListener("click", async()=>{
+  const btn=document.getElementById("btnLux"), kal=ladeKalib();
+  const soll=await sollWaehlen(); if(soll==null) return;
+  btn.disabled=true; btn.textContent="messe …";
+  const r=await lichtRoh();
+  btn.disabled=false; btn.textContent="💡 Licht prüfen";
+  if(r.fehler){ toast(r.fehler); return; }
+  const lux = kal.lux_faktor!=null ? r.roh*kal.lux_faktor : null;
+  state.meta.lux={ roh:+r.roh.toFixed(4), exposureTime:r.exposureTime, iso:r.iso,
+    lux: lux==null?null:+lux.toFixed(0), faktor: kal.lux_faktor??null,
+    soll:soll.v, soll_txt:soll.t, zeit:new Date().toLocaleString("de-DE"), screening:true, geeicht:false };
+  save(); renderMess();
+  if(lux==null) toast("Gemessen. Für Lux einmalig „⚙ Abgleich“ gegen ein Luxmeter.");
+  else if(lux<=soll.v*LUX_UNSICHER){
+    befundEintragen("C4", `Screening ca. ${Math.round(lux)} lx gegen Soll ${soll.v} lx (ungeeicht, ${new Date().toLocaleDateString("de-DE")})`);
+    toast("Nahe/unter Soll → Mangel C4 + Prüfpunkt P52 eingetragen.");
+  } else toast("Unauffällig – kein Befund.");
+});
+function sollWaehlen(){
+  return new Promise(res=>{
+    const pk=document.createElement("div"); pk.className="mpicker";
+    pk.innerHTML=`<div class="pcard"><h3>Welcher Sollwert gilt hier?</h3>`
+      +`<p class="hint">Mindestwerte nach ASR A3.4 Anhang 1. Für die Vergleichbarkeit die Kamera auf eine
+        <b>weiße Fläche</b> (Blatt Papier) am Arbeitsplatz richten.</p><div class="mpal">`
+      +LUX_SOLL.map((s,i)=>`<button class="btn" data-soll="${i}">${esc(s.t)}</button>`).join("")
+      +`</div><div class="toolrow"><button class="btn" id="soAbbr" style="margin-left:auto">Abbrechen</button></div></div>`;
+    document.body.appendChild(pk);
+    const fin=v=>{ pk.remove(); res(v); };
+    pk.addEventListener("click",e=>{ if(e.target===pk) fin(null); });
+    pk.querySelector("#soAbbr").addEventListener("click",()=>fin(null));
+    pk.querySelectorAll("[data-soll]").forEach(b=>b.addEventListener("click",()=>fin(LUX_SOLL[+b.dataset.soll])));
+  });
+}
+/* Abgleich: einmalig je Gerät gegen ein echtes Messgerät. Macht aus dem Rohwert einen groben
+   Anzeigewert – ändert nichts daran, dass er ungeeicht bleibt. */
+/* Abgleich: einmalig je Gerät gegen ein echtes Messgerät. Kein Button auf dem Rundgang –
+   erreichbar über den Link im Ergebnis-Kasten. */
+async function kalibrieren(){
+  const kal=ladeKalib();
+  const was=prompt("Abgleich – was möchtest du kalibrieren?\n\n1 = Lärm (Referenz-Messgerät nötig)\n2 = Licht (Luxmeter nötig)\n0 = Abgleich zurücksetzen","1");
+  if(was==="0"){ speichereKalib({}); toast("Abgleich zurückgesetzt."); renderMess(); return; }
+  if(was==="1"){
+    toast("Messe 10 s – Messgerät danebenhalten.");
+    let r; try{ r=await laermMessen(10,null); }catch(e){ toast("Kein Mikrofonzugriff."); return; }
+    const ref=prompt(`Handy-Rohpegel: ${r.dbfs.toFixed(1)} dBFS\n\nWas zeigt das Messgerät JETZT in dB(A)?`,"80");
+    const v=parseFloat((ref||"").replace(",","."));
+    if(!isFinite(v)){ toast("Abgebrochen."); return; }
+    kal.laerm_offset=+(v-r.dbfs).toFixed(2); speichereKalib(kal);
+    alert("Abgleich gespeichert (Versatz "+kal.laerm_offset.toFixed(1)+" dB).\n\nGilt nur für DIESES Handy und bleibt eine Schätzung – nie ein Nachweis.");
+  }
+  if(was==="2"){
+    const r=await lichtRoh();
+    if(r.fehler){ toast(r.fehler); return; }
+    const ref=prompt(`Rohwert: ${r.roh.toFixed(3)} (ISO ${r.iso}, Belichtung ${r.exposureTime})\n\nWas zeigt das Luxmeter JETZT in lx?`,"300");
+    const v=parseFloat((ref||"").replace(",","."));
+    if(!isFinite(v)||v<=0){ toast("Abgebrochen."); return; }
+    kal.lux_faktor=+(v/r.roh).toFixed(4); speichereKalib(kal);
+    alert("Abgleich gespeichert.\n\nGilt nur für DIESES Handy und bleibt eine Schätzung – nie ein Nachweis.");
+  }
+  renderMess();
+}
 
 /* ===== Sprachnotiz (Audio-Aufnahme je Maschine, offline) ===== */
 const AUDIO_MAX_S = 180;   // Sicherheitslimit; Ziel sind 1-2 min
@@ -1344,15 +2056,23 @@ function slug(s){ return (s||"begehung").toLowerCase().replace(/[äöüß]/g,m=>
 /* Sammlung + aktueller Bogen als Export-Objekt (aktueller Bogen nur, wenn nicht identisch mit letzter Sicherung) */
 function exportPaket(){
   const machines=collection.map(m=>JSON.parse(JSON.stringify(m)));
-  if((state.meta.maschine||"").trim()){
+  // In der Begehungs-Ebene ist state KEINE Maschine – sonst landete sie als „Maschine" im Export.
+  if(!imAllgModus() && (state.meta.maschine||"").trim()){
     const cur=JSON.parse(JSON.stringify(state));
     const key=o=>{ const c=Object.assign({},o); delete c._ts; return JSON.stringify(c); };
     const last=machines[machines.length-1];
     if(!last || key(last)!==key(cur)) machines.push(cur);
   }
-  if(!machines.length) return null;
-  return { _typ:"OAK-Begehung-Sammlung", _version:2, _exportiert:new Date().toISOString(),
-    kunde:state.meta.kunde||"", datum:state.meta.datum||"", anzahl:machines.length, maschinen:machines };
+  /* Standortplan und allgemeine Befunde gehören der BEGEHUNG, nicht der einzelnen Maschine –
+     sie reisen genau einmal mit der Sammlung. Die Position je Maschine steckt in meta.plan_pos. */
+  const allg = imAllgModus() ? state : allgemeinGeparkt;
+  const allgHatInhalt = allg && ((allg.fotosAllg||[]).length || (allg.audio&&allg.audio.data)
+    || (allg.maengel||[]).length || (allg.meta&&(allg.meta.allg_notiz||"").trim())
+    || Object.values(allg.items||{}).some(i=>i.ja));
+  if(!machines.length && !allgHatInhalt) return null;
+  return { _typ:"OAK-Begehung-Sammlung", _version:3, _exportiert:new Date().toISOString(),
+    kunde:state.meta.kunde||"", datum:state.meta.datum||"", anzahl:machines.length,
+    plan:planBild||null, allgemein: allgHatInhalt ? allg : null, maschinen:machines };
 }
 function rescueExport(){
   const p=exportPaket(); if(!p) return;
@@ -1364,7 +2084,7 @@ function download(name, content, type){
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
   document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500);
 }
-document.getElementById("btnClone").addEventListener("click", saveAndClone);
+document.getElementById("btnSave").addEventListener("click", saveAndNeu);
 
 /* Neu: nur den aktuellen Bogen verwerfen – gesicherte Maschinen bleiben erhalten */
 document.getElementById("btnReset").addEventListener("click",async()=>{
@@ -1481,10 +2201,11 @@ document.getElementById("importInput").addEventListener("change",async e=>{
 async function alleLoeschen(){
   if(!confirm("ALLE "+collection.length+" gesicherten Maschinen UND den aktuellen Bogen löschen?")) return;
   if(!confirm("Wirklich sicher? Vorher gespeichert/geteilt?")) return;
-  state=blankState(); collection=[];
-  localStorage.removeItem(LSKEY); localStorage.removeItem(COLLKEY);
+  state=blankState(); collection=[]; allgemeinGeparkt=null;
+  localStorage.removeItem(LSKEY); localStorage.removeItem(COLLKEY); localStorage.removeItem(EBENEKEY);
   await idbDel(LSKEY); await idbDel(COLLKEY);
-  location.reload();
+  await idbDel(ALLGKEY); await idbDel(MASCHKEY);   // beide Ebenen mit abräumen
+  location.reload();                                // Standortplan bleibt: gehört dem Kunden, nicht dem Tag
 }
 
 /* Start: neuesten Stand aus localStorage vs. IndexedDB-Backup wählen, dann rendern.
@@ -1506,10 +2227,20 @@ function applySetupHash(){
   const setup=applySetupHash();
   try{
     await mitTimeout(idbReady, 1500, null);
-    const raw=await mitTimeout(idbGet(LSKEY), 1500, null);
-    if(raw){ const s=JSON.parse(raw); if(s&&s.meta&&((s._ts||0)>(state._ts||0))) state=s; }
-    const rawC=await mitTimeout(idbGet(COLLKEY), 1500, null);
-    if(rawC){ const c=JSON.parse(rawC); if(Array.isArray(c)&&c.length>collection.length) collection=c; }
+    /* IndexedDB führt: übernehmen, sobald es nicht ÄLTER ist als der LS-Stand. Ein „>" statt
+       „>=" würde hier das medienlose Skelett gewinnen lassen – beide tragen denselben _ts. */
+    const raw=await mitTimeout(idbGet(LSKEY), 4000, null);
+    if(raw){ const s=JSON.parse(raw); if(s&&s.meta&&((s._ts||0)>=(state._ts||0)||state._skelett)) state=s; }
+    delete state._skelett;
+    const rawC=await mitTimeout(idbGet(COLLKEY), 4000, null);
+    if(rawC){ const c=JSON.parse(rawC); if(Array.isArray(c)) collection=c; }
+    const rawP=await mitTimeout(idbGet(PLANKEY), 4000, null);
+    if(rawP){ const p=JSON.parse(rawP); if(p&&p.data) planBild=p; }
+    /* Die geparkte Gegen-Ebene laden – der Export braucht beide, egal wo Nikolai gerade steht. */
+    if(!imAllgModus()){
+      const rawA=await mitTimeout(idbGet(ALLGKEY), 4000, null);
+      if(rawA){ const a=JSON.parse(rawA); if(a&&a.meta){ migrateFotos(a); allgemeinGeparkt=a; } }
+    }
   }catch(e){}
   if(!Array.isArray(state.markierungen)) state.markierungen=[];
   if(!state.meta.modus) state.meta.modus="schnell";
