@@ -413,11 +413,11 @@
          der Erfassung. Vor Ort tippt Nikolai „Ordnung & Sauberkeit" auf dem Foto an – 8.4 und 8.5
          setzt das Tool selbst. Was kein Mangel abdeckt (9.1 Heben, 3.1 Hautkontakt), steht in der
          Sprachnotiz und kommt beim Erstellen der GBU dazu. -->
-    <div class="hint">🎙 <b>Sprechen (max. 2 min):</b> ① Maschine + Standort &nbsp;② Betriebsanleitung da?
-      &nbsp;③ Tätigkeiten (Rüsten, Reinigung, Wartung …) &nbsp;④ je Befund: „<b>Mangel-Foto N zeigt</b> …" –
-      was kann passieren · wer ist betroffen · Schwere g/m/h · Eintritt unwahrsch./möglich/wahrsch. · Kosten
-      &nbsp;⑤ Sofortmaßnahme / Stilllegung?</div>
-    <button class="btn rec big" id="audioRecBtn">🎙 Aufnahme starten</button>
+    <div class="hint">🎙 <b>Mehrere KURZE Notizen statt einer langen</b> – jede Aufnahme wird angehängt:<br>
+      <b>Notiz 1:</b> Maschine + Standort · Betriebsanleitung da? · Tätigkeiten (Rüsten, Reinigung, Wartung …)<br>
+      <b>je Befund eine eigene Notiz:</b> „<b>Mangel-Foto N zeigt</b> …" – was kann passieren · wer ist betroffen ·
+      Schwere g/m/h · Eintritt unwahrsch./möglich/wahrsch. · Kosten · Sofortmaßnahme/Stilllegung?</div>
+    <button class="btn rec big" id="audioRecBtn">🎙 Notiz aufnehmen</button>
     <div id="audioBox"></div>
     <!-- Tippfeld raus: Vor Ort wird gesprochen, nicht getippt. Das Feld meta.allg_notiz bleibt
          im Datensatz, damit die Alt-Exporte 07/2026 unverändert lesbar sind. -->
@@ -713,7 +713,7 @@ let quotaGewarnt=false;
 /* Kopie ohne Medien – das passt auch bei vielen Fotos noch in localStorage. */
 function ohneMedien(s){
   const c=JSON.parse(JSON.stringify(s));
-  c.fotosAllg=[]; c.audio=null;
+  c.fotosAllg=[]; c.audio=null; c.audios=[];
   Object.values(c.items||{}).forEach(i=>{ i.fotos=[]; });
   Object.values(c.pruefung||{}).forEach(p=>{ p.fotos=[]; });
   (c.maengel||[]).forEach(m=>{ m.fotos=[]; });
@@ -790,7 +790,7 @@ function fehlendePflicht(){
   const m=state.meta, f=[];
   if(!(m.maschine||"").trim())            f.push({feld:"maschine", txt:"Name der Maschine"});
   if(!fotoByKat("gesamt"))                f.push({feld:"foto",     txt:"Foto der Gesamtansicht"});
-  if(!(state.audio&&state.audio.data))    f.push({feld:"audio",    txt:"Sprachnotiz (sie trägt Hersteller, Typ und die Befunde)"});
+  if(!((state.audios||[]).length))        f.push({feld:"audio",    txt:"Mindestens eine Sprachnotiz (sie trägt Hersteller, Typ und die Befunde)"});
   if(!m.typenschild_fehlt && !fotoByKat("typenschild"))
                                           f.push({feld:"schild",   txt:"Foto vom Typenschild"});
   return f;
@@ -836,7 +836,7 @@ async function saveAndNeu(){
     toast("Allgemeine Befunde sind gesichert – sie reisen im 📤 Sammlungs-Export mit.");
     return;
   }
-  const leer = !(state.meta.maschine||"").trim() && !(state.audio&&state.audio.data)
+  const leer = !(state.meta.maschine||"").trim() && !((state.audios||[]).length)
     && !(state.fotosAllg||[]).length && !Object.values(state.items).some(i=>i.ja)
     && !(state.maengel||[]).length && !Object.values(state.pruefung).some(p=>p.b);
   if(leer){ toast("Noch nichts erfasst – erst Fotos oder Sprachnotiz aufnehmen."); return; }
@@ -916,7 +916,7 @@ function blankState(){
     standort:"",bereich:p.bereich||"",datum:p.datum||"",begeher:p.begeher||"",ce:"",anleitung:"",lebensphasen:[],
     allg_notiz:"", ma_hinweise:"", modus:"schnell", arbeitssystem:p.arbeitssystem||"", teilschritt:"",
     typenschild_fehlt:false, plan_pos:null, laerm:null, lux:null },
-    items:{}, pruefung:{}, maengel:[], fotosAllg:[], markierungen:[], audio:null };
+    items:{}, pruefung:{}, maengel:[], fotosAllg:[], markierungen:[], audio:null, audios:[] };
 }
 /* Synchroner Sofort-Stand aus localStorage (i. d. R. das Skelett ohne Fotos).
    boot() ersetzt ihn gleich darauf durch den vollständigen Stand aus IndexedDB.
@@ -1186,7 +1186,7 @@ function coverage(m){
     pruefN: 58,
     gef: Object.values(items).filter(it=>it.ja).length,
     fotos: (m.fotosAllg||[]).length,
-    audio: !!(m.audio&&m.audio.data),
+    audio: (m.audios&&m.audios.length) || ((m.audio&&m.audio.data)?1:0),
     maHin: !!(meta.ma_hinweise||"").trim()
   };
   const kerne=[c.stammOk, c.phasen>0, (c.maengel>0||c.gef>0), c.pruef>0].filter(Boolean).length;
@@ -1201,7 +1201,7 @@ function coverageText(c){
     + t(c.maengel>0, c.maengel+" Mängel") + " · "
     + t(c.pruef>0, c.pruef+"/"+c.pruefN+" Prüf") + " · "
     + t(c.gef>0, c.gef+" Gefähr.") + " · "
-    + c.fotos+" 📷" + (c.audio?" · 🎙":"") + (c.maHin?" · MA-Hinweis":"");
+    + c.fotos+" 📷" + (c.audio?" · "+c.audio+"×🎙":"") + (c.maHin?" · MA-Hinweis":"");
 }
 function updateHazSel(gnr){
   const g=HAZARDS.find(x=>x.nr===gnr); const el=document.getElementById("hsel-"+gnr);
@@ -1381,15 +1381,29 @@ function toggleMangel(k){
 function fotoByKat(kat){ return (state.fotosAllg||[]).find(f=>f.kat===kat)||null; }
 function addFotoKat(kat,obj){
   obj.kat=kat;
+  if(!obj.id) obj.id="f"+Date.now()+"-"+Math.random().toString(36).slice(2,7);
+  if(!Array.isArray(obj.markierungen)) obj.markierungen=[];
   if(kat==="gesamt"||kat==="typenschild"||kat==="gesamt_markiert"){
     const i=state.fotosAllg.findIndex(f=>f.kat===kat);
     if(i>=0) state.fotosAllg[i]=obj; else state.fotosAllg.push(obj);
   } else state.fotosAllg.push(obj);
 }
+/* Aktuelle M-Nummer eines Mangel-Fotos (1-basiert) – Pins zeigen IMMER diese Nummer,
+   auch wenn zwischendrin Fotos gelöscht wurden. null = Foto existiert nicht mehr. */
+function mangelNummer(fotoId){
+  let n=0;
+  for(const f of (state.fotosAllg||[])){
+    if(f.kat==="mangel"){ n++; if(f.id===fotoId) return n; }
+  }
+  return null;
+}
 function migrateFotos(s){
   (s.fotosAllg||[]).forEach(f=>{
     if(!f.kat) f.kat=(f.name==="gesamtansicht_markiert.jpg"?"gesamt_markiert":"sonstige");
     if(!Array.isArray(f.markierungen)) f.markierungen=[];
+    /* Stabile Foto-ID: die nummerierten Pins referenzieren Mangel-Fotos darüber –
+       so bleiben Pins auch nach Löschen/Umsortieren korrekt (Label wird dynamisch berechnet). */
+    if(!f.id) f.id="f"+(s._ts||Date.now())+"-"+Math.random().toString(36).slice(2,7);
   });
   /* Früher hingen die Marker global am Bogen und galten immer der Gesamtansicht. Jetzt trägt
      jedes Foto seine eigenen – Altstände einmalig an die Gesamtansicht hängen. */
@@ -1397,6 +1411,10 @@ function migrateFotos(s){
     const g=(s.fotosAllg||[]).find(f=>f.kat==="gesamt");
     if(g && !g.markierungen.length) g.markierungen=JSON.parse(JSON.stringify(s.markierungen));
   }
+  /* Sprachnotizen: eine lange -> mehrere kurze. Altfeld audio wird VERSCHOBEN (nicht kopiert –
+     Duplikat würde Export/Speicher verdoppeln); alte Exporte liest transkribiere.py weiterhin. */
+  if(!Array.isArray(s.audios)) s.audios=[];
+  if(s.audio && s.audio.data){ s.audios.push(s.audio); s.audio=null; }
 }
 /* Alle [data-addfoto]-Buttons öffnen die native Kamera-App.
    Ziel-Kategorie und Callback müssen den Umweg über den <input>-change überleben – sonst
@@ -1416,7 +1434,10 @@ document.getElementById("allgFotoInput").addEventListener("change",e=>{
     addFotoKat(ziel.kat, obj);
     renderAllgThumbs(); save();
     if(ziel.cb) ziel.cb(obj);
-  });
+    /* Nummerierter Pin: direkt nach jedem Mangel-Foto einmal auf der Gesamtansicht antippen –
+       Pin „n" = Mangel-Foto n. Überspringen jederzeit möglich; 📍 am Thumbnail holt nach. */
+    if(ziel.kat==="mangel") pinPrompt(obj);
+  }, ziel.kat);
 });
 document.addEventListener("click",e=>{
   const b=e.target.closest && e.target.closest("[data-addfoto]");
@@ -1431,40 +1452,46 @@ document.addEventListener("click",e=>{
    getUserMedia-Sucher lieferte nur den Vorschau-Stream: gemessen 480×640 = 0,3 MPix bei jedem
    Foto der Begehung 07/2026, Typenschilder darauf unlesbar. Jetzt kommt das Bild aus der
    nativen Kamera-App (volle Sensorauflösung) und wird nur EINMAL komprimiert. */
-const MAXKANTE=2560, JPEGQ=0.9;
-function zeichneSkaliert(src, w, h){
+/* Qualität kategorieabhängig: Das Typenschild ist der Engpass (Baujahr/Serien-Nr. lesbar!) und
+   bekommt die höchste Stufe; alle übrigen Fotos eine Stufe darunter. (Vorher pauschal 2560@0.9.) */
+const FOTO_PROFILE={ typenschild:{kante:4096,q:0.95}, _std:{kante:3264,q:0.92} };
+function fotoProfil(kat){ return FOTO_PROFILE[kat]||FOTO_PROFILE._std; }
+const MAXKANTE=3264, JPEGQ=0.92;   // Standard – gilt auch für Drehen/eingebrannte Marker
+function zeichneSkaliert(src, w, h, kat){
+  const p=fotoProfil(kat);
   let s=1;
-  if(w>MAXKANTE||h>MAXKANTE) s=Math.min(MAXKANTE/w, MAXKANTE/h);
+  if(w>p.kante||h>p.kante) s=Math.min(p.kante/w, p.kante/h);
   const c=document.createElement("canvas");
   c.width=Math.max(1,Math.round(w*s)); c.height=Math.max(1,Math.round(h*s));
   c.getContext("2d").drawImage(src,0,0,c.width,c.height);
-  return c.toDataURL("image/jpeg", JPEGQ);
+  return c.toDataURL("image/jpeg", p.q);
 }
 /* createImageBitmap wendet die EXIF-Drehung an – ohne das landen Hochkant-Fotos liegend
-   im Export. Fallback über <img> für Browser ohne imageOrientation. */
-function handleFile(file, cb){
+   im Export (Hoch-/Querformat kommen damit automatisch richtig an). Fallback über <img>
+   für Browser ohne imageOrientation – moderne Browser orientieren <img> ebenfalls per EXIF. */
+function handleFile(file, cb, kat){
   if(!file) return;
   const fertig=data=>cb({name:file.name||"foto.jpg", data});
   if(self.createImageBitmap){
     createImageBitmap(file,{imageOrientation:"from-image"})
       .then(bm=>{
-        let d; try{ d=zeichneSkaliert(bm,bm.width,bm.height); }catch(e){ d=null; }
+        let d; try{ d=zeichneSkaliert(bm,bm.width,bm.height,kat); }catch(e){ d=null; }
         try{ bm.close&&bm.close(); }catch(e){}
-        if(d) fertig(d); else leseAlsBild(file,fertig);
+        if(d) fertig(d); else leseAlsBild(file,fertig,kat);
       })
-      .catch(()=>leseAlsBild(file,fertig));
-  } else leseAlsBild(file,fertig);
+      .catch(()=>leseAlsBild(file,fertig,kat));
+  } else leseAlsBild(file,fertig,kat);
 }
-function leseAlsBild(file,fertig){
+function leseAlsBild(file,fertig,kat){
   const r=new FileReader();
-  r.onload=()=>shrink(r.result,fertig);
+  r.onload=()=>shrink(r.result,fertig,kat);
   r.onerror=()=>toast("Foto konnte nicht gelesen werden.");
   r.readAsDataURL(file);
 }
-/* Skaliert eine Data-URL auf MAXKANTE @ JPEGQ. */
-function shrink(dataUrl, cb){
+/* Skaliert eine Data-URL aufs Kategorie-Profil. */
+function shrink(dataUrl, cb, kat){
   const img=new Image();
-  img.onload=()=>{ try{ cb(zeichneSkaliert(img,img.naturalWidth,img.naturalHeight)); }catch(e){ cb(dataUrl); } };
+  img.onload=()=>{ try{ cb(zeichneSkaliert(img,img.naturalWidth,img.naturalHeight,kat)); }catch(e){ cb(dataUrl); } };
   img.onerror=()=>cb(dataUrl);
   img.src=dataUrl;
 }
@@ -1476,7 +1503,24 @@ function renderAllgThumbs(){
       let lab;
       if(f.kat==="mangel"){ mi++; lab="M"+mi; }
       else lab = f.kat==="gesamt"?"G" : f.kat==="typenschild"?"T" : f.kat==="gesamt_markiert"?"⌖" : "•";
-      box.appendChild(thumb(f,()=>{ state.fotosAllg.splice(i,1); renderAllgThumbs(); save(); }, lab));
+      const t=thumb(f,()=>{
+        state.fotosAllg.splice(i,1);
+        /* Pins hängen an Foto-IDs: nach dem Löschen eines Mangel-Fotos rutschen die Nummern
+           nach – gesamt_markiert neu einbrennen, verwaiste Pins fliegen dabei raus. */
+        if(f.kat==="mangel"||f.kat==="gesamt") aktualisiereMarkiertesGesamt(fotoByKat("gesamt"));
+        renderAllgThumbs(); save();
+      }, lab);
+      if(f.kat==="mangel"){
+        const pin=document.createElement("button"); pin.className="tpin"; pin.type="button";
+        const hatPin=((fotoByKat("gesamt")||{}).markierungen||[]).some(m=>m.fotoId===f.id);
+        pin.textContent="📍"; pin.title=hatPin?"Pin versetzen":"Pin auf der Gesamtansicht setzen";
+        pin.style.cssText="position:absolute;left:4px;bottom:4px;border:0;border-radius:8px;padding:2px 6px;"
+          +"background:"+(hatPin?"rgba(27,67,50,.85)":"rgba(255,255,255,.85)")+";color:"+(hatPin?"#fff":"#1B4332")
+          +";font-size:14px;cursor:pointer";
+        pin.addEventListener("click",ev=>{ ev.stopPropagation(); pinPrompt(f); });
+        t.appendChild(pin);
+      }
+      box.appendChild(t);
     });
   });
 }
@@ -1543,15 +1587,24 @@ function drehe(f, grad, imgEl){
    jederzeit nachbearbeitbar. Für die Gesamtansicht entsteht zusätzlich wie bisher EIN
    eingebranntes gesamtansicht_markiert.jpg – darauf setzen BdA/Mängelliste auf. */
 let markMk=[], markCanvas=null, markImg=null, markFoto=null;
+/* Label eines Markers: Foto-Pins (fotoId) tragen die AKTUELLE M-Nummer ihres Mangel-Fotos –
+   dynamisch berechnet, damit Löschen/Umsortieren die Pins nie falsch macht. */
+function markerLabel(m){
+  if(m.fotoId){ const n=mangelNummer(m.fotoId); return n==null?null:String(n); }
+  return m.label;
+}
 function zeichneMarkerAuf(ctx, W, H, mk){
   const rr=Math.max(16,Math.round(Math.min(W,H)*0.045));
   (mk||[]).forEach(m=>{
+    const lab=markerLabel(m);
+    if(lab==null) return;                     // verwaister Pin (Foto gelöscht) – nicht zeichnen
     const x=m.rx*W, y=m.ry*H;
     ctx.beginPath(); ctx.arc(x,y,rr,0,2*Math.PI);
-    ctx.fillStyle="rgba(198,40,40,.85)"; ctx.fill();
+    ctx.fillStyle = m.fotoId ? "rgba(27,67,50,.88)" : "rgba(198,40,40,.85)";   // Pins grün, Mängel rot
+    ctx.fill();
     ctx.lineWidth=Math.max(2,Math.round(rr*0.12)); ctx.strokeStyle="#fff"; ctx.stroke();
-    ctx.fillStyle="#fff"; ctx.font="bold "+Math.round(rr*(String(m.label).length>1?0.62:0.95))+"px sans-serif";
-    ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(m.label,x,y);
+    ctx.fillStyle="#fff"; ctx.font="bold "+Math.round(rr*(String(lab).length>1?0.62:0.95))+"px sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(lab,x,y);
   });
 }
 function zeichneMarker(){
@@ -1562,6 +1615,8 @@ function zeichneMarker(){
 /* Hält gesamtansicht_markiert.jpg synchron – nach Markieren wie nach Drehen. */
 function aktualisiereMarkiertesGesamt(f){
   if(!f || f.kat!=="gesamt") return;
+  /* Verwaiste Foto-Pins (Mangel-Foto gelöscht) endgültig entfernen. */
+  f.markierungen=(f.markierungen||[]).filter(m=>markerLabel(m)!=null);
   const mk=f.markierungen||[];
   if(!mk.length){
     const i=state.fotosAllg.findIndex(x=>x.kat==="gesamt_markiert");
@@ -1668,6 +1723,40 @@ function openMarker(foto){
   });
 }
 document.querySelectorAll("[data-mark]").forEach(b=>b.addEventListener("click",()=>openMarker()));
+
+/* ===== Nummerierter Pin: Mangel-Foto n ↔ Pin „n" auf der Gesamtansicht =====
+   Öffnet sich automatisch nach jedem Mangel-Foto (Ein-Tap, ohne Picker – Details liefern Foto
+   und Sprachnotiz). ✕ überspringt; 📍 am Thumbnail setzt/versetzt den Pin nachträglich. */
+function pinPrompt(mFoto){
+  if(!mFoto || !mFoto.id) return;
+  const g=fotoByKat("gesamt");
+  const n=mangelNummer(mFoto.id);
+  if(n==null) return;
+  if(!g){ toast("📍 Pin für Befund "+n+" folgt: erst 📷 Gesamtansicht aufnehmen, dann 📍 am Foto antippen."); return; }
+  const alt=document.getElementById("mark"); if(alt) alt.remove();
+  const ov=document.createElement("div"); ov.id="mark";
+  ov.innerHTML=`<canvas></canvas>`
+    +`<div class="markhint">📍 Wo ist Befund <b>${n}</b>? Auf der Gesamtansicht antippen.</div>`
+    +`<div class="markbar"><button class="btn" id="pinSkip" style="margin-left:auto">✕ Überspringen</button></div>`;
+  document.body.appendChild(ov);
+  const cv=ov.querySelector("canvas");
+  const img=new Image();
+  const zeichnePins=()=>{ const ctx=cv.getContext("2d"); ctx.drawImage(img,0,0);
+    zeichneMarkerAuf(ctx, cv.width, cv.height, g.markierungen||[]); };
+  img.onload=()=>{ cv.width=img.naturalWidth; cv.height=img.naturalHeight; zeichnePins(); };
+  img.src=g.data;
+  cv.addEventListener("click",e=>{
+    const r=cv.getBoundingClientRect(); if(!r.width||!r.height) return;
+    const rx=(e.clientX-r.left)/r.width, ry=(e.clientY-r.top)/r.height;
+    g.markierungen=(g.markierungen||[]).filter(m=>m.fotoId!==mFoto.id);  // Pin versetzen statt doppeln
+    g.markierungen.push({rx, ry, fotoId:mFoto.id});
+    ov.remove();
+    aktualisiereMarkiertesGesamt(g);   // brennt gesamt_markiert neu ein + speichert
+    renderAllgThumbs(); save();
+    toast("📍 Pin "+n+" gesetzt.");
+  });
+  ov.querySelector("#pinSkip").addEventListener("click",()=>ov.remove());
+}
 
 /* ===== Standortplan =====
    Aus der Begehung 07/2026 (neben D50/1): „Hilfreich wäre es für mich auf jeden Fall, wenn ich die
@@ -2000,7 +2089,8 @@ function audioMime(){
 async function toggleAudioRec(){
   const btn=document.getElementById("audioRecBtn");
   if(aRec){ aRec.stop(); return; }
-  if(state.audio&&state.audio.data&&!confirm("Es gibt schon eine Sprachnotiz zu dieser Maschine – neue Aufnahme ersetzt sie. Fortfahren?")) return;
+  /* Mehrere KURZE Notizen statt einer langen: jede Aufnahme wird ANGEHÄNGT (kein Ersetzen).
+     Kurze Notizen je Befund sind in der Halle robuster und beim Transkribieren klar zuzuordnen. */
   const mime=audioMime();
   if(!mime || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
     alert("Audio-Aufnahme wird von diesem Browser nicht unterstützt.\nAlternative: Sprachmemo-App des Handys nutzen und die Datei zuhause mit tools/transkribiere.py verarbeiten.");
@@ -2015,12 +2105,14 @@ async function toggleAudioRec(){
     const dauer=Math.round((Date.now()-aStart)/1000);
     const blob=new Blob(aChunks,{type:mime});
     aStream.getTracks().forEach(t=>t.stop()); aStream=null; aRec=null;
-    btn.classList.remove("active"); btn.textContent="🎙 Aufnahme starten";
+    btn.classList.remove("active"); btn.textContent="🎙 Notiz aufnehmen";
     const r=new FileReader();
     r.onload=()=>{
-      state.audio={name:"sprachnotiz."+(mime.indexOf("mp4")>=0?"m4a":"webm"),
-        mime, dauer, data:r.result};
+      state.audios=state.audios||[];
+      state.audios.push({name:"sprachnotiz-"+(state.audios.length+1)+"."+(mime.indexOf("mp4")>=0?"m4a":"webm"),
+        mime, dauer, data:r.result, ts:Date.now()});
       save(); renderAudio();
+      toast("Notiz "+state.audios.length+" gesichert ("+Math.floor(dauer/60)+":"+String(dauer%60).padStart(2,"0")+").");
     };
     r.readAsDataURL(blob);
   };
@@ -2035,18 +2127,23 @@ async function toggleAudioRec(){
 function renderAudio(){
   const box=document.getElementById("audioBox"); if(!box) return;
   box.innerHTML="";
-  if(!state.audio||!state.audio.data) return;
-  const a=state.audio;
-  const row=document.createElement("div"); row.className="toolrow"; row.style.alignItems="center";
-  const player=document.createElement("audio"); player.controls=true; player.src=a.data;
-  player.style.flex="1 1 200px"; player.style.height="36px";
-  const info=document.createElement("span");
-  info.style.cssText="font-size:12px;color:var(--muted)";
-  info.textContent=Math.floor((a.dauer||0)/60)+":"+String((a.dauer||0)%60).padStart(2,"0")+" min";
-  const del=document.createElement("button"); del.className="btn"; del.textContent="× Löschen";
-  del.addEventListener("click",()=>{ if(confirm("Sprachnotiz löschen?")){ state.audio=null; save(); renderAudio(); } });
-  row.appendChild(player); row.appendChild(info); row.appendChild(del);
-  box.appendChild(row);
+  const list=state.audios||[];
+  list.forEach((a,i)=>{
+    const row=document.createElement("div"); row.className="toolrow"; row.style.alignItems="center";
+    const nr=document.createElement("span");
+    nr.style.cssText="font-weight:700;min-width:2.2em;color:var(--oak,#1B4332)";
+    nr.textContent="🎙"+(i+1);
+    const player=document.createElement("audio"); player.controls=true; player.src=a.data;
+    player.style.flex="1 1 180px"; player.style.height="36px";
+    const info=document.createElement("span");
+    info.style.cssText="font-size:12px;color:var(--muted)";
+    info.textContent=Math.floor((a.dauer||0)/60)+":"+String((a.dauer||0)%60).padStart(2,"0");
+    const del=document.createElement("button"); del.className="btn"; del.textContent="×";
+    del.title="Notiz "+(i+1)+" löschen";
+    del.addEventListener("click",()=>{ if(confirm("Notiz "+(i+1)+" löschen?")){ state.audios.splice(i,1); save(); renderAudio(); } });
+    row.appendChild(nr); row.appendChild(player); row.appendChild(info); row.appendChild(del);
+    box.appendChild(row);
+  });
 }
 document.getElementById("audioRecBtn").addEventListener("click",toggleAudioRec);
 
@@ -2066,7 +2163,7 @@ function exportPaket(){
   /* Standortplan und allgemeine Befunde gehören der BEGEHUNG, nicht der einzelnen Maschine –
      sie reisen genau einmal mit der Sammlung. Die Position je Maschine steckt in meta.plan_pos. */
   const allg = imAllgModus() ? state : allgemeinGeparkt;
-  const allgHatInhalt = allg && ((allg.fotosAllg||[]).length || (allg.audio&&allg.audio.data)
+  const allgHatInhalt = allg && ((allg.fotosAllg||[]).length || (allg.audios||[]).length || (allg.audio&&allg.audio.data)
     || (allg.maengel||[]).length || (allg.meta&&(allg.meta.allg_notiz||"").trim())
     || Object.values(allg.items||{}).some(i=>i.ja));
   if(!machines.length && !allgHatInhalt) return null;
