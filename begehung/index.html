@@ -134,6 +134,13 @@
   .ovgroup b{color:var(--dunkel)}
   .ovacts{display:flex;gap:6px;flex:0 0 auto}
 
+  /* Rundgang traegt Inhalt und bleibt - aber neutral, nicht als gruener Kasten. */
+  .rundgangbox{font-size:12px;color:var(--muted);padding:4px 0;margin:6px 0}
+  .dguvliste{max-height:56vh;overflow:auto;margin-top:6px}
+  .dguvzeile{display:grid;grid-template-columns:34px 1fr;gap:2px 8px;padding:7px 0;
+    border-top:1px solid var(--rand,#e3ebe7);font-size:13px}
+  .dguvzeile b{color:var(--gruen,#2D6A4F)}
+  .dguvzeile i{grid-column:2;font-style:normal;font-size:11px;color:var(--muted)}
   .hint{font-size:12px;color:var(--muted);background:#f0f6f2;border-left:3px solid var(--hell);
     padding:8px 11px;border-radius:0 8px 8px 0;margin:8px 0}
   .req{color:#b5462f}
@@ -336,8 +343,6 @@
 <main>
   <!-- Nativer Kamera-/Galerie-Input für ALLE Foto-Buttons (muss im DOM bleiben) -->
   <input type="file" accept="image/*" capture="environment" id="allgFotoInput" hidden>
-  <!-- Eigener Input fuer Kurzvideos: die Bildpipeline (createImageBitmap) kann keine Videos. -->
-  <input type="file" accept="video/*" capture="environment" id="allgVideoInput" hidden>
 
   <!-- ===== BEGEHUNGS-EBENE: hier fängt alles an ===== -->
   <section class="card nur-allgemein">
@@ -367,8 +372,6 @@
       <b>Begehungsprotokoll</b>, nicht in eine Maschinen-GBU. Wird laufend gesichert.</div>
     <button class="btn big" data-addfoto="mangel">📷 Foto vom Befund</button>
     <div class="thumbs allgThumbs"></div>
-    <div class="hint">Foto antippen → <b>⌖ Mangel markieren</b> → Stelle antippen → Mangel im Pop-Up
-      wählen und beschreiben. Der Gefährdungsfaktor wird dabei automatisch gesetzt.</div>
   </section>
 
   <!-- ===== MASCHINEN-EBENE: reine Erfassung =====
@@ -383,7 +386,7 @@
     <input type="text" data-meta="maschine" placeholder="z. B. D150/3">
     <details class="rundgang">
       <summary>🧭 Rundgang – wo finde ich was?</summary>
-      <div class="hint" id="rundgangBox"></div>
+      <div class="rundgangbox" id="rundgangBox"></div>
     </details>
   </section>
 
@@ -394,8 +397,6 @@
        allgemeine Infos · Maschinenliste · Fotos. Mängel entstehen dort ausschließlich über
        Foto → Marker → Pop-Up; eine zweite Mängel-Palette wäre Doppelung. -->
   <section class="card mode-schnell nur-maschine" id="cardSchnell">
-    <div class="hint">📷 <b>Gesamtansicht</b> + <b>Typenschild</b> (mit CE) + je Befund ein <b>Mangel-Foto</b>.
-      Getrennt aufnehmen – Gesamtansicht &amp; Typenschild ersetzen sich, Mangel-Fotos werden gesammelt.</div>
     <div class="toolrow">
       <button class="btn" data-addfoto="gesamt">📷 Gesamtansicht</button>
       <button class="btn" data-addfoto="gesamt_rueck">📷 Rückseite</button>
@@ -404,7 +405,6 @@
       <button class="btn" data-addvideo="1">🎬 Kurzvideo (10 s)</button>
     </div>
     <div class="thumbs allgThumbs"></div>
-    <div class="hint">Foto antippen = groß ansehen, drehen und darauf markieren.</div>
     <div class="toolrow">
       <button class="btn" data-mark>🖼 Auf Gesamtansicht markieren</button>
       <button class="btn" data-plan>🗺 Auf Standortplan verorten</button>
@@ -423,10 +423,6 @@
          der Erfassung. Vor Ort tippt Nikolai „Ordnung & Sauberkeit" auf dem Foto an – 8.4 und 8.5
          setzt das Tool selbst. Was kein Mangel abdeckt (9.1 Heben, 3.1 Hautkontakt), steht in der
          Sprachnotiz und kommt beim Erstellen der GBU dazu. -->
-    <div class="hint">🎙 <b>Mehrere KURZE Notizen statt einer langen</b> – jede Aufnahme wird angehängt:<br>
-      <b>Notiz 1:</b> Maschine + Standort · Betriebsanleitung da? · Tätigkeiten (Rüsten, Reinigung, Wartung …)<br>
-      <b>je Befund eine eigene Notiz:</b> „<b>Mangel-Foto N zeigt</b> …" – was kann passieren · wer ist betroffen ·
-      Schwere g/m/h · Eintritt unwahrsch./möglich/wahrsch. · Kosten · Sofortmaßnahme/Stilllegung?</div>
     <button class="btn rec big" id="audioRecBtn">🎙 Notiz aufnehmen</button>
     <div id="audioBox"></div>
     <!-- Tippfeld raus: Vor Ort wird gesprochen, nicht getippt. Das Feld meta.allg_notiz bleibt
@@ -541,6 +537,66 @@ const LEBENSPHASEN = ["Transport","Montage/Installation","Inbetriebnahme","Einri
 /* ===== Typische Gefährdungsfaktoren je Maschinentyp (Vorauswahl; Feinschliff = BdA im Hintergrund) =====
    SSOT: references/anlagenkataster/kunststoff-spritzguss/kunststoff-spritzguss.md
    ("Maschinentyp-Profile") – Änderungen dort pflegen, dann hierher übernehmen + deployen. */
+/* DGUV-Kurzuebersicht je Maschinentyp - "Worauf ist zu achten?".
+   Fuer Spritzgiessmaschinen 1:1 aus der Anforderungsliste A1-E4 des Branchen-Bausteins
+   (references/anlagenkataster/kunststoff-spritzguss/kunststoff-spritzguss.md) samt Fundstellen.
+   Wo kein Baustein existiert, steht das ausdruecklich - es wird KEINE Quelle erfunden. */
+const DGUV_HINWEISE = {
+  sgm: { quelle:"DGUV Information 113-606 „Branche Kunststoffverarbeitung“ (Ausgabe lt. OAK-Wissen) · BG RCI T 009 „Sicherheit an Kunststoff- und Gummimaschinen“ · DIN EN 201 (C-Norm Spritzgießmaschinen)",
+    ablage:"PDF im OAK-Wissen: references/anlagenkataster/kunststoff-spritzguss/spritzgiessmaschine/_quellen/",
+    punkte:[
+      ["A1","Trennende Schutzeinrichtungen vollständig & wirksam (Düsenschutz, seitlich, Materialausgabe)","113-606 3.1.3"],
+      ["A2","Sicherheitsabstände / Bodenspalt < 180 mm","113-606 3.1.3 · EN ISO 13857"],
+      ["A3","Not-Halt wirksam & erreichbar","BG RCI T 009"],
+      ["A4","Schutz gegen unerwarteten Wiederanlauf","EN ISO 14118"],
+      ["B1","Heiße Oberflächen gesichert (Düse/Zylinder/Heizband)","113-606 3.1.7"],
+      ["B2","Materialstau-/Verpuffungsschutz (POM/PVC/PA)","113-606 3.1.9/3.1.10"],
+      ["B3","Absaugung / Zersetzungsgase (Formaldehyd)","113-606 3.1.9"],
+      ["B4","Brand-/Explosionsschutz (Staub, Ex)","113-606 3.1.10"],
+      ["C1","Leitern/Tritte/Zugänge sicher (feste Aufstiege)","113-606 3.3.2 · TRBS 2121-2"],
+      ["C2","Kran/Transport über Bedienbereich gesichert","113-606 3.3.3"],
+      ["C3","Verkehrswege frei, Boden rutschsicher, keine Leckagen","113-606 3.1.2/3.1.5"],
+      ["C4","Beleuchtung ausreichend","T 009 4.3.3 · ASR A3.4"],
+      ["C6","Lärmexposition unter Auslösewert (LEX,8h < 80 dB(A))","LärmVibrationsArbSchV §3/§6"],
+      ["D1","E-Prüfung DGUV V3 aktuell","113-606 3.1.13"],
+      ["D2","Hydraulik dicht; Druckentlastung nach Not-Halt","113-606 3.1.12"],
+      ["D3","Pneumatik dicht; Druckentlastung nach Not-Halt","113-606 3.1.12"],
+      ["D4","Wiederkehrende Prüfungen aktuell","§ 14 BetrSichV"],
+      ["E1","CE/Konformität & deutsche Betriebsanleitung","T 009 Kap. 2"],
+      ["E2","Aktuelle BA + dokumentierte Unterweisung","113-606 Kap. 2"],
+      ["E4","Typenschild vorhanden & lesbar","2006/42/EG Anh. I 1.7.3"]
+    ]}
+};
+/* Pop-Up. Bewusst KEIN Dauer-Kasten in der Oberflaeche - die statischen gruenen Hinweise
+   haben nur Platz gekostet. Abrufbar ueber den Button neben dem Maschinentyp. */
+function zeigeDguv(typId){
+  const t=MASCHINENTYPEN.find(x=>x.id===typId);
+  const d=DGUV_HINWEISE[typId];
+  const pk=document.createElement("div"); pk.className="mpicker";
+  let inhalt;
+  if(d){
+    /* Quellen ans ENDE der Box - oben soll die Checkliste stehen, nicht der Apparat. */
+    inhalt=`<div class="dguvliste">`+d.punkte.map(([id,txt,rq])=>
+        `<div class="dguvzeile"><b>${id}</b><span>${esc(txt)}</span><i>${esc(rq)}</i></div>`).join("")
+      +`</div>`
+      +`<p class="hint" style="margin-top:10px"><b>Zugrunde liegende Quellen</b><br>${esc(d.quelle)}`
+      +(d.ablage?`<br><span style="font-size:11px">${esc(d.ablage)}</span>`:"")
+      +`</p>`;
+  } else {
+    /* Ehrlich statt erfunden: fuer diesen Typ gibt es keinen Baustein. */
+    inhalt=`<p class="hint">Für <b>${esc((t&&t.label)||typId)}</b> ist im OAK-Wissen noch keine
+      DGUV-Kurzübersicht hinterlegt. Bitte Quelle nachreichen – bis dahin keine typspezifische
+      Rechtsquelle in der GBU (wird als „Rechtsquelle offen – Review“ geführt).</p>`;
+  }
+  pk.innerHTML=`<div class="pcard"><h3>Worauf ist zu achten? – ${esc((t&&t.label)||typId)}</h3>`
+    +inhalt
+    +`<div class="toolrow" style="margin-top:12px"><button class="btn primary" id="dgOk"
+       style="margin-left:auto">Schließen</button></div></div>`;
+  document.body.appendChild(pk);
+  const zu=()=>pk.remove();
+  pk.querySelector("#dgOk").addEventListener("click",zu);
+  pk.addEventListener("click",e=>{ if(e.target===pk) zu(); });
+}
 const MASCHINENTYPEN = [
  {id:"sgm",       label:"Spritzgießmaschine",   gf:["1.1","1.4","2.1","3.2","6.1","7.1"],
   rundgang:["Not-Halt: am Bedienpult, oft zusätzlich Rückseite/Werkzeugbereich",
@@ -1219,8 +1275,13 @@ function renderRundgang(){
   box.innerHTML="<b>Grundrundgang (Laufweg):</b><br>"+RUNDGANG_BASIS.join("<br>")
     +"<div style='margin-top:9px'>"+MASCHINENTYPEN.filter(t=>t.rundgang&&t.rundgang.length)
       .map(t=>`<details class="rundgang"><summary>${esc(t.label)}</summary>`
-        +`<div style="padding:2px 0 6px">${t.rundgang.map(s=>"• "+esc(s)).join("<br>")}</div></details>`).join("")
+        +`<div style="padding:2px 0 6px">${t.rundgang.map(s=>"• "+esc(s)).join("<br>")}</div>`
+        +`<button class="btn" type="button" data-dguv="${t.id}" style="margin:2px 0 8px">`
+        +`📖 DGUV: Worauf ist zu achten?</button></details>`).join("")
     +"</div>";
+  /* Ein Klick statt Dauerkasten: die Kurzuebersicht kommt auf Abruf. */
+  box.querySelectorAll("[data-dguv]").forEach(b=>
+    b.addEventListener("click",e=>{ e.preventDefault(); zeigeDguv(b.dataset.dguv); }));
 }
 /* ===== Modus (Schnell/Detail) + Stepper ===== */
 const STEP_LABELS=["Stammdaten","Betriebszustände","Mängel","Maschinensicherheit","Gefährdungsfaktoren","Mitarbeiterhinweise"];
@@ -1514,38 +1575,57 @@ function migrateFotos(s){
 /* Kurzvideo. Bewusst klein gehalten: Fotos haben die Begehung am 22.07. schon auf 92 MB
    getrieben. Alles ueber ~12 s oder 8 MB wird abgelehnt, statt den Upload spaeter scheitern
    zu lassen. Keine Kompression moeglich - der Browser kann Video nicht neu kodieren. */
-const VIDEO_MAX_S=12, VIDEO_MAX_MB=8;
-document.addEventListener("click",e=>{
-  const b=e.target.closest && e.target.closest("[data-addvideo]");
-  if(!b) return;
-  const inp=document.getElementById("allgVideoInput"); if(inp){ inp.value=""; inp.click(); }
-});
-const _vi=document.getElementById("allgVideoInput");
-if(_vi) _vi.addEventListener("change",e=>{
-  const f=e.target.files&&e.target.files[0]; if(!f) return;
-  const mb=f.size/1048576;
-  if(mb>VIDEO_MAX_MB){
-    alert("Das Video ist "+mb.toFixed(1)+" MB groß (erlaubt: "+VIDEO_MAX_MB+" MB).\n"
-      +"Bitte kürzer aufnehmen – lange Videos sprengen den Upload.");
-    return;
-  }
-  const v=document.createElement("video"); v.preload="metadata";
-  v.onloadedmetadata=()=>{
-    URL.revokeObjectURL(v.src);
-    if(v.duration>VIDEO_MAX_S+1){
-      alert("Das Video dauert "+Math.round(v.duration)+" s (erlaubt: "+VIDEO_MAX_S+" s).");
-      return;
-    }
+/* Kurzvideo. Der native Kamera-Input war unbrauchbar: er nimmt in voller Qualitaet auf,
+   damit riss die Groessengrenze schon nach 8 Sekunden. Jetzt nimmt die App selbst auf -
+   640x480, 800 kbit/s, ohne Ton, harter Stopp nach 10 s. Ergibt rund 1 MB, kalkulierbar. */
+const VIDEO_MAX_S=10, VIDEO_BREITE=640, VIDEO_BITRATE=800000;
+function videoMime(){
+  if(!window.MediaRecorder) return null;
+  for(const m of ["video/webm;codecs=vp8","video/webm","video/mp4"])
+    if(MediaRecorder.isTypeSupported(m)) return m;
+  return null;
+}
+async function nimmVideoAuf(){
+  const mime=videoMime();
+  if(!mime || !navigator.mediaDevices){ toast("Videoaufnahme auf diesem Gerät nicht möglich."); return; }
+  let stream;
+  try{ stream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{ideal:"environment"}, width:{ideal:VIDEO_BREITE}, height:{ideal:480}}, audio:false }); }
+  catch(e){ toast("Kein Kamerazugriff."); return; }
+
+  const ov=document.createElement("div"); ov.id="mark";
+  ov.innerHTML=`<video autoplay muted playsinline style="flex:0 1 auto;max-width:100%;max-height:100%;margin:auto"></video>`
+    +`<div class="markhint">Aufnahme läuft – <b id="vidRest">${VIDEO_MAX_S}</b> s</div>`
+    +`<div class="markbar"><button class="btn" id="vidStop" style="margin-left:auto">⏹ Stop</button></div>`;
+  document.body.appendChild(ov);
+  const vEl=ov.querySelector("video"); vEl.srcObject=stream; vEl.play().catch(()=>{});
+
+  const chunks=[];
+  const rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:VIDEO_BITRATE});
+  rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+  let rest=VIDEO_MAX_S;
+  const tick=setInterval(()=>{ rest--; const el=ov.querySelector("#vidRest"); if(el) el.textContent=rest;
+    if(rest<=0 && rec.state!=="inactive") rec.stop(); },1000);
+  rec.onstop=()=>{
+    clearInterval(tick);
+    try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+    ov.remove();
+    const blob=new Blob(chunks,{type:mime});
     const r=new FileReader();
     r.onload=()=>{
-      addFotoKat("video",{name:"video-"+Date.now()+".mp4", data:r.result,
-        dauer:Math.round(v.duration), mime:f.type||"video/mp4"});
+      addFotoKat("video",{name:"video-"+Date.now()+(mime.indexOf("mp4")>=0?".mp4":".webm"),
+        data:r.result, dauer:VIDEO_MAX_S-Math.max(0,rest), mime});
       renderAllgThumbs(); save();
-      toast("Video gesichert ("+mb.toFixed(1)+" MB).");
+      toast("Video gesichert ("+(blob.size/1048576).toFixed(1)+" MB).");
     };
-    r.readAsDataURL(f);
+    r.readAsDataURL(blob);
   };
-  v.src=URL.createObjectURL(f);
+  ov.querySelector("#vidStop").addEventListener("click",()=>{ if(rec.state!=="inactive") rec.stop(); });
+  rec.start();
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest && e.target.closest("[data-addvideo]");
+  if(b) nimmVideoAuf();
 });
 /* Alle [data-addfoto]-Buttons öffnen die native Kamera-App.
    Ziel-Kategorie und Callback müssen den Umweg über den <input>-change überleben – sonst
@@ -2092,10 +2172,14 @@ function renderMaschListe(){
     const me=m.meta||{};
     const nGef=Object.values(m.items||{}).filter(x=>x.ja).length;
     const nMgl=(m.maengel||[]).length;
+    /* Vor dem Update vom 22.07.2026 liess sich gar kein Mangel erfassen (der Dialog nach dem
+       Foto fehlte). "0 Mängel" sah dort wie Datenverlust aus - die Befunde stecken in den
+       Sprachnotizen. Deshalb bei Altdatensaetzen ehrlich kennzeichnen. */
+    const altbestand = nMgl===0 && (m.audios||[]).length>0;
     const z=document.createElement("button"); z.type="button"; z.className="maschzeile";
     z.innerHTML=`<span class="mz-name">${esc(me.maschine||"(ohne Namen)")}</span>`
       +`<span class="mz-sub">${esc([me.hersteller,me.typ].filter(Boolean).join(" · ")||"–")}</span>`
-      +`<span class="mz-zahl">${nGef} GF · ${nMgl} Mängel${me.plan_pos?" · 🗺":""}</span>`;
+      +`<span class="mz-zahl">${nGef} GF · ${altbestand?"Mängel in der Sprachnotiz":nMgl+" Mängel"}${me.plan_pos?" · 🗺":""}</span>`;
     z.addEventListener("click",()=>maschineOeffnen(i));
     liste.appendChild(z);
   });
@@ -2129,9 +2213,17 @@ async function maschineOeffnen(idx){
           auslesen, wie stark die Automatik aufdrehen musste: exposureTime + ISO. Die Blende
           ist bei Handys fest und steckt im Kalibrierfaktor. Nur Android liefert diese Werte. */
 const MESSKEY="oak_begehung_kalibrierung_v1";
+/* Ohne Abgleich gab es zuletzt gar keinen Wert mehr - das war eine Ueberkorrektur.
+   Bei Smartphone-MEMS-Mikrofonen entspricht 94 dB SPL etwa -26 dBFS, also dB(A) ~ dBFS + 120.
+   Genau so rechnen die Apps aus dem Store. Der individuelle Abgleich ueberschreibt den Wert. */
+const LAERM_STD_OFFSET=120;
 const LAERM_UNTERER=80, LAERM_OBERER=85;      // dB(A), LärmVibrationsArbSchV §6
 const A_NORM_DB=1.97;                          // A-Kurve auf 0 dB @ 1 kHz normieren (ausgemessen; Literaturwert +2,0)
 const LAERM_UNSICHER=5;                        // dB Screening-Unschärfe → Grenznähe-Band
+/* Ohne Abgleich gab es bisher gar keinen Lux-Wert. Der Standardfaktor liefert einen groben
+   Orientierungswert (mittlere Bildhelligkeit 0..255 -> lx); der Abgleich gegen ein Luxmeter
+   ueberschreibt ihn. Beim echten Sensor ist der Wert bereits lx, Faktor also 1. */
+const LUX_STD_FAKTOR=4.0;
 const LUX_UNSICHER=1.4;                        // Faktor Screening-Unschärfe → Grenznähe-Band
 /* ASR A3.4 Anhang 1 – Auswahl der hier relevanten Mindestwerte */
 const LUX_SOLL=[ {v:100,t:"Verkehrsweg / Lager (100 lx)"}, {v:200,t:"Grobe Arbeit, Maschinenbeschickung (200 lx)"},
@@ -2189,24 +2281,47 @@ async function laermMessen(sek, aufTick){
 /* Rohwert der Belichtung: je kürzer belichtet und je kleiner ISO, desto heller die Szene.
    exposureTime kommt laut W3C Media Capture in 100-µs-Schritten. */
 async function lichtRoh(){
+  /* Frueher wurden exposureTime/iso aus getSettings() gelesen. Diese Image-Capture-Extensions
+     liefert praktisch KEIN Geraet - der Licht-Check schlug deshalb immer fehl, und die Meldung
+     schob es faelschlich aufs iPhone. Jetzt zwei Wege, die real funktionieren:
+     1. echter Umgebungslichtsensor, falls vorhanden (selten, aber dann am genauesten)
+     2. sonst mittlere Helligkeit des Kamerabildes (funktioniert auf jedem Geraet mit Kamera) */
+  if("AmbientLightSensor" in window){
+    try{
+      const wert=await new Promise((res,rej)=>{
+        const sen=new AmbientLightSensor({frequency:4});
+        const t=setTimeout(()=>{ try{sen.stop();}catch(e){} rej(); },2500);
+        sen.onreading=()=>{ clearTimeout(t); const v=sen.illuminance; try{sen.stop();}catch(e){} res(v); };
+        sen.onerror=()=>{ clearTimeout(t); rej(); };
+        sen.start();
+      });
+      if(isFinite(wert)) return { roh:wert, sensor:true };
+    }catch(e){}
+  }
   let stream;
   try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}}); }
-  catch(e){ return {fehler:"Kein Kamerazugriff."}; }
-  const track=stream.getVideoTracks()[0];
-  /* exposureTime/iso sind optionale Image-Capture-Extensions. Sie tauchen bei vielen Geraeten
-     nur auf, wenn man sie vorher ueber die Capabilities anfordert - das fehlte, deshalb schlug
-     der Check praktisch immer fehl und die Meldung schob es faelschlich aufs iPhone. */
+  catch(e){ return {fehler:"Kein Kamerazugriff – bitte erlauben."}; }
   try{
-    const c=track.getCapabilities ? track.getCapabilities() : {};
-    if(c.exposureMode && c.exposureMode.indexOf("manual")>=0) await track.applyConstraints({advanced:[{exposureMode:"manual"}]});
-  }catch(e){}
-  await new Promise(r=>setTimeout(r,1800));   // Belichtungsautomatik einschwingen lassen
-  const s=track.getSettings();
-  try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
-  if(s.exposureTime==null || s.iso==null)
-    return {fehler:"Dieses Gerät liefert keine Belichtungsdaten – der Licht-Check funktioniert hier nicht. Beleuchtungsstärke mit einem Luxmeter erfassen."};
-  const t=s.exposureTime*1e-4;                                   // → Sekunden
-  return { roh: 1/Math.max(1e-9, t*s.iso), exposureTime:s.exposureTime, iso:s.iso };
+    const v=document.createElement("video");
+    v.srcObject=stream; v.muted=true; v.playsInline=true;
+    await v.play().catch(()=>{});
+    await new Promise(r=>setTimeout(r,1800));            // Belichtungsautomatik einschwingen lassen
+    const b=Math.min(v.videoWidth||640, 320) || 320;
+    const c=document.createElement("canvas"); c.width=b; c.height=Math.round(b*0.75);
+    const ctx=c.getContext("2d");
+    ctx.drawImage(v, 0, 0, c.width, c.height);
+    /* Nur die Bildmitte auswerten - Raender zeigen oft Lampe oder Fensterkante. */
+    const mw=Math.round(c.width*0.5), mh=Math.round(c.height*0.5);
+    const d=ctx.getImageData(Math.round(c.width*0.25), Math.round(c.height*0.25), mw, mh).data;
+    let sum=0;
+    for(let k=0;k<d.length;k+=4) sum += 0.2126*d[k] + 0.7152*d[k+1] + 0.0722*d[k+2];
+    const luma=sum/(d.length/4);                          // 0..255
+    return { roh:luma, sensor:false };
+  }catch(e){
+    return {fehler:"Lichtmessung auf diesem Gerät nicht möglich."};
+  }finally{
+    try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  }
 }
 /* Grenznähe-Regel: Befund IMMER eintragen, sobald der Wert ins Unschärfeband des Grenzwerts fällt. */
 function befundEintragen(id, notiz){
@@ -2230,23 +2345,19 @@ function renderMess(){
     /* Ohne Abgleich KEINE Ampel und keine Auslösewert-Aussage. Vorher war der dba==null-Zweig
        fest auf "gelb" verdrahtet und meldete "nahe Auslösewert", egal wie leise es war - und
        der dBFS-Rohwert daneben wurde als Messwert gelesen. Beides ist weg. */
-    if(l.dba==null){
-      teile.push(`<div class="messerg"><div class="messwert">—<span class="einheit">nicht abgeglichen</span></div>`
-        +`<div class="messsub">Ohne einmaligen Abgleich gegen ein Messgerät lässt sich kein dB(A) angeben. `
-        +`<a href="#" id="kalibLink2" style="color:var(--gruen);font-weight:600">⚙ Abgleich</a> · ${esc(l.zeit)}</div></div>`);
-    } else {
-      const a=(l.dba>=LAERM_OBERER?"rot":l.dba>=LAERM_UNTERER-LAERM_UNSICHER?"gelb":"gruen");
-      teile.push(`<div class="messerg"><div class="messwert">ca. ${l.dba.toFixed(0)}<span class="einheit">dB(A)</span></div>`
-        +`<div class="messsub"><b>Orientierungswert Handy-Mikrofon</b> – kein Beurteilungspegel nach
-        LärmVibrationsArbSchV. LAeq über ${l.dauer_s} s · ${esc(l.zeit)}</div>`
-        +`<span class="ampel ${a}">${a==="rot"?"über oberem Auslösewert (85 dB(A)) – Messung n. DIN EN ISO 9612 beauftragen":a==="gelb"?"nahe Auslösewert – belastbare Messung nötig":"unauffällig"}</span></div>`);
-    }
+    const a=(l.dba>=LAERM_OBERER?"rot":l.dba>=LAERM_UNTERER-LAERM_UNSICHER?"gelb":"gruen");
+    teile.push(`<div class="messerg"><div class="messwert">ca. ${l.dba.toFixed(0)}<span class="einheit">dB(A)</span></div>`
+      +`<div class="messsub"><b>Orientierungswert Handy-Mikrofon</b> – kein Beurteilungspegel nach
+      LärmVibrationsArbSchV. LAeq über ${l.dauer_s} s${l.abgeglichen?"":" · Schätzung ohne Abgleich"} · ${esc(l.zeit)}`
+      +(l.abgeglichen?"":` · <a href="#" id="kalibLink2" style="color:var(--gruen);font-weight:600">⚙ Abgleich</a>`)
+      +`</div>`
+      +`<span class="ampel ${a}">${a==="rot"?"über oberem Auslösewert (85 dB(A)) – Messung n. DIN EN ISO 9612 beauftragen":a==="gelb"?"nahe Auslösewert – belastbare Messung nötig":"unauffällig"}</span></div>`);
   }
   if(x){
-    const a=x.lux==null?"gelb":(x.lux<=x.soll?"rot":x.lux<=x.soll*LUX_UNSICHER?"gelb":"gruen");
-    teile.push(`<div class="messerg"><div class="messwert">`
-      +(x.lux==null?`—<span class="einheit">nicht abgeglichen</span>`:`ca. ${Math.round(x.lux)}<span class="einheit">lx · ungeeicht</span>`)
-      +`</div><div class="messsub">Soll ${x.soll} lx · ${esc(x.soll_txt)} · ${esc(x.zeit)}</div>`
+    const a=(x.lux<=x.soll?"rot":x.lux<=x.soll*LUX_UNSICHER?"gelb":"gruen");
+    teile.push(`<div class="messerg"><div class="messwert">ca. ${Math.round(x.lux)}<span class="einheit">lx</span></div>`
+      +`<div class="messsub"><b>Orientierungswert</b>${x.sensor?" (Lichtsensor)":" (Kamera-Helligkeit)"}`
+      +`${x.abgeglichen||x.sensor?"":" · Schätzung ohne Abgleich"} · Soll ${x.soll} lx · ${esc(x.soll_txt)} · ${esc(x.zeit)}</div>`
       +`<span class="ampel ${a}">${a==="rot"?"unter Soll – belastbare Messung":a==="gelb"?"nahe Soll – belastbare Messung":"unauffällig"}</span></div>`);
   }
   if(l||x) teile.push(`<div class="messsub" style="margin-top:6px"><a href="#" id="kalibLink" style="color:var(--muted)">⚙ Abgleich</a></div>`);
@@ -2263,19 +2374,20 @@ if(document.getElementById("btnLaerm")) document.getElementById("btnLaerm").addE
   const bal=document.getElementById("mBal");
   try{
     const r=await laermMessen(10,(db,pct)=>{ if(bal) bal.style.width=Math.min(100,Math.max(0,pct))+"%"; });
-    const dba = kal.laerm_offset!=null ? r.dbfs+kal.laerm_offset : null;
+    const abgeglichen = kal.laerm_offset!=null;
+    const dba = r.dbfs + (abgeglichen ? kal.laerm_offset : LAERM_STD_OFFSET);
     state.meta.laerm={ dbfs:+r.dbfs.toFixed(2), spitze_dbfs:+r.spitze_dbfs.toFixed(2),
-      dba: dba==null?null:+dba.toFixed(1), offset: kal.laerm_offset??null, dauer_s:10,
+      dba:+dba.toFixed(1), abgeglichen, offset: kal.laerm_offset??null, dauer_s:10,
       zeit:new Date().toLocaleString("de-DE"), screening:true, geeicht:false };
     save(); renderMess();
     // Grenznähe → Befund IMMER in die GBU
     /* Ohne Abgleich KEIN Befund. Frueher lief der Wert in den gelb-Zweig und trug
        automatisch den Mangel C6 ein - das erzeugte Falschbefunde in der GBU. */
-    if(dba==null) toast("Gemessen. Für eine Zahl in dB(A) einmalig „⚙ Abgleich“ gegen ein Messgerät.");
-    else if(dba>=LAERM_UNTERER-LAERM_UNSICHER){
-      befundEintragen("C6", `Screening ca. ${dba.toFixed(0)} dB(A) (ungeeicht, ${new Date().toLocaleDateString("de-DE")})`);
-      toast("Nahe/über Auslösewert → Mangel C6 + Prüfpunkt P51 eingetragen.");
-    } else toast("Unauffällig – kein Befund.");
+    /* Kein automatischer Mangel mehr - das erzeugte Falschbefunde in der GBU.
+       Den Befund traegt Nikolai bewusst ein. */
+    toast(abgeglichen ? ("Gemessen: ca. "+dba.toFixed(0)+" dB(A).")
+                      : ("Gemessen: ca. "+dba.toFixed(0)+" dB(A) – Schätzung ohne Abgleich."));
+
   }catch(e){ toast("Kein Mikrofonzugriff – bitte erlauben."); }
   btn.disabled=false; btn.textContent="🔊 Lärm prüfen (10 s)";
 });
@@ -2286,16 +2398,15 @@ if(document.getElementById("btnLux")) document.getElementById("btnLux").addEvent
   const r=await lichtRoh();
   btn.disabled=false; btn.textContent="💡 Licht prüfen";
   if(r.fehler){ toast(r.fehler); return; }
-  const lux = kal.lux_faktor!=null ? r.roh*kal.lux_faktor : null;
-  state.meta.lux={ roh:+r.roh.toFixed(4), exposureTime:r.exposureTime, iso:r.iso,
-    lux: lux==null?null:+lux.toFixed(0), faktor: kal.lux_faktor??null,
+  const abgeglichen = kal.lux_faktor!=null;
+  const faktor = r.sensor ? 1 : (abgeglichen ? kal.lux_faktor : LUX_STD_FAKTOR);
+  const lux = r.roh*faktor;
+  state.meta.lux={ roh:+r.roh.toFixed(4), sensor:!!r.sensor, abgeglichen,
+    lux:+lux.toFixed(0), faktor: kal.lux_faktor??null,
     soll:soll.v, soll_txt:soll.t, zeit:new Date().toLocaleString("de-DE"), screening:true, geeicht:false };
   save(); renderMess();
-  if(lux==null) toast("Gemessen. Für Lux einmalig „⚙ Abgleich“ gegen ein Luxmeter.");
-  else if(lux<=soll.v*LUX_UNSICHER){
-    befundEintragen("C4", `Screening ca. ${Math.round(lux)} lx gegen Soll ${soll.v} lx (ungeeicht, ${new Date().toLocaleDateString("de-DE")})`);
-    toast("Nahe/unter Soll → Mangel C4 + Prüfpunkt P52 eingetragen.");
-  } else toast("Unauffällig – kein Befund.");
+  /* Kein automatischer Mangel - den traegt Nikolai bewusst ein. */
+  toast("Gemessen: ca. "+Math.round(lux)+" lx"+(r.sensor?" (Sensor)":abgeglichen?"":" – Schätzung ohne Abgleich"));
 });
 function sollWaehlen(){
   return new Promise(res=>{
@@ -2529,6 +2640,7 @@ function zeigeUebersicht(){
     +`<div class="ovlist">${body}</div>`
     +`<div class="toolrow" style="margin-top:12px">`
     +`<button class="btn primary" id="ovAllesTeilen">📦 Alles teilen</button>`
+    +`<button class="btn" id="ovNeueBegehung">🆕 Neue Begehung</button>`
     +`<button class="btn" id="ovUpload">⚙ Drive</button>`
     +`<button class="btn" id="ovLoad">⬆︎ Laden</button>`
     +`<button class="btn" id="ovAlle">🗑 Alles</button>`
@@ -2537,6 +2649,7 @@ function zeigeUebersicht(){
   ov.addEventListener("click",e=>{ if(e.target===ov) ov.remove(); });
   ov.querySelector("#ovZu").addEventListener("click",()=>ov.remove());
   ov.querySelector("#ovAllesTeilen").addEventListener("click",e=>teileAlles(e.currentTarget));
+  ov.querySelector("#ovNeueBegehung").addEventListener("click",neueBegehung);
   ov.querySelector("#ovAlle").addEventListener("click",alleLoeschen);
   ov.querySelector("#ovLoad").addEventListener("click",()=>document.getElementById("importInput").click());
   ov.querySelector("#ovUpload").addEventListener("click",()=>{
@@ -2608,6 +2721,32 @@ document.getElementById("importInput").addEventListener("change",async e=>{
   zeigeUebersicht();
 });
 /* Tag abschließen: alles löschen (Kunde/Begeher/Arbeitssystem bleiben voreingestellt) */
+/* Neuer Termin: Sammlung leeren und Stammdaten neu erfassen.
+   Bewusst mit Sicherung davor - am 22.07. waren vier Maschinen fast verloren, weil die App
+   Upload-Erfolg behauptet hat. Ohne bestaetigten Upload oder Export wird hier NICHT geleert. */
+async function neueBegehung(){
+  const offen=collection.filter(m=>m._upload!=="gesendet");
+  if(collection.length && offen.length){
+    const w=confirm("Achtung: "+offen.length+" von "+collection.length+" Maschinen sind NICHT bestätigt "
+      +"hochgeladen.\n\nOK = jetzt „Alles teilen“ (Sicherung), danach erneut auf „Neue Begehung“.\n"
+      +"Abbrechen = nichts tun.");
+    if(w){ const b=document.getElementById("ovAllesTeilen"); await teileAlles(b); }
+    return;                                   // in beiden Faellen NICHT loeschen
+  }
+  if(collection.length && !confirm("Neue Begehung starten?\n\n"+collection.length
+      +" gesicherte Maschinen werden aus dem Gerät entfernt (sie liegen bestätigt in Drive).\n"
+      +"Der Standortplan bleibt erhalten.")) return;
+  collection=[]; allgemeinGeparkt=null; state=blankState();
+  /* Stammdaten des alten Termins nicht mitschleppen - Kunde/Datum werden neu erfasst. */
+  state.meta.kunde=""; state.meta.datum=new Date().toISOString().slice(0,10);
+  state.meta.bereich=""; state.meta.arbeitssystem="";
+  try{ localStorage.removeItem(PREFSKEY); }catch(e){}
+  await idbDel(ALLGKEY); await idbDel(MASCHKEY);
+  await persistAll();
+  const o=document.getElementById("ovl"); if(o) o.remove();
+  neuZeichnen();
+  toast("Neue Begehung – Kunde und Datum bitte oben eintragen.");
+}
 async function alleLoeschen(){
   if(!confirm("ALLE "+collection.length+" gesicherten Maschinen UND den aktuellen Bogen löschen?")) return;
   if(!confirm("Wirklich sicher? Vorher gespeichert/geteilt?")) return;
