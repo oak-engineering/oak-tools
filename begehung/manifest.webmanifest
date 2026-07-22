@@ -1,0 +1,20 @@
+{
+  "name": "OAK Begehungsbogen",
+  "short_name": "Begehung",
+  "description": "Gefährdungserfassung vor Ort – OAK engineering. Daten bleiben auf dem Gerät.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#2D6A4F",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%232D6A4F'/%3E%3Ctext x='256' y='336' font-family='Georgia,serif' font-size='208' font-weight='700' fill='%23D8F3DC' text-anchor='middle'%3EOAK%3C/text%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

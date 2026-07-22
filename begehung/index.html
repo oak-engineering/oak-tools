@@ -7,6 +7,8 @@
 <meta name="theme-color" content="#1B4332">
 <title>OAK Begehungsbogen – Gefährdungserfassung</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232D6A4F'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='26' font-weight='700' fill='%23D8F3DC' text-anchor='middle'%3EOAK%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2D6A4F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -206,7 +208,11 @@
   /* ---- Foto-Markierung (Mängel auf jedem Foto) ---- */
   #mark{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:90;display:flex;flex-direction:column;
     padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
-  #mark canvas{flex:1;min-height:0;display:block;margin:auto;max-width:100%;max-height:100%;touch-action:manipulation}
+  /* NICHT auf flex:1 zurueckstellen: das streckt das Bild auf die Resthoehe und stauchte
+     Hochkant-Aufnahmen. width/height:auto laesst den Browser das Seitenverhaeltnis aus den
+     Canvas-Attributen halten; die Pin-Koordinaten sind relativ und bleiben korrekt. */
+  #mark canvas{flex:0 1 auto;min-height:0;display:block;margin:auto;width:auto;height:auto;
+    max-width:100%;max-height:100%;touch-action:manipulation}
   #mark .markhint{color:#fff;font-size:13px;text-align:center;padding:6px 0 0}
   .markchips{display:flex;gap:6px;overflow-x:auto;padding-top:8px;flex:0 0 auto}
   .markchips .chip{background:#fff;white-space:nowrap}
@@ -330,6 +336,8 @@
 <main>
   <!-- Nativer Kamera-/Galerie-Input für ALLE Foto-Buttons (muss im DOM bleiben) -->
   <input type="file" accept="image/*" capture="environment" id="allgFotoInput" hidden>
+  <!-- Eigener Input fuer Kurzvideos: die Bildpipeline (createImageBitmap) kann keine Videos. -->
+  <input type="file" accept="video/*" capture="environment" id="allgVideoInput" hidden>
 
   <!-- ===== BEGEHUNGS-EBENE: hier fängt alles an ===== -->
   <section class="card nur-allgemein">
@@ -390,8 +398,10 @@
       Getrennt aufnehmen – Gesamtansicht &amp; Typenschild ersetzen sich, Mangel-Fotos werden gesammelt.</div>
     <div class="toolrow">
       <button class="btn" data-addfoto="gesamt">📷 Gesamtansicht</button>
+      <button class="btn" data-addfoto="gesamt_rueck">📷 Rückseite</button>
       <button class="btn" data-addfoto="typenschild">📷 Typenschild</button>
       <button class="btn" data-addfoto="mangel">📷 Mangel-Foto</button>
+      <button class="btn" data-addvideo="1">🎬 Kurzvideo (10 s)</button>
     </div>
     <div class="thumbs allgThumbs"></div>
     <div class="hint">Foto antippen = groß ansehen, drehen und darauf markieren.</div>
@@ -724,8 +734,13 @@ function ohneMedien(s){
    true, wenn der vollständige Stand (inkl. Fotos) sicher in IndexedDB liegt. */
 async function persistAll(){
   state._ts=Date.now();
-  const idbState=await mitTimeout(idbPut(LSKEY, JSON.stringify(state)), 5000, false);
-  const idbColl=await mitTimeout(idbPut(COLLKEY, JSON.stringify(collection)), 5000, false);
+  const sState=JSON.stringify(state), sColl=JSON.stringify(collection);
+  /* Timeout mit der Datenmenge wachsen lassen. Feste 5 s meldeten bei einer grossen Sammlung
+     faelschlich "SPEICHER VOLL" - und saveAndNeu machte daraus einen Rollback der gerade
+     gespeicherten Maschine. Ein langsamer Schreibvorgang ist kein Speichermangel. */
+  const frist=t=>Math.min(60000, 5000+Math.ceil(t.length/1048576)*4000);
+  const idbState=await mitTimeout(idbPut(LSKEY, sState), frist(sState), false);
+  const idbColl=await mitTimeout(idbPut(COLLKEY, sColl), frist(sColl), false);
   let lsState=true;
   try{ localStorage.setItem(LSKEY, JSON.stringify(ohneMedien(state))); }catch(e){ lsState=false; }
   try{ localStorage.removeItem(COLLKEY); }catch(e){}   // Altlast: früher lag die Sammlung hier
@@ -737,7 +752,7 @@ async function persistAll(){
   updateMachineCount();
   const ok=idbState&&idbColl;
   const hint=document.getElementById("savehint");
-  if(hint) hint.textContent = ok ? "gespeichert ✓" : (lsState ? "NUR TEXT GESICHERT – Fotos gefährdet!" : "SPEICHER VOLL!");
+  if(hint) hint.textContent = ok ? "gespeichert ✓" : (lsState ? "NUR TEXT GESICHERT – Fotos gefährdet!" : "Speichern hakt – nicht schließen!");
   if(!ok && !quotaGewarnt){
     quotaGewarnt=true;
     alert("Fotos und Sprachnotiz können NICHT gespeichert werden (IndexedDB nicht verfügbar)!\nJETZT '📤 Teilen' drücken (sichert alles als JSON), danach aufräumen.");
@@ -753,17 +768,50 @@ function machineFileName(m){
     +slug(meta.maschine||meta.kunde)+"_"+(meta.datum||"")+".json";
 }
 /* Auto-Upload einer Maschine an den Apps-Script-Endpoint (→ Drive eingang, ohne Teilen-Dialog).
-   no-cors + text/plain = kein CORS-Preflight; fire-and-forget mit Timeout. */
+   Liefert einen der Zustaende: "ok" | "verboten" | "unbestaetigt" | "abbruch" | "keine-url".
+   NIE einfach "true": die Begehung am 22.07. zeigte vier gruene Haken, obwohl nichts ankam.
+   Ursache war mode:"no-cors" (Antwort prinzipiell unlesbar) plus ein verschluckter catch.
+   text/plain bleibt - das ist eine simple request, also kein CORS-Preflight noetig. */
 async function driveUpload(m){
-  const url=(localStorage.getItem(UPLOADKEY)||"").trim(); if(!url) return false;
+  const url=(localStorage.getItem(UPLOADKEY)||"").trim(); if(!url) return "keine-url";
   const paket={ _typ:"OAK-Begehung-Maschine", _version:1, _exportiert:new Date().toISOString(),
     token:(localStorage.getItem(UPLOADTOKENKEY)||""), dateiname:machineFileName(m), maschine:m };
+  const koerper=JSON.stringify(paket);
+  /* Timeout an die Paketgroesse koppeln. Fest 15 s war der zweite Grund fuer den Fehlschlag:
+     ein Maschinenpaket wog 13 MB, ueber Mobilfunk sind das Minuten. */
+  const ms=20000+Math.ceil(koerper.length/1048576)*15000;
+  const ctl=new AbortController();
+  const t=setTimeout(()=>ctl.abort(), ms);
   try{
-    await mitTimeout(fetch(url,{method:"POST",mode:"no-cors",
-      headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(paket)}).catch(()=>{}), 15000, null);
-    return true;
-  }catch(e){ return false; }
+    const r=await fetch(url,{method:"POST",mode:"cors",
+      headers:{"Content-Type":"text/plain;charset=utf-8"}, body:koerper, signal:ctl.signal});
+    const txt=((await r.text())||"").trim();
+    if(!r.ok) return "unbestaetigt";
+    if(/^(ok|updated)/i.test(txt)) return "ok";
+    if(/forbidden/i.test(txt)) return "verboten";
+    return "unbestaetigt";
+  }catch(e){
+    /* Auch ein CORS-Fehler landet hier. Dann gilt bewusst "unbestaetigt" - lieber ein
+       ehrliches Fragezeichen als ein gruener Haken, der spaeter Daten kostet. */
+    return (e && e.name==="AbortError") ? "abbruch" : "unbestaetigt";
+  } finally { clearTimeout(t); }
 }
+/* Alle noch nicht bestaetigten Maschinen erneut senden. */
+async function sendeAusstehende(){
+  const offen=collection.filter(m=>m._upload && m._upload!=="gesendet");
+  if(!offen.length){ toast("Nichts ausstehend."); return; }
+  let ok=0;
+  for(const m of offen){
+    toast("Sende "+(((m.meta||{}).maschine)||"Maschine")+" …");
+    if(await driveUpload(m)==="ok"){ m._upload="gesendet"; ok++; }
+  }
+  await persistAll();
+  toast(ok+" von "+offen.length+" bestätigt.");
+  if(document.getElementById("ovl")) zeigeUebersicht();
+}
+window.addEventListener("online", ()=>{
+  if(collection.some(m=>m._upload && m._upload!=="gesendet")) toast("Netz wieder da – in 📋 mit ⤴ erneut senden.");
+});
 /* Einzelne Maschine als eigene Datei teilen (→ Drive eingang) bzw. herunterladen */
 async function teileEinzel(m){
   const name=machineFileName(m);
@@ -790,7 +838,8 @@ function fehlendePflicht(){
   const m=state.meta, f=[];
   if(!(m.maschine||"").trim())            f.push({feld:"maschine", txt:"Name der Maschine"});
   if(!fotoByKat("gesamt"))                f.push({feld:"foto",     txt:"Foto der Gesamtansicht"});
-  if(!((state.audios||[]).length))        f.push({feld:"audio",    txt:"Mindestens eine Sprachnotiz (sie trägt Hersteller, Typ und die Befunde)"});
+  if(!m.notiz_entfaellt && !((state.audios||[]).length))
+                                          f.push({feld:"audio",    txt:"Mindestens eine Sprachnotiz (sie trägt Hersteller, Typ und die Befunde)"});
   if(!m.typenschild_fehlt && !fotoByKat("typenschild"))
                                           f.push({feld:"schild",   txt:"Foto vom Typenschild"});
   return f;
@@ -798,15 +847,24 @@ function fehlendePflicht(){
 /* true = Nikolai hat den Ausnahme-Haken gesetzt und will weiter; false = zurück ins Formular. */
 function pflichtDialog(fehlt){
   return new Promise(res=>{
-    const hakenMoeglich=fehlt.some(x=>x.feld==="schild") && !fehlt.some(x=>x.feld==="maschine");
+    const hSchild=fehlt.some(x=>x.feld==="schild");
+    const hNotiz =fehlt.some(x=>x.feld==="audio");
+    /* Hart bleiben nur Maschinenname und Gesamtansicht - ohne die ist der Datensatz wertlos.
+       Typenschild und Sprachnotiz kann man vor Ort nachweislich nicht immer liefern. */
+    const hart=fehlt.some(x=>x.feld==="maschine"||x.feld==="foto");
+    const hakenMoeglich=(hSchild||hNotiz) && !hart;
     const pk=document.createElement("div"); pk.className="mpicker";
     pk.innerHTML=`<div class="pcard"><h3 class="warn">⚠ Speichern nicht möglich</h3>`
       +`<p class="hint">Diese Angaben fehlen – ohne sie lässt sich die Maschine später nicht dokumentieren.</p>`
       +`<ul class="fehlliste">${fehlt.map(x=>`<li>${esc(x.txt)}</li>`).join("")}</ul>`
-      +(hakenMoeglich
+      +(hSchild&&!hart
         ? `<label class="chk"><input type="checkbox" id="pfTs">`
           +`<span>Typenschild fehlt oder ist unleserlich – Hersteller/Typ sind vor Ort nicht feststellbar.`
           +`<br><b>Wird als Mangel E4 erfasst</b> (2006/42/EG Anh. I 1.7.3).</span></label>` : "")
+      +(hNotiz&&!hart
+        ? `<label class="chk"><input type="checkbox" id="pfAu">`
+          +`<span>Sprachnotiz jetzt nicht möglich (Mikrofon gesperrt, zu laut, Kollege daneben).`
+          +`<br><b>Befunde später ergänzen</b> – die Maschine wird als „Notiz offen“ vermerkt.</span></label>` : "")
       +`<div class="toolrow" style="margin-top:12px">`
       +`<button class="btn primary" id="pfBack" style="margin-left:auto">Zum Formular</button>`
       +(hakenMoeglich?`<button class="btn" id="pfGo" disabled>Trotzdem speichern</button>`:"")
@@ -816,13 +874,21 @@ function pflichtDialog(fehlt){
     pk.querySelector("#pfBack").addEventListener("click",()=>fin(false));
     pk.addEventListener("click",e=>{ if(e.target===pk) fin(false); });
     if(hakenMoeglich){
-      const cb=pk.querySelector("#pfTs"), go=pk.querySelector("#pfGo");
-      cb.addEventListener("change",()=>{ go.disabled=!cb.checked; go.classList.toggle("primary",cb.checked); });
+      const cbT=pk.querySelector("#pfTs"), cbA=pk.querySelector("#pfAu"), go=pk.querySelector("#pfGo");
+      const pruefe=()=>{
+        const ok=(!cbT||cbT.checked)&&(!cbA||cbA.checked);
+        go.disabled=!ok; go.classList.toggle("primary",ok);
+      };
+      if(cbT) cbT.addEventListener("change",pruefe);
+      if(cbA) cbA.addEventListener("change",pruefe);
       go.addEventListener("click",()=>{
-        state.meta.typenschild_fehlt=true;
-        const k=MAENGEL_KATALOG.find(x=>x.id==="E4");
-        if(k && !(state.maengel||[]).some(m=>m.typ==="E4")) toggleMangel(k);   // setzt auch Prüfpunkt P1 auf N
-        renderPalette(); save(); fin(true);
+        if(cbT){
+          state.meta.typenschild_fehlt=true;
+          const k=MAENGEL_KATALOG.find(x=>x.id==="E4");
+          if(k && !(state.maengel||[]).some(m=>m.typ==="E4")) toggleMangel(k);   // setzt auch Prüfpunkt P1 auf N
+        }
+        if(cbA) state.meta.notiz_entfaellt=true;
+        save(); fin(true);
       });
     }
   });
@@ -869,7 +935,11 @@ async function saveAndNeu(){
   // 3) Auto-Upload nach Drive (nach dem sicheren lokalen Speichern, vor dem Reload)
   if(hatUpload){
     if(navigator.onLine===false){ rec._upload="pending"; }   // Funkloch: nicht „gesendet" behaupten
-    else { if(btn) btn.textContent="Lade hoch…"; rec._upload = (await driveUpload(rec)) ? "gesendet" : "pending"; }
+    else {
+      if(btn) btn.textContent="Lade hoch…";
+      const erg=await driveUpload(rec);
+      rec._upload = (erg==="ok") ? "gesendet" : (erg==="verboten" ? "verboten" : "pending");
+    }
   }
   // 4) für die nächste Maschine: KOMPLETT leeren.
   //    Früher wurde hier nur „Spezifisches" gelöscht und das Bewertungsmuster absichtlich behalten –
@@ -880,10 +950,11 @@ async function saveAndNeu(){
   state=blankState();
   await persistAll();
   const suffix = !hatUpload ? " & geteilt"
-    : (rec._upload==="gesendet" ? " → Drive gesendet"
-    : " · Upload ausstehend (im Funkloch – später in 📋 mit ⤴ hochladen)");
-  try{ localStorage.setItem("oak_begehung_toast","✓ „"+name+"“ gesichert"+suffix); }catch(e){}
-  location.reload();
+    : (rec._upload==="gesendet" ? " → in Drive bestätigt"
+    : rec._upload==="verboten" ? " · Drive lehnt ab – Token prüfen (📋 → ⚙ Drive)"
+    : " · Upload NICHT bestätigt – in 📋 mit ⤴ erneut senden");
+  neuZeichnen();
+  toast("✓ „"+name+"“ gesichert"+suffix);
 }
 function ladePrefs(){ try{ return JSON.parse(localStorage.getItem(PREFSKEY))||{}; }catch(e){ return {}; } }
 /* Bogen der Begehungs-Ebene – gleiche Struktur, nur ohne Maschinenbezug. */
@@ -908,7 +979,7 @@ async function wechsleEbene(zielAllg){
   migrateFotos(state);
   try{ localStorage.setItem(EBENEKEY, zielAllg?"allg":"masch"); }catch(e){}
   await persistAll();
-  location.reload();
+  neuZeichnen();
 }
 function blankState(){
   const p=ladePrefs();
@@ -936,6 +1007,29 @@ function save(){
 function item(nr){ if(!state.items[nr]) state.items[nr]={ja:false,notiz:"",fotos:[]}; return state.items[nr]; }
 
 /* ===== Render ===== */
+/* Oberflaeche aus dem aktuellen state neu aufbauen - OHNE Listener neu zu haengen.
+   Frueher stand an diesen Stellen location.reload(). Das war bequem, aber in der Halle
+   fatal: ohne Netz landet ein Reload auf der Offline-Fehlerseite, und bei mehreren MB
+   Fotodaten dauert der Neuaufbau aus IndexedDB Sekunden. init() darf nicht zweimal
+   laufen, weil es addEventListener aufruft - deshalb hier nur der Zeichen-Teil. */
+function neuZeichnen(){
+  document.querySelectorAll("[data-meta]").forEach(el=>{
+    const k=el.dataset.meta;
+    if((el.tagName==="INPUT"||el.tagName==="TEXTAREA") && typeof state.meta[k]==="string") el.value=state.meta[k];
+  });
+  document.querySelectorAll("[data-single]").forEach(box=>{
+    const k=box.dataset.single;
+    box.querySelectorAll(".chip").forEach(ch=>ch.classList.toggle("on", state.meta[k]===ch.dataset.val));
+  });
+  renderRundgang(); renderAllgThumbs(); renderAudio(); renderMess();
+  renderPlanBox(); renderMaschListe(); updateMachineCount();
+  document.body.classList.toggle("ebene-allg", imAllgModus());
+  const eM=document.getElementById("ebMasch"), eA=document.getElementById("ebAllg");
+  if(eM&&eA){ eM.classList.toggle("on", !imAllgModus()); eA.classList.toggle("on", imAllgModus()); }
+  setModus(state.meta.modus||"schnell");
+  const ov=document.getElementById("ovl"); if(ov) ov.remove();
+  window.scrollTo(0,0);
+}
 function init(){
   // Stammdaten-Felder
   document.querySelectorAll("[data-meta]").forEach(el=>{
@@ -1383,7 +1477,8 @@ function addFotoKat(kat,obj){
   obj.kat=kat;
   if(!obj.id) obj.id="f"+Date.now()+"-"+Math.random().toString(36).slice(2,7);
   if(!Array.isArray(obj.markierungen)) obj.markierungen=[];
-  if(kat==="gesamt"||kat==="typenschild"||kat==="gesamt_markiert"){
+  if(kat==="gesamt"||kat==="typenschild"||kat==="gesamt_markiert"
+     ||kat==="gesamt_rueck"||kat==="gesamt_rueck_markiert"){
     const i=state.fotosAllg.findIndex(f=>f.kat===kat);
     if(i>=0) state.fotosAllg[i]=obj; else state.fotosAllg.push(obj);
   } else state.fotosAllg.push(obj);
@@ -1416,6 +1511,42 @@ function migrateFotos(s){
   if(!Array.isArray(s.audios)) s.audios=[];
   if(s.audio && s.audio.data){ s.audios.push(s.audio); s.audio=null; }
 }
+/* Kurzvideo. Bewusst klein gehalten: Fotos haben die Begehung am 22.07. schon auf 92 MB
+   getrieben. Alles ueber ~12 s oder 8 MB wird abgelehnt, statt den Upload spaeter scheitern
+   zu lassen. Keine Kompression moeglich - der Browser kann Video nicht neu kodieren. */
+const VIDEO_MAX_S=12, VIDEO_MAX_MB=8;
+document.addEventListener("click",e=>{
+  const b=e.target.closest && e.target.closest("[data-addvideo]");
+  if(!b) return;
+  const inp=document.getElementById("allgVideoInput"); if(inp){ inp.value=""; inp.click(); }
+});
+const _vi=document.getElementById("allgVideoInput");
+if(_vi) _vi.addEventListener("change",e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  const mb=f.size/1048576;
+  if(mb>VIDEO_MAX_MB){
+    alert("Das Video ist "+mb.toFixed(1)+" MB groß (erlaubt: "+VIDEO_MAX_MB+" MB).\n"
+      +"Bitte kürzer aufnehmen – lange Videos sprengen den Upload.");
+    return;
+  }
+  const v=document.createElement("video"); v.preload="metadata";
+  v.onloadedmetadata=()=>{
+    URL.revokeObjectURL(v.src);
+    if(v.duration>VIDEO_MAX_S+1){
+      alert("Das Video dauert "+Math.round(v.duration)+" s (erlaubt: "+VIDEO_MAX_S+" s).");
+      return;
+    }
+    const r=new FileReader();
+    r.onload=()=>{
+      addFotoKat("video",{name:"video-"+Date.now()+".mp4", data:r.result,
+        dauer:Math.round(v.duration), mime:f.type||"video/mp4"});
+      renderAllgThumbs(); save();
+      toast("Video gesichert ("+mb.toFixed(1)+" MB).");
+    };
+    r.readAsDataURL(f);
+  };
+  v.src=URL.createObjectURL(f);
+});
 /* Alle [data-addfoto]-Buttons öffnen die native Kamera-App.
    Ziel-Kategorie und Callback müssen den Umweg über den <input>-change überleben – sonst
    landet das Foto ohne kat in fotosAllg (genau das passierte früher im Galerie-Fallback). */
@@ -1436,7 +1567,7 @@ document.getElementById("allgFotoInput").addEventListener("change",e=>{
     if(ziel.cb) ziel.cb(obj);
     /* Nummerierter Pin: direkt nach jedem Mangel-Foto einmal auf der Gesamtansicht antippen –
        Pin „n" = Mangel-Foto n. Überspringen jederzeit möglich; 📍 am Thumbnail holt nach. */
-    if(ziel.kat==="mangel") pinPrompt(obj);
+    if(ziel.kat==="mangel") mangelDialog(obj).then(()=>pinPrompt(obj));
   }, ziel.kat);
 });
 document.addEventListener("click",e=>{
@@ -1454,7 +1585,10 @@ document.addEventListener("click",e=>{
    nativen Kamera-App (volle Sensorauflösung) und wird nur EINMAL komprimiert. */
 /* Qualität kategorieabhängig: Das Typenschild ist der Engpass (Baujahr/Serien-Nr. lesbar!) und
    bekommt die höchste Stufe; alle übrigen Fotos eine Stufe darunter. (Vorher pauschal 2560@0.9.) */
-const FOTO_PROFILE={ typenschild:{kante:4096,q:0.95}, _std:{kante:3264,q:0.92} };
+/* Kanten bewusst begrenzt: mit 3264/4096 px wog eine Maschine ~13 MB, eine Begehung 92 MB -
+   der Upload lief in der Halle nie durch. 2560 px reichen fuer ein lesbares Typenschild
+   (an den vier Schildern vom 22.07. geprueft), 1920 px fuer Befundfotos. */
+const FOTO_PROFILE={ typenschild:{kante:2560,q:0.90}, _std:{kante:1920,q:0.85} };
 function fotoProfil(kat){ return FOTO_PROFILE[kat]||FOTO_PROFILE._std; }
 const MAXKANTE=3264, JPEGQ=0.92;   // Standard – gilt auch für Drehen/eingebrannte Marker
 function zeichneSkaliert(src, w, h, kat){
@@ -1502,7 +1636,9 @@ function renderAllgThumbs(){
     state.fotosAllg.forEach((f,i)=>{
       let lab;
       if(f.kat==="mangel"){ mi++; lab="M"+mi; }
-      else lab = f.kat==="gesamt"?"G" : f.kat==="typenschild"?"T" : f.kat==="gesamt_markiert"?"⌖" : "•";
+      else lab = f.kat==="gesamt"?"G" : f.kat==="gesamt_rueck"?"R" : f.kat==="typenschild"?"T"
+        : f.kat==="gesamt_markiert"?"⌖" : f.kat==="gesamt_rueck_markiert"?"⌖R"
+        : f.kat==="video"?"🎬" : "•";
       const t=thumb(f,()=>{
         state.fotosAllg.splice(i,1);
         /* Pins hängen an Foto-IDs: nach dem Löschen eines Mangel-Fotos rutschen die Nummern
@@ -1519,6 +1655,18 @@ function renderAllgThumbs(){
           +";font-size:14px;cursor:pointer";
         pin.addEventListener("click",ev=>{ ev.stopPropagation(); pinPrompt(f); });
         t.appendChild(pin);
+        /* Sichtbar machen, wozu schon etwas erfasst ist - sonst merkt man erst am
+           Schreibtisch, dass ein Foto ohne Beschreibung geblieben ist. */
+        const hatNotiz=(state.audios||[]).some(a=>a.fotoId===f.id);
+        const hatText=(state.maengel||[]).some(m=>m.fotoId===f.id);
+        if(hatNotiz||hatText){
+          const bd=document.createElement("span");
+          bd.textContent=hatNotiz?"🎙":"✎";
+          bd.title=hatNotiz?"Sprachnotiz vorhanden":"Beschreibung vorhanden";
+          bd.style.cssText="position:absolute;right:4px;bottom:4px;border-radius:8px;padding:2px 5px;"
+            +"background:rgba(27,67,50,.85);color:#fff;font-size:12px";
+          t.appendChild(bd);
+        }
       }
       box.appendChild(t);
     });
@@ -1613,13 +1761,17 @@ function zeichneMarker(){
   zeichneMarkerAuf(ctx, markCanvas.width, markCanvas.height, markMk);
 }
 /* Hält gesamtansicht_markiert.jpg synchron – nach Markieren wie nach Drehen. */
+/* Beide Ansichten koennen Pins tragen. Frueher war "gesamt" hart verdrahtet - ein Befund
+   hinter der Maschine liess sich deshalb gar nicht verorten. */
+const GES_MARK={gesamt:"gesamt_markiert", gesamt_rueck:"gesamt_rueck_markiert"};
 function aktualisiereMarkiertesGesamt(f){
-  if(!f || f.kat!=="gesamt") return;
+  if(!f || !GES_MARK[f.kat]) return;
+  const zielKat=GES_MARK[f.kat];
   /* Verwaiste Foto-Pins (Mangel-Foto gelöscht) endgültig entfernen. */
   f.markierungen=(f.markierungen||[]).filter(m=>markerLabel(m)!=null);
   const mk=f.markierungen||[];
   if(!mk.length){
-    const i=state.fotosAllg.findIndex(x=>x.kat==="gesamt_markiert");
+    const i=state.fotosAllg.findIndex(x=>x.kat===zielKat);
     if(i>=0) state.fotosAllg.splice(i,1);
     state.markierungen=[];
     return;
@@ -1630,7 +1782,7 @@ function aktualisiereMarkiertesGesamt(f){
     const ctx=c.getContext("2d"); ctx.drawImage(img,0,0);
     zeichneMarkerAuf(ctx, c.width, c.height, mk);
     try{
-      addFotoKat("gesamt_markiert",{name:"gesamtansicht_markiert.jpg",data:c.toDataURL("image/jpeg",JPEGQ),markierungen:[]});
+      addFotoKat(zielKat,{name:zielKat+".jpg",data:c.toDataURL("image/jpeg",JPEGQ),markierungen:[]});
       state.markierungen=JSON.parse(JSON.stringify(mk));   // Altfeld weiterpflegen: Auswertung liest es noch
       renderAllgThumbs(); save();
     }catch(e){ toast("Markiertes Bild konnte nicht erzeugt werden."); }
@@ -1727,9 +1879,97 @@ document.querySelectorAll("[data-mark]").forEach(b=>b.addEventListener("click",(
 /* ===== Nummerierter Pin: Mangel-Foto n ↔ Pin „n" auf der Gesamtansicht =====
    Öffnet sich automatisch nach jedem Mangel-Foto (Ein-Tap, ohne Picker – Details liefern Foto
    und Sprachnotiz). ✕ überspringt; 📍 am Thumbnail setzt/versetzt den Pin nachträglich. */
-function pinPrompt(mFoto){
+/* Nach jedem Mangelfoto: benennen und/oder diktieren.
+   Vorher oeffnete sich hier ausschliesslich pinPrompt() - ein Vollbild-Overlay, das aussah
+   wie das Mangel-Pop-up, aber nur den Pin setzte. Der echte Dialog (markPicker) lag drei
+   Ebenen tief hinter Miniatur -> Lupe -> Markieren. Deshalb blieb state.maengel bei der
+   Begehung am 22.07. leer, obwohl 27 Mangelfotos und 21 Sprachnotizen entstanden.
+   Jetzt haengt jeder Mangel an seiner fotoId - die Zuordnung muss nicht mehr aus dem
+   Transkript rekonstruiert werden. */
+function mangelDialog(foto){
+  return new Promise(fertig=>{
+    if(!foto || !foto.id){ fertig(); return; }
+    const nr=mangelNummer(foto.id) || (state.fotosAllg||[]).filter(f=>f.kat==="mangel").length;
+    let rec=null, chunks=[], stream=null, timer=null, start=0, aufnahme=null;
+
+    const pk=document.createElement("div"); pk.className="mpicker";
+    pk.innerHTML=`<div class="pcard"><h3>Mangelfoto ${nr} – was ist zu sehen?</h3>`
+      +`<p class="hint">Kurz eintippen <b>oder</b> diktieren – beides wird fest an diesem Foto gespeichert.</p>`
+      +`<input type="text" id="mdText" placeholder="z. B. Schutzzaun untergreifbar" autocomplete="off"`
+      +` style="width:100%;box-sizing:border-box;padding:10px;font-size:16px;border:1px solid var(--rand,#cfd8d3);border-radius:9px">`
+      +`<div class="toolrow" style="margin-top:10px;align-items:center">`
+      +`<button class="btn" id="mdRec" type="button">🎙 Diktieren</button>`
+      +`<span class="messsub" id="mdInfo" style="margin-left:8px"></span></div>`
+      +`<div class="toolrow" style="margin-top:14px">`
+      +`<button class="btn" id="mdSkip" type="button">Überspringen</button>`
+      +`<button class="btn primary" id="mdOk" type="button" style="margin-left:auto">Weiter</button>`
+      +`</div></div>`;
+    document.body.appendChild(pk);
+    const txt=pk.querySelector("#mdText"), btnRec=pk.querySelector("#mdRec"), info=pk.querySelector("#mdInfo");
+
+    const stoppen=()=>{ try{ if(rec && rec.state!=="inactive") rec.stop(); }catch(e){} };
+
+    btnRec.addEventListener("click",async()=>{
+      if(rec){ stoppen(); return; }
+      const mime=audioMime();
+      if(!mime || !navigator.mediaDevices){ info.textContent="Aufnahme auf diesem Gerät nicht möglich."; return; }
+      try{ stream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+      catch(e){ info.textContent="Kein Mikrofon-Zugriff."; return; }
+      chunks=[]; rec=new MediaRecorder(stream,{mimeType:mime,audioBitsPerSecond:32000});
+      rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+      rec.onstop=()=>{
+        clearInterval(timer);
+        const dauer=Math.round((Date.now()-start)/1000);
+        const blob=new Blob(chunks,{type:mime});
+        try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+        stream=null; rec=null;
+        btnRec.classList.remove("active"); btnRec.textContent="🎙 Erneut aufnehmen";
+        const r=new FileReader();
+        r.onload=()=>{ aufnahme={mime, dauer, data:r.result};
+          info.textContent="Notiz "+Math.floor(dauer/60)+":"+String(dauer%60).padStart(2,"0")+" aufgenommen ✓"; };
+        r.readAsDataURL(blob);
+      };
+      start=Date.now(); rec.start(); btnRec.classList.add("active");
+      timer=setInterval(()=>{
+        const sk=Math.round((Date.now()-start)/1000);
+        btnRec.textContent="⏹ Stop ("+Math.floor(sk/60)+":"+String(sk%60).padStart(2,"0")+")";
+        if(sk>=AUDIO_MAX_S) stoppen();
+      },500);
+    });
+
+    const schliessen=async(uebernehmen)=>{
+      stoppen();
+      await new Promise(r=>setTimeout(r,aufnahme||rec?250:0));   // FileReader nachziehen lassen
+      if(uebernehmen){
+        const t=(txt.value||"").trim();
+        if(t || aufnahme){
+          state.maengel=state.maengel||[];
+          state.maengel.push({typ:"X", fotoId:foto.id, label:t?t:("Mangelfoto "+nr+" – siehe Sprachnotiz"),
+            rq:"", mass:"", stufe:"", schwere:"", kosten:"", notiz:t, fotos:[foto.id]});
+        }
+        if(aufnahme){
+          state.audios=state.audios||[];
+          state.audios.push({name:"sprachnotiz-"+(state.audios.length+1)+"."+(aufnahme.mime.indexOf("mp4")>=0?"m4a":"webm"),
+            mime:aufnahme.mime, dauer:aufnahme.dauer, data:aufnahme.data, ts:Date.now(), fotoId:foto.id});
+        }
+        save(); renderAudio(); renderAllgThumbs();
+      }
+      pk.remove(); fertig();
+    };
+    pk.querySelector("#mdOk").addEventListener("click",()=>schliessen(true));
+    pk.querySelector("#mdSkip").addEventListener("click",()=>schliessen(false));
+  });
+}
+function pinPrompt(mFoto, zielKat){
   if(!mFoto || !mFoto.id) return;
-  const g=fotoByKat("gesamt");
+  const rueck=fotoByKat("gesamt_rueck");
+  /* Steht eine Rueckseite zur Verfuegung, zuerst fragen - sonst landet ein Befund von hinten
+     zwangslaeufig auf der Vorderansicht. */
+  if(!zielKat && rueck && fotoByKat("gesamt")){
+    const r=confirm("Ist der Befund auf der VORDERANSICHT zu sehen?\n\nOK = Vorderansicht · Abbrechen = Rückseite");
+    zielKat = r ? "gesamt" : "gesamt_rueck";
+  }
+  const g=fotoByKat(zielKat||"gesamt") || fotoByKat("gesamt") || rueck;
   const n=mangelNummer(mFoto.id);
   if(n==null) return;
   if(!g){ toast("📍 Pin für Befund "+n+" folgt: erst 📷 Gesamtansicht aufnehmen, dann 📍 am Foto antippen."); return; }
@@ -1748,7 +1988,9 @@ function pinPrompt(mFoto){
   cv.addEventListener("click",e=>{
     const r=cv.getBoundingClientRect(); if(!r.width||!r.height) return;
     const rx=(e.clientX-r.left)/r.width, ry=(e.clientY-r.top)/r.height;
-    g.markierungen=(g.markierungen||[]).filter(m=>m.fotoId!==mFoto.id);  // Pin versetzen statt doppeln
+    /* Pin versetzen statt doppeln - und aus der jeweils anderen Ansicht entfernen. */
+    ["gesamt","gesamt_rueck"].forEach(k=>{ const o=fotoByKat(k);
+      if(o) o.markierungen=(o.markierungen||[]).filter(m=>m.fotoId!==mFoto.id); });
     g.markierungen.push({rx, ry, fotoId:mFoto.id});
     ov.remove();
     aktualisiereMarkiertesGesamt(g);   // brennt gesamt_markiert neu ein + speichert
@@ -1798,10 +2040,13 @@ function openPlan(){
   const zeichne=()=>{
     if(!cv.width) return;
     const ctx=cv.getContext("2d"); ctx.drawImage(img,0,0);
-    const W=cv.width, H=cv.height, rr=Math.max(14,Math.round(Math.min(W,H)*0.022));
+    const W=cv.width, H=cv.height;
+    /* Radius gedeckelt: er skalierte mit der Bitmap, nicht mit der Anzeige. */
+    const rr=Math.max(9,Math.min(26,Math.round(Math.min(W,H)*0.011)));
     collection.forEach(m=>{
       const p=(m.meta||{}).plan_pos; if(!p) return;
-      planPunkt(ctx, p.rx*W, p.ry*H, rr, "rgba(45,106,79,.9)", ((m.meta||{}).maschine||"").slice(0,12));
+      /* Beschriftung nur fuer den aktuellen Punkt - sonst ueberlagern sich die Kaesten. */
+      planPunkt(ctx, p.rx*W, p.ry*H, rr, "rgba(45,106,79,.9)", "");
     });
     if(pos) planPunkt(ctx, pos.rx*W, pos.ry*H, rr*1.2, "rgba(198,40,40,.92)", wer.slice(0,12));
   };
@@ -1867,7 +2112,8 @@ async function maschineOeffnen(idx){
   await mitTimeout(idbPut(ALLGKEY, JSON.stringify(state)), 5000, false);
   state=rec; delete state._istAllgemein;
   try{ localStorage.setItem(EBENEKEY,"masch"); }catch(e){}
-  await persistAll(); location.reload();
+  await persistAll(); neuZeichnen();
+  toast("„"+((state.meta||{}).maschine||"Maschine")+"“ geöffnet – Änderungen werden beim Speichern übernommen.");
 }
 
 /* ===== Umgebungs-Screening: Lärm & Licht =====
@@ -1947,11 +2193,18 @@ async function lichtRoh(){
   try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}}); }
   catch(e){ return {fehler:"Kein Kamerazugriff."}; }
   const track=stream.getVideoTracks()[0];
+  /* exposureTime/iso sind optionale Image-Capture-Extensions. Sie tauchen bei vielen Geraeten
+     nur auf, wenn man sie vorher ueber die Capabilities anfordert - das fehlte, deshalb schlug
+     der Check praktisch immer fehl und die Meldung schob es faelschlich aufs iPhone. */
+  try{
+    const c=track.getCapabilities ? track.getCapabilities() : {};
+    if(c.exposureMode && c.exposureMode.indexOf("manual")>=0) await track.applyConstraints({advanced:[{exposureMode:"manual"}]});
+  }catch(e){}
   await new Promise(r=>setTimeout(r,1800));   // Belichtungsautomatik einschwingen lassen
   const s=track.getSettings();
   try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
   if(s.exposureTime==null || s.iso==null)
-    return {fehler:"Dieses Gerät gibt Belichtungszeit/ISO nicht heraus (z. B. iPhone) – Licht-Check nicht möglich."};
+    return {fehler:"Dieses Gerät liefert keine Belichtungsdaten – der Licht-Check funktioniert hier nicht. Beleuchtungsstärke mit einem Luxmeter erfassen."};
   const t=s.exposureTime*1e-4;                                   // → Sekunden
   return { roh: 1/Math.max(1e-9, t*s.iso), exposureTime:s.exposureTime, iso:s.iso };
 }
@@ -1974,11 +2227,20 @@ function renderMess(){
     teile.push(`<div class="messsub" style="margin-top:8px">Noch nicht abgeglichen – ohne Abgleich gibt es
       nur eine Ampel, keine Zahl. <a href="#" id="kalibLink" style="color:var(--gruen);font-weight:600">⚙ Abgleich</a></div>`);
   if(l){
-    const a=l.dba==null?"gelb":(l.dba>=LAERM_OBERER?"rot":l.dba>=LAERM_UNTERER-LAERM_UNSICHER?"gelb":"gruen");
-    teile.push(`<div class="messerg"><div class="messwert">`
-      +(l.dba==null?`—<span class="einheit">nicht abgeglichen</span>`:`ca. ${l.dba.toFixed(0)}<span class="einheit">dB(A) · ungeeicht</span>`)
-      +`</div><div class="messsub">LAeq über ${l.dauer_s} s · Rohpegel ${l.dbfs.toFixed(1)} dBFS · ${esc(l.zeit)}</div>`
-      +`<span class="ampel ${a}">${a==="rot"?"über oberem Auslösewert (85 dB(A))":a==="gelb"?"nahe Auslösewert – belastbare Messung":"unauffällig"}</span></div>`);
+    /* Ohne Abgleich KEINE Ampel und keine Auslösewert-Aussage. Vorher war der dba==null-Zweig
+       fest auf "gelb" verdrahtet und meldete "nahe Auslösewert", egal wie leise es war - und
+       der dBFS-Rohwert daneben wurde als Messwert gelesen. Beides ist weg. */
+    if(l.dba==null){
+      teile.push(`<div class="messerg"><div class="messwert">—<span class="einheit">nicht abgeglichen</span></div>`
+        +`<div class="messsub">Ohne einmaligen Abgleich gegen ein Messgerät lässt sich kein dB(A) angeben. `
+        +`<a href="#" id="kalibLink2" style="color:var(--gruen);font-weight:600">⚙ Abgleich</a> · ${esc(l.zeit)}</div></div>`);
+    } else {
+      const a=(l.dba>=LAERM_OBERER?"rot":l.dba>=LAERM_UNTERER-LAERM_UNSICHER?"gelb":"gruen");
+      teile.push(`<div class="messerg"><div class="messwert">ca. ${l.dba.toFixed(0)}<span class="einheit">dB(A)</span></div>`
+        +`<div class="messsub"><b>Orientierungswert Handy-Mikrofon</b> – kein Beurteilungspegel nach
+        LärmVibrationsArbSchV. LAeq über ${l.dauer_s} s · ${esc(l.zeit)}</div>`
+        +`<span class="ampel ${a}">${a==="rot"?"über oberem Auslösewert (85 dB(A)) – Messung n. DIN EN ISO 9612 beauftragen":a==="gelb"?"nahe Auslösewert – belastbare Messung nötig":"unauffällig"}</span></div>`);
+    }
   }
   if(x){
     const a=x.lux==null?"gelb":(x.lux<=x.soll?"rot":x.lux<=x.soll*LUX_UNSICHER?"gelb":"gruen");
@@ -1989,8 +2251,8 @@ function renderMess(){
   }
   if(l||x) teile.push(`<div class="messsub" style="margin-top:6px"><a href="#" id="kalibLink" style="color:var(--muted)">⚙ Abgleich</a></div>`);
   box.innerHTML=teile.join("");
-  const kl=box.querySelector("#kalibLink");
-  if(kl) kl.addEventListener("click",e=>{ e.preventDefault(); kalibrieren(); });
+  box.querySelectorAll("#kalibLink,#kalibLink2").forEach(kl=>
+    kl.addEventListener("click",e=>{ e.preventDefault(); kalibrieren(); }));
 }
 if(document.getElementById("btnLaerm")) document.getElementById("btnLaerm").addEventListener("click", async()=>{
   const btn=document.getElementById("btnLaerm"), box=document.getElementById("messBox");
@@ -2007,7 +2269,9 @@ if(document.getElementById("btnLaerm")) document.getElementById("btnLaerm").addE
       zeit:new Date().toLocaleString("de-DE"), screening:true, geeicht:false };
     save(); renderMess();
     // Grenznähe → Befund IMMER in die GBU
-    if(dba==null) toast("Gemessen. Für dB(A) einmalig „⚙ Abgleich“ gegen ein Messgerät.");
+    /* Ohne Abgleich KEIN Befund. Frueher lief der Wert in den gelb-Zweig und trug
+       automatisch den Mangel C6 ein - das erzeugte Falschbefunde in der GBU. */
+    if(dba==null) toast("Gemessen. Für eine Zahl in dB(A) einmalig „⚙ Abgleich“ gegen ein Messgerät.");
     else if(dba>=LAERM_UNTERER-LAERM_UNSICHER){
       befundEintragen("C6", `Screening ca. ${dba.toFixed(0)} dB(A) (ungeeicht, ${new Date().toLocaleDateString("de-DE")})`);
       toast("Nahe/über Auslösewert → Mangel C6 + Prüfpunkt P51 eingetragen.");
@@ -2133,6 +2397,11 @@ function renderAudio(){
     const nr=document.createElement("span");
     nr.style.cssText="font-weight:700;min-width:2.2em;color:var(--oak,#1B4332)";
     nr.textContent="🎙"+(i+1);
+    if(a.fotoId){
+      const bez=mangelNummer(a.fotoId);
+      if(bez!=null) nr.textContent="🎙M"+bez;
+      nr.title="gehört zu Mangelfoto "+(bez!=null?bez:"?");
+    }
     const player=document.createElement("audio"); player.controls=true; player.src=a.data;
     player.style.flex="1 1 180px"; player.style.height="36px";
     const info=document.createElement("span");
@@ -2224,7 +2493,7 @@ document.getElementById("btnSave").addEventListener("click", saveAndNeu);
 /* Neu: nur den aktuellen Bogen verwerfen – gesicherte Maschinen bleiben erhalten */
 document.getElementById("btnReset").addEventListener("click",async()=>{
   if(!confirm("Aktuellen Bogen verwerfen und neu beginnen?\n(Die gesicherten Maschinen bleiben erhalten.)")) return;
-  state=blankState(); await persistAll(); location.reload();
+  state=blankState(); await persistAll(); neuZeichnen(); toast("Bogen verworfen.");
 });
 
 /* Übersicht: gesicherte Maschinen – nach Arbeitssystem gruppiert, mit Detaillierungsgrad,
@@ -2242,8 +2511,9 @@ function zeigeUebersicht(){
     body+=`<div class="ovgroup">Arbeitssystem: <b>${esc(sys)}</b> · ${groups[sys].length} Maschine(n)</div>`;
     groups[sys].forEach(i=>{
       const m=collection[i], c=coverage(m), teil=((m.meta||{}).teilschritt||"").trim();
-      const up = m._upload==="gesendet" ? ' · <b style="color:var(--gruen)">✓ Drive</b>'
-        : (m._upload==="pending" ? ' · <b style="color:#b5462f">⤴ ausstehend</b>' : "");
+      const up = m._upload==="gesendet" ? ' · <b style="color:var(--gruen)">✓ in Drive</b>'
+        : (m._upload==="verboten" ? ' · <b style="color:#b5462f">✗ abgelehnt</b>'
+        : (m._upload ? ' · <b style="color:#b5462f">⤴ nicht bestätigt</b>' : ""));
       body+=`<div class="ovrow"><div class="ovname"><b>${esc((m.meta||{}).maschine||"?")}</b>`
         +(teil?` <span style="color:var(--muted)">· ${esc(teil)}</span>`:"")
         +`<span>${coverageText(c)}${up}</span></div>`
@@ -2297,7 +2567,9 @@ async function uploadEinzeln(i){
   if(!(localStorage.getItem(UPLOADKEY)||"").trim()){ toast("Erst ⚙ Drive einrichten."); return; }
   if(navigator.onLine===false){ toast("Kein Netz – später erneut versuchen."); return; }
   toast("Lade „"+((m.meta||{}).maschine||"?")+"“ hoch…");
-  m._upload = (await driveUpload(m)) ? "gesendet" : "pending";
+  const erg=await driveUpload(m);
+  m._upload = (erg==="ok") ? "gesendet" : (erg==="verboten" ? "verboten" : "pending");
+  toast(erg==="ok" ? "✓ in Drive bestätigt" : erg==="verboten" ? "Abgelehnt – Token prüfen" : "Nicht bestätigt – erneut versuchen");
   await persistAll(); zeigeUebersicht();
 }
 /* Nachschärfen: gespeicherte Maschine in den aktuellen Bogen laden (Detail-Modus), Re-Save ersetzt sie */
@@ -2308,7 +2580,8 @@ async function bearbeiteMaschine(i){
   collection.splice(i,1);
   rec._editIdx=i; rec.meta.modus="detail";
   if(!Array.isArray(rec.markierungen)) rec.markierungen=[];
-  state=rec; await persistAll(); location.reload();
+  state=rec; await persistAll(); neuZeichnen();
+  toast("„"+((rec.meta||{}).maschine||"Maschine")+"“ zum Nachschärfen geladen.");
 }
 /* Laden aus Drive: einzelne Maschinen-Dateien ODER Sammlungen; in die Sammlung mergen (Update bei
    gleichem Namen+Datum → Nachschärfen überschreibt sauber). */
@@ -2342,7 +2615,8 @@ async function alleLoeschen(){
   localStorage.removeItem(LSKEY); localStorage.removeItem(COLLKEY); localStorage.removeItem(EBENEKEY);
   await idbDel(LSKEY); await idbDel(COLLKEY);
   await idbDel(ALLGKEY); await idbDel(MASCHKEY);   // beide Ebenen mit abräumen
-  location.reload();                                // Standortplan bleibt: gehört dem Kunden, nicht dem Tag
+  neuZeichnen();                                   // Standortplan bleibt: gehört dem Kunden, nicht dem Tag
+  toast("Alle Maschinen gelöscht.");
 }
 
 /* Start: neuesten Stand aus localStorage vs. IndexedDB-Backup wählen, dann rendern.
@@ -2359,6 +2633,14 @@ function applySetupHash(){
     history.replaceState(null,"",location.pathname+location.search); // Token aus der Adresszeile entfernen
     return true;
   }catch(e){ return false; }
+}
+/* Offline lauffaehig machen. Ohne Service Worker landete jeder Start ohne Empfang auf der
+   Fehlerseite des Browsers - der Hauptgrund, warum die Begehung am 22.07. abgebrochen wurde.
+   Faellt die Registrierung aus (lokale Datei, altes Geraet), laeuft die App wie bisher. */
+if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  });
 }
 (async function boot(){
   const setup=applySetupHash();
