@@ -2176,6 +2176,44 @@ function rescueExport(){
   download("RETTUNG_Begehung_"+slug(state.meta.kunde||state.meta.maschine)+"_"+(state.meta.datum||"")+".json",
     JSON.stringify(p), "application/json");
 }
+/* Sammel-Teilen: die GANZE Begehung in einer Datei – alle Maschinen plus Hallenplan und
+   die Ebene „🏢 Begehung", die sonst gar keinen Ausgang aus dem Geraet hat.
+   Anders als teileEinzel() wird hier KEIN Fehler verschluckt: bei grossen Paketen bricht
+   navigator.share auf Mobilgeraeten gern stumm ab – dann muss der Download-Fallback greifen. */
+async function teileAlles(btn){
+  const paket=exportPaket();
+  if(!paket){ toast("Noch nichts erfasst – es gibt nichts zu teilen."); return; }
+  const name="Begehung_"+slug(paket.kunde||state.meta.maschine||"begehung")
+            +(paket.datum?"_"+paket.datum:"")+"_Sammlung.json";
+  const inhalt=JSON.stringify(paket);
+  const mb=(inhalt.length/1048576).toFixed(1);
+  const alt=btn?btn.textContent:null;
+  if(btn){ btn.disabled=true; btn.textContent="Teile "+mb+" MB…"; }
+  try{
+    if(navigator.canShare){
+      for(const typ of ["application/json","text/plain"]){
+        const file=new File([inhalt],name,{type:typ});
+        if(navigator.canShare({files:[file]})){
+          try{
+            await navigator.share({files:[file],title:name});
+            toast("Sammlung geteilt ("+paket.anzahl+" Maschinen, "+mb+" MB)");
+            return;
+          }catch(err){
+            if(err && err.name==="AbortError") return;          // Nutzer hat abgebrochen – still
+            download(name, inhalt, "application/json");          // echter Fehler -> Notausgang
+            alert("Teilen fehlgeschlagen ("+(err&&err.message?err.message:"unbekannt")+").\n"
+                 +"Die Datei wurde stattdessen heruntergeladen – nichts ist verloren.");
+            return;
+          }
+        }
+      }
+    }
+    download(name, inhalt, "application/json");                  // Desktop / kein Share-API
+    toast("Sammlung gespeichert ("+paket.anzahl+" Maschinen, "+mb+" MB)");
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent=alt||"📦 Alles teilen"; }
+  }
+}
 function download(name, content, type){
   const blob=(content instanceof Blob)?content:new Blob([content],{type:type||"text/plain;charset=utf-8"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
@@ -2220,6 +2258,7 @@ function zeigeUebersicht(){
   ov.innerHTML=`<div class="ovcard"><h2>Gesicherte Maschinen (${collection.length})</h2>`
     +`<div class="ovlist">${body}</div>`
     +`<div class="toolrow" style="margin-top:12px">`
+    +`<button class="btn primary" id="ovAllesTeilen">📦 Alles teilen</button>`
     +`<button class="btn" id="ovUpload">⚙ Drive</button>`
     +`<button class="btn" id="ovLoad">⬆︎ Laden</button>`
     +`<button class="btn" id="ovAlle">🗑 Alles</button>`
@@ -2227,6 +2266,7 @@ function zeigeUebersicht(){
   document.body.appendChild(ov);
   ov.addEventListener("click",e=>{ if(e.target===ov) ov.remove(); });
   ov.querySelector("#ovZu").addEventListener("click",()=>ov.remove());
+  ov.querySelector("#ovAllesTeilen").addEventListener("click",e=>teileAlles(e.currentTarget));
   ov.querySelector("#ovAlle").addEventListener("click",alleLoeschen);
   ov.querySelector("#ovLoad").addEventListener("click",()=>document.getElementById("importInput").click());
   ov.querySelector("#ovUpload").addEventListener("click",()=>{
