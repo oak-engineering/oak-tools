@@ -208,12 +208,14 @@
   .rasterMini .rz{border:1px dashed var(--line);border-radius:8px;min-height:38px;display:flex;
     flex-direction:column;align-items:center;justify-content:center;position:relative;font-size:11px;color:var(--muted)}
   .rasterMini .rz.voll{border-style:solid;background:#eef5f0;color:var(--dunkel)}
+  .rasterMini .rz.mitte{border-color:var(--gruen);background:var(--akzent)}
   .rasterMini .rz b{font-size:10px;color:var(--gruen)} .rasterMini .rz span{font-weight:700;font-size:14px}
   .rasterMini .rzdel{position:absolute;top:1px;right:3px;border:0;background:none;color:#b5462f;font-size:14px;cursor:pointer;line-height:1}
   .rasterBig{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .rasterBig .rbz{border:1px dashed var(--line);border-radius:10px;min-height:64px;background:#fff;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer}
   .rasterBig .rbz.voll{border-style:solid;background:#eef5f0}
+  .rasterBig .rbz.mitte{border-color:var(--gruen);border-width:2px;background:var(--akzent)}
   .rasterBig .rbz.aktiv{border-color:var(--gruen);box-shadow:0 0 0 2px var(--akzent)}
   .rasterBig .rbz b{font-size:11px;color:var(--gruen)} .rasterBig .rbz span{font-size:13px;font-weight:600}
   .messbalken i{display:block;height:100%;background:var(--gruen);width:0;transition:width .1s linear}
@@ -2365,7 +2367,7 @@ function befundEintragen(id, notiz){
 function laermSerie(){
   const m=state.meta;
   if(!Array.isArray(m.laerm_serie)){
-    m.laerm_serie = (m.laerm && m.laerm.dba!=null) ? [Object.assign({zelle:0}, m.laerm)] : [];
+    m.laerm_serie = (m.laerm && m.laerm.dba!=null) ? [Object.assign({zelle:4}, m.laerm)] : [];
     m.laerm=null;
   }
   return m.laerm_serie;
@@ -2373,7 +2375,7 @@ function laermSerie(){
 function luxSerie(){
   const m=state.meta;
   if(!Array.isArray(m.lux_serie)){
-    m.lux_serie = (m.lux && m.lux.lux!=null) ? [Object.assign({zelle:0}, m.lux)] : [];
+    m.lux_serie = (m.lux && m.lux.lux!=null) ? [Object.assign({zelle:4}, m.lux)] : [];
     m.lux=null;
   }
   return m.lux_serie;
@@ -2385,14 +2387,15 @@ function laermMittel(serie){
   return 10*Math.log10(s/serie.length);
 }
 function messRasterHtml(art, serie){
-  /* 2×3-Miniraster (nur Anzeige) - Zelle 0..5 = P1..P6. */
+  /* 3×3-Miniraster (nur Anzeige) - Mitte (Zelle 4) = Arbeitsbereich. */
+  const pf=["↖","↑","↗","←","🎛","→","↙","↓","↘"];
   let z=`<div class="rasterMini">`;
-  for(let i=0;i<6;i++){
-    const p=serie.find(q=>q.zelle===i);
+  for(let i=0;i<9;i++){
+    const p=serie.find(q=>q.zelle===i), mitte=(i===4);
     const wert = p ? (art==="laerm" ? p.dba.toFixed(0) : Math.round(p.lux)) : "";
-    z+=`<div class="rz${p?" voll":""}">`+(p
-        ?`<b>P${i+1}</b><span>${wert}</span><button class="rzdel" data-del="${art}:${i}" title="löschen">×</button>`
-        :`<span class="rzleer">P${i+1}</span>`)+`</div>`;
+    z+=`<div class="rz${p?" voll":""}${mitte?" mitte":""}">`+(p
+        ?`<b>${pf[i]}</b><span>${wert}</span><button class="rzdel" data-del="${art}:${i}" title="löschen">×</button>`
+        :`<span class="rzleer">${pf[i]}</span>`)+`</div>`;
   }
   return z+`</div>`;
 }
@@ -2411,7 +2414,7 @@ function renderMess(){
     teile.push(`<div class="messerg"><div class="messwert">ca. ${lm.toFixed(0)}<span class="einheit">dB(A) Ø</span></div>`
       +messRasterHtml("laerm", ls)
       +`<div class="messsub"><b>Orientierungswert Handy-Mikrofon</b>${abg?"":" · grobe Schätzung"} · `
-      +`${ls.length} Punkt(e), energetischer Mittelwert · L<sub>pAeq</sub> je ${ls[0].dauer_s||15} s `
+      +`${state.meta.mess_bereich?"Arbeitsbereich "+esc(state.meta.mess_bereich)+" · ":""}${ls.length} Punkt(e), energetischer Mittelwert `
       +`<a href="#" id="mLaermInfo" style="color:var(--gruen);font-weight:600">ℹ️ Methodik &amp; Auslösewerte</a>`
       +(abg?"":` · <a href="#" id="kalibLink2" style="color:var(--muted)">optional genauer</a>`)
       +`</div></div>`);
@@ -2422,7 +2425,7 @@ function renderMess(){
     teile.push(`<div class="messerg"><div class="messwert">ca. ${Math.round(mittel)}<span class="einheit">lx Ø</span></div>`
       +messRasterHtml("licht", xs)
       +`<div class="messsub"><b>Orientierungswert</b>${sensor?" (Lichtsensor)":" (Kamera-Helligkeit)"}`
-      +`${abg?"":" · grobe Schätzung"} · ${xs.length} Punkt(e) · Gleichmäßigkeit U0 = ${u0.toFixed(2)} (min/Ø) · Soll ${xs[0].soll} lx · ${esc(xs[0].soll_txt)} `
+      +`${abg?"":" · grobe Schätzung"} · ${state.meta.mess_bereich?"Arbeitsbereich "+esc(state.meta.mess_bereich)+" · ":""}${xs.length} Punkt(e) · Gleichmäßigkeit U0 = ${u0.toFixed(2)} (min/Ø) · Soll ${xs[0].soll} lx `
       +`<a href="#" id="mLichtInfo" style="color:var(--gruen);font-weight:600">ℹ️ Methodik &amp; Sollwerte</a></div></div>`);
   }
   if(ls.length||xs.length) teile.push(`<div class="messsub" style="margin-top:6px"><a href="#" id="kalibLink" style="color:var(--muted)">⚙ Abgleich</a></div>`);
@@ -2431,11 +2434,23 @@ function renderMess(){
     kl.addEventListener("click",e=>{ e.preventDefault(); kalibrieren(); }));
   const li=box.querySelector("#mLaermInfo"); if(li) li.addEventListener("click",e=>{ e.preventDefault(); messMethodik("laerm"); });
   const xi=box.querySelector("#mLichtInfo"); if(xi) xi.addEventListener("click",e=>{ e.preventDefault(); messMethodik("licht"); });
-  box.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{
+  box.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation();
     const [art,i]=b.dataset.del.split(":"); const z=+i;
     const serie = art==="laerm" ? laermSerie() : luxSerie();
     const k=serie.findIndex(p=>p.zelle===z); if(k>=0){ serie.splice(k,1); save(); renderMess(); }
   }));
+  /* Tipp auf das Mini-Raster oeffnet das Overlay zum Nachmessen. */
+  box.querySelectorAll(".messerg").forEach((erg,idx)=>{
+    const istLaerm = idx===0 && laermSerie().length;
+    const mini=erg.querySelector(".rasterMini");
+    if(mini) mini.addEventListener("click",async()=>{
+      if(istLaerm){ if(state.meta.mess_bereich||await bereichWaehlen()) zeigeRaster("laerm"); }
+      else { const b=state.meta.mess_bereich||await bereichWaehlen(); if(!b) return;
+             const so=luxSerie()[0]; const soll=so?{v:so.soll,t:so.soll_txt}:await sollWaehlen();
+             if(soll) zeigeRaster("licht",soll); }
+    });
+  });
 }
 /* Methodik & Rechtsquellen zur orientierenden Mess-Hilfe. Bewusst als abrufbare Infobox -
    das Tool liefert nur einen Richtwert, die Bewertung bleibt bei Nikolai. Quellen:
@@ -2501,32 +2516,57 @@ async function messeLichtZelle(zelle, soll){
   return lux;
 }
 /* Mess-Gitter: rechteckiges 2×3-Raster, Zelle antippen → dort messen. Bis 6 Punkte. */
+/* 3×3-Raster: Mitte (Zelle 4) = Arbeitsbereich, die 8 Aussenzellen relativ dazu (optional).
+   Richtung je Zelle 0..8: ↖ ↑ ↗ / ← ● → / ↙ ↓ ↘ */
+const RASTER_PFEIL=["↖","↑","↗","←","●","→","↙","↓","↘"];
+const MESS_BEREICHE=["Bedienpult","Materialaufgabe / Trichter","Teileentnahme / Förderband","Rückseite / Aggregat"];
+function bereichWaehlen(){
+  return new Promise(res=>{
+    if(state.meta.mess_bereich){ res(state.meta.mess_bereich); return; }
+    const pk=document.createElement("div"); pk.className="mpicker";
+    pk.innerHTML=`<div class="pcard"><h3>Arbeitsbereich (Mitte des Rasters)</h3>`
+      +`<p class="hint">Wo ist der Hauptmesspunkt? Außenrum kannst du später optional ergänzen.</p><div class="mpal">`
+      +MESS_BEREICHE.map((b,i)=>`<button class="btn" data-b="${i}">${esc(b)}</button>`).join("")
+      +`<button class="btn" data-b="-1">eigener …</button></div>`
+      +`<div class="toolrow"><button class="btn" id="bAbbr" style="margin-left:auto">Abbrechen</button></div></div>`;
+    document.body.appendChild(pk);
+    const fin=v=>{ pk.remove(); res(v); };
+    pk.querySelectorAll("[data-b]").forEach(b=>b.addEventListener("click",()=>{
+      const i=+b.dataset.b;
+      let name = i>=0 ? MESS_BEREICHE[i] : (prompt("Arbeitsbereich benennen:","")||"").trim();
+      if(i<0 && !name){ return; }
+      state.meta.mess_bereich=name; save(); fin(name);
+    }));
+    pk.querySelector("#bAbbr").addEventListener("click",()=>fin(null));
+    pk.addEventListener("click",e=>{ if(e.target===pk) fin(null); });
+  });
+}
 function zeigeRaster(art, soll){
   const serie = art==="laerm" ? laermSerie() : luxSerie();
+  const bereich = state.meta.mess_bereich || "Arbeitsbereich";
   const ov=document.createElement("div"); ov.className="mpicker"; ov.id="rasterOv";
-  const kopf = art==="laerm"
-    ? `Lärm-Raster – Zelle antippen, 15 s ruhig halten`
-    : `Licht-Raster – Zelle antippen (Kamera auf weiße Fläche)`;
+  const kopf = (art==="laerm"?"Lärm":"Licht")+"-Raster – "+esc(bereich);
   const hinweis = art==="laerm"
-    ? `Handy in Kopfhöhe (ca. 1,55 m), Mikrofon zum Arbeitsplatz – bei anwesender Person 0,1–0,4 m vom Ohr. (TRLV Lärm Teil 2 §5.3.3)`
-    : `Rastermessung nach DGUV 215-210 §7.3 – bis 6 Punkte über die Fläche verteilen.`;
+    ? `Mitte 🎛 = Arbeitsbereich. Zelle antippen → 15 s ruhig halten. Handy in Kopfhöhe (ca. 1,55 m). (TRLV Lärm Teil 2 §5.3.3)`
+    : `Mitte 🎛 = Arbeitsbereich. Zelle antippen → messen. Rastermessung nach DGUV 215-210 §7.3.`;
   const zeichne=()=>{
     let g=`<div class="rasterBig">`;
-    for(let i=0;i<6;i++){
-      const p=serie.find(q=>q.zelle===i);
-      const w=p?(art==="laerm"?p.dba.toFixed(0)+" dB(A)":Math.round(p.lux)+" lx"):"tippen";
-      g+=`<button class="rbz${p?" voll":""}" data-zelle="${i}"><b>P${i+1}</b><span>${w}</span></button>`;
+    for(let i=0;i<9;i++){
+      const p=serie.find(q=>q.zelle===i), mitte=(i===4);
+      const wert=p?(art==="laerm"?p.dba.toFixed(0)+" dB(A)":Math.round(p.lux)+" lx"):(mitte?"tippen":RASTER_PFEIL[i]);
+      const kopfz=mitte?`🎛 ${esc(bereich)}`:`${RASTER_PFEIL[i]}`;
+      g+=`<button class="rbz${p?" voll":""}${mitte?" mitte":""}" data-zelle="${i}"><b>${kopfz}</b><span>${wert}</span></button>`;
     }
     ov.querySelector(".rasterWrap").innerHTML=g+`</div><div class="messbalken" style="margin-top:8px"><i id="rBal"></i></div>`;
     ov.querySelectorAll("[data-zelle]").forEach(b=>b.addEventListener("click",async()=>{
       const z=+b.dataset.zelle;
       const belegt=serie.some(p=>p.zelle===z);
-      if(belegt && !confirm("P"+(z+1)+" neu messen?")) return;
+      if(belegt && !confirm((z===4?"Arbeitsbereich":"Punkt")+" neu messen?")) return;
       ov.querySelectorAll("[data-zelle]").forEach(x=>x.disabled=true);
       b.classList.add("aktiv"); b.querySelector("span").textContent="misst …";
       try{
         if(art==="laerm") await messeLaermZelle(z, "#rBal");
-        else { const v=await messeLichtZelle(z, soll); if(v==null){ /* Fehler */ } }
+        else await messeLichtZelle(z, soll);
       }catch(e){ toast("Messung fehlgeschlagen."); }
       renderMess(); zeichne();
     }));
@@ -2539,8 +2579,12 @@ function zeigeRaster(art, soll){
   const zu=()=>{ ov.remove(); renderMess(); };
   ov.querySelector("#rasterFertig").addEventListener("click",zu);
 }
-if(document.getElementById("btnLaerm")) document.getElementById("btnLaerm").addEventListener("click", ()=>zeigeRaster("laerm"));
+if(document.getElementById("btnLaerm")) document.getElementById("btnLaerm").addEventListener("click", async()=>{
+  const b=await bereichWaehlen(); if(b==null) return;   // Arbeitsbereich einmal je Maschine
+  zeigeRaster("laerm");
+});
 if(document.getElementById("btnLux")) document.getElementById("btnLux").addEventListener("click", async()=>{
+  const b=await bereichWaehlen(); if(b==null) return;
   const soll=await sollWaehlen(); if(soll==null) return;   // Sollwert einmal fuers ganze Raster
   zeigeRaster("licht", soll);
 });
