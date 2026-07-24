@@ -556,7 +556,7 @@ const DGUV_HINWEISE = {
       ["C1","Leitern/Tritte/Zugänge sicher (feste Aufstiege)","113-606 3.3.2 · TRBS 2121-2"],
       ["C2","Kran/Transport über Bedienbereich gesichert","113-606 3.3.3"],
       ["C3","Verkehrswege frei, Boden rutschsicher, keine Leckagen","113-606 3.1.2/3.1.5"],
-      ["C4","Beleuchtung ausreichend","T 009 4.3.3 · ASR A3.4"],
+      ["C4","Beleuchtung ausreichend","ASR A3.4 · DGUV Information 215-210 §7.3 · T 009 4.3.3"],
       ["C6","Lärmexposition unter Auslösewert (LEX,8h < 80 dB(A))","LärmVibrationsArbSchV §3/§6"],
       ["D1","E-Prüfung DGUV V3 aktuell","113-606 3.1.13"],
       ["D2","Hydraulik dicht; Druckentlastung nach Not-Halt","113-606 3.1.12"],
@@ -714,7 +714,7 @@ const PRUEFLISTE = [
    ["P50","Keine gefahrbringenden Bewegungen bei Ausfall/Wiederkehr der Druckluft","Sicher bei Druckausfall"]]},
  {nr:"8", t:"Umgebung der Maschine", items:[
    ["P51","Grenzwerte Lärm/Vibration/EMVU/Gefahrstoffe eingehalten","Grenzwerte eingehalten"],
-   ["P52","Beleuchtung ausreichend (ASR A3.4)","Beleuchtung ausreichend"],
+   ["P52","Beleuchtung ausreichend (ASR A3.4 · DGUV 215-210 §7.3)","Beleuchtung ausreichend"],
    ["P53","Verkehrswege bemessen, gekennzeichnet, freigehalten","Verkehrswege frei"]]},
  {nr:"9", t:"Betriebsanweisung & Unterweisung", items:[
    ["P54","Aktuelle Betriebsanweisung vorhanden","Betriebsanweisung aktuell"],
@@ -1382,9 +1382,9 @@ const MAENGEL_KATALOG = [
  {id:"C1", kurz:"Leiter / Tritt unsicher", haeufig:true, label:"Leiter/Tritt/Podest/Zugang unsicher", rq:"DGUV 113-606 3.3.2 · T 009 4.2.4", mn:"Normkonforme Podesttreppe + Handlauf", rate:400, gf:["1.5","1.6"], pf:["P11"]},
  {id:"C2", kurz:"Kran/Roboter über Bedienbereich", haeufig:true, label:"Kran/Transport über Bedienbereich ungesichert", rq:"DGUV 113-606 3.3.3", mn:"Zaun erweitern + Kran-Endschalter/Verriegelung + Warnleuchte", rate:1500, gf:["1.3"], pf:[]},
  {id:"C3", kurz:"Leckage", haeufig:true, label:"Leckage / Boden rutschig (Öl/Granulat)", rq:"DGUV 113-606 3.1.2/3.1.5 · §10 BetrSichV", mn:"Leckage beheben; Reinigung; Sicherheitsschuhe", rate:300, gf:["1.5"], pf:[], stufen:true},
- {id:"C4", kurz:"Beleuchtung unzureichend", haeufig:false, label:"Beleuchtung unzureichend (Werkzeugraum)", rq:"T 009 4.3.3 · ASR A3.4", mn:"LED-Maschinenleuchte (IP67)", rate:250, gf:["8.2"], pf:["P52"]},
+ {id:"C4", kurz:"Beleuchtung unzureichend", haeufig:false, label:"Beleuchtung unzureichend (Werkzeugraum)", rq:"ASR A3.4 · DGUV Information 215-210 §7.3 · T 009 4.3.3", mn:"LED-Maschinenleuchte (IP67)", rate:250, gf:["8.2"], pf:["P52"]},
  {id:"C5", kurz:"Absturzsicherung fehlt", haeufig:false, label:"Absturzsicherung hochgelegener Plätze fehlt", rq:"ASR A2.1 · DGUV 113-606 3.3.2", mn:"Geländer/Absturzsicherung nachrüsten", rate:600, gf:["1.6"], pf:["P11"]},
- {id:"C6", kurz:"Lärm auffällig", haeufig:false, label:"Lärm: Auslösewert möglicherweise erreicht – belastbare Messung nötig", rq:"LärmVibrationsArbSchV §3/§6 · DIN EN ISO 9612", mn:"Lärmmessung n. DIN EN ISO 9612 beauftragen; bis dahin Gehörschutz bereitstellen", rate:600, gf:["7.1"], pf:["P51"]},
+ {id:"C6", kurz:"Lärm auffällig", haeufig:false, label:"Lärm: Auslösewert möglicherweise erreicht – belastbare Messung nötig", rq:"LärmVibrationsArbSchV § 6 · TRLV Lärm Teil 2 · DIN EN ISO 9612", mn:"Lärmmessung n. DIN EN ISO 9612 beauftragen; bis dahin Gehörschutz bereitstellen", rate:600, gf:["7.1"], pf:["P51"]},
  {id:"C7", kurz:"Ordnung & Sauberkeit", haeufig:true, label:"Ordnung & Sauberkeit unzureichend", rq:"ASR A2.3 · §4 Abs.2 ArbStättV · DGUV V1 §17", mn:"Ordnung herstellen; Reinigungsplan; Lager-/Abstellplätze festlegen und kennzeichnen", rate:200, gf:["8.4","8.5"], pf:["P53"]},
  {id:"C8", kurz:"Stolperstelle / Verkehrsweg", haeufig:true, label:"Stolperstelle / Verkehrsweg eingeengt oder ungekennzeichnet", rq:"ASR A1.8 · ASR A1.3 · §10 BetrSichV", mn:"Stolperstelle beseitigen (Kabel/Leitungen verlegen) oder dauerhaft kennzeichnen; Verkehrsweg freihalten", rate:250, gf:["1.5","8.4"], pf:["P53"]},
  {id:"D1", kurz:"Elektrik mangelhaft", haeufig:false, label:"E-Prüfung (DGUV V3) überfällig / Elektrik mangelhaft", rq:"DGUV 113-606 3.1.13 · DGUV V3", mn:"DGUV-V3-Prüfung durch Elektrofachkraft", rate:200, gf:["2.1"], pf:["P27","P28"]},
@@ -2219,7 +2219,11 @@ const MESSKEY="oak_begehung_kalibrierung_v1";
 const LAERM_STD_OFFSET=120;
 const LAERM_UNTERER=80, LAERM_OBERER=85;      // dB(A), LärmVibrationsArbSchV §6
 const A_NORM_DB=1.97;                          // A-Kurve auf 0 dB @ 1 kHz normieren (ausgemessen; Literaturwert +2,0)
-const LAERM_UNSICHER=5;                        // dB Screening-Unschärfe → Grenznähe-Band
+/* Unsicherheit ΔL nach TRLV Lärm Teil 2: Genauigkeitsklasse 1/2/3 = 0/3/6 dB.
+   Ein Handy-Mikrofon ist Klasse 3 → 6 dB. Eine sichere Entscheidung über einen Auslösewert
+   ist nur moeglich, wenn der Messwert um mehr als ΔL darueber/darunter liegt - sonst „nicht
+   sicher entscheidbar" und es ist belastbar zu messen (§6: sonst gilt der Wert als ueberschritten). */
+const LAERM_DELTA_KL3=6;
 /* Ohne Abgleich gab es bisher gar keinen Lux-Wert. Der Standardfaktor liefert einen groben
    Orientierungswert (mittlere Bildhelligkeit 0..255 -> lx); der Abgleich gegen ein Luxmeter
    ueberschreibt ihn. Beim echten Sensor ist der Wert bereits lx, Faktor also 1. */
@@ -2298,29 +2302,39 @@ async function lichtRoh(){
       if(isFinite(wert)) return { roh:wert, sensor:true };
     }catch(e){}
   }
-  let stream;
+  let stream, v;
   try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}}); }
   catch(e){ return {fehler:"Kein Kamerazugriff – bitte erlauben."}; }
   try{
-    const v=document.createElement("video");
-    v.srcObject=stream; v.muted=true; v.playsInline=true;
+    v=document.createElement("video");
+    v.srcObject=stream; v.muted=true; v.playsInline=true; v.setAttribute("playsinline","");
+    /* Das Video MUSS kurz im DOM haengen und darf nicht display:none sein - sonst dekodieren
+       viele mobile Browser keine Frames und drawImage malt schwarz (= 0 lx). Deshalb 1 px
+       weit weg statt versteckt. */
+    v.style.cssText="position:fixed;left:-2px;top:-2px;width:2px;height:2px;opacity:0.01;pointer-events:none";
+    document.body.appendChild(v);
+    await new Promise(r=>{ if(v.readyState>=1) return r(); v.onloadedmetadata=r; setTimeout(r,1500); });
     await v.play().catch(()=>{});
-    await new Promise(r=>setTimeout(r,1800));            // Belichtungsautomatik einschwingen lassen
+    /* Ein paar Frames + Belichtungsautomatik abwarten. */
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    await new Promise(r=>setTimeout(r,1600));
     const b=Math.min(v.videoWidth||640, 320) || 320;
-    const c=document.createElement("canvas"); c.width=b; c.height=Math.round(b*0.75);
+    const c=document.createElement("canvas"); c.width=b; c.height=Math.round(b*0.75) || 240;
     const ctx=c.getContext("2d");
     ctx.drawImage(v, 0, 0, c.width, c.height);
     /* Nur die Bildmitte auswerten - Raender zeigen oft Lampe oder Fensterkante. */
-    const mw=Math.round(c.width*0.5), mh=Math.round(c.height*0.5);
+    const mw=Math.max(1,Math.round(c.width*0.5)), mh=Math.max(1,Math.round(c.height*0.5));
     const d=ctx.getImageData(Math.round(c.width*0.25), Math.round(c.height*0.25), mw, mh).data;
     let sum=0;
     for(let k=0;k<d.length;k+=4) sum += 0.2126*d[k] + 0.7152*d[k+1] + 0.0722*d[k+2];
     const luma=sum/(d.length/4);                          // 0..255
+    if(luma<2) return {fehler:"Kamera lieferte kein Bild – bitte Objektiv freihalten und erneut messen."};
     return { roh:luma, sensor:false };
   }catch(e){
     return {fehler:"Lichtmessung auf diesem Gerät nicht möglich."};
   }finally{
     try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+    try{ if(v && v.parentNode) v.parentNode.removeChild(v); }catch(e){}
   }
 }
 /* Grenznähe-Regel: Befund IMMER eintragen, sobald der Wert ins Unschärfeband des Grenzwerts fällt. */
@@ -2339,45 +2353,77 @@ function renderMess(){
      er erscheint nur, solange er fehlt. */
   const kal=ladeKalib();
   if(kal.laerm_offset==null && kal.lux_faktor==null && !l && !x)
-    teile.push(`<div class="messsub" style="margin-top:8px">Noch nicht abgeglichen – ohne Abgleich gibt es
-      nur eine Ampel, keine Zahl. <a href="#" id="kalibLink" style="color:var(--gruen);font-weight:600">⚙ Abgleich</a></div>`);
+    teile.push(`<div class="messsub" style="margin-top:8px">Lärm &amp; Licht liefern sofort einen
+      groben Orientierungswert – kein Messgerät nötig.
+      <a href="#" id="kalibLink" style="color:var(--muted)">optional: gegen Messgerät abgleichen</a></div>`);
   if(l){
     /* Ohne Abgleich KEINE Ampel und keine Auslösewert-Aussage. Vorher war der dba==null-Zweig
        fest auf "gelb" verdrahtet und meldete "nahe Auslösewert", egal wie leise es war - und
        der dBFS-Rohwert daneben wurde als Messwert gelesen. Beides ist weg. */
-    const a=(l.dba>=LAERM_OBERER?"rot":l.dba>=LAERM_UNTERER-LAERM_UNSICHER?"gelb":"gruen");
     teile.push(`<div class="messerg"><div class="messwert">ca. ${l.dba.toFixed(0)}<span class="einheit">dB(A)</span></div>`
-      +`<div class="messsub"><b>Orientierungswert Handy-Mikrofon</b> – kein Beurteilungspegel nach
-      LärmVibrationsArbSchV. LAeq über ${l.dauer_s} s${l.abgeglichen?"":" · Schätzung ohne Abgleich"} · ${esc(l.zeit)}`
-      +(l.abgeglichen?"":` · <a href="#" id="kalibLink2" style="color:var(--gruen);font-weight:600">⚙ Abgleich</a>`)
-      +`</div>`
-      +`<span class="ampel ${a}">${a==="rot"?"über oberem Auslösewert (85 dB(A)) – Messung n. DIN EN ISO 9612 beauftragen":a==="gelb"?"nahe Auslösewert – belastbare Messung nötig":"unauffällig"}</span></div>`);
+      +`<div class="messsub"><b>Orientierungswert Handy-Mikrofon</b>${l.abgeglichen?"":" · grobe Schätzung"} · `
+      +`L<sub>pAeq</sub> über ${l.dauer_s} s · ${esc(l.zeit)} `
+      +`<a href="#" id="mLaermInfo" style="color:var(--gruen);font-weight:600">ℹ️ Methodik &amp; Auslösewerte</a>`
+      +(l.abgeglichen?"":` · <a href="#" id="kalibLink2" style="color:var(--muted)">optional genauer</a>`)
+      +`</div></div>`);
   }
   if(x){
-    const a=(x.lux<=x.soll?"rot":x.lux<=x.soll*LUX_UNSICHER?"gelb":"gruen");
     teile.push(`<div class="messerg"><div class="messwert">ca. ${Math.round(x.lux)}<span class="einheit">lx</span></div>`
       +`<div class="messsub"><b>Orientierungswert</b>${x.sensor?" (Lichtsensor)":" (Kamera-Helligkeit)"}`
-      +`${x.abgeglichen||x.sensor?"":" · Schätzung ohne Abgleich"} · Soll ${x.soll} lx · ${esc(x.soll_txt)} · ${esc(x.zeit)}</div>`
-      +`<span class="ampel ${a}">${a==="rot"?"unter Soll – belastbare Messung":a==="gelb"?"nahe Soll – belastbare Messung":"unauffällig"}</span></div>`);
+      +`${x.abgeglichen||x.sensor?"":" · grobe Schätzung"} · Soll ${x.soll} lx · ${esc(x.soll_txt)} · ${esc(x.zeit)} `
+      +`<a href="#" id="mLichtInfo" style="color:var(--gruen);font-weight:600">ℹ️ Methodik &amp; Sollwerte</a></div></div>`);
   }
   if(l||x) teile.push(`<div class="messsub" style="margin-top:6px"><a href="#" id="kalibLink" style="color:var(--muted)">⚙ Abgleich</a></div>`);
   box.innerHTML=teile.join("");
   box.querySelectorAll("#kalibLink,#kalibLink2").forEach(kl=>
     kl.addEventListener("click",e=>{ e.preventDefault(); kalibrieren(); }));
+  const li=box.querySelector("#mLaermInfo"); if(li) li.addEventListener("click",e=>{ e.preventDefault(); messMethodik("laerm"); });
+  const xi=box.querySelector("#mLichtInfo"); if(xi) xi.addEventListener("click",e=>{ e.preventDefault(); messMethodik("licht"); });
+}
+/* Methodik & Rechtsquellen zur orientierenden Mess-Hilfe. Bewusst als abrufbare Infobox -
+   das Tool liefert nur einen Richtwert, die Bewertung bleibt bei Nikolai. Quellen:
+   Lärm = LärmVibrationsArbSchV § 6 + TRLV Lärm Teil 2 (Mess-/Rechenverfahren);
+   Licht = ASR A3.4 (Sollwerte) + DGUV Information 215-210 §7.3 (orientierende Rastermessung). */
+function messMethodik(art){
+  const pk=document.createElement("div"); pk.className="mpicker";
+  let h;
+  if(art==="laerm"){
+    h=`<h3>Lärm – Methodik & Auslösewerte</h3>`
+     +`<div class="dguvliste">`
+     +`<div class="dguvzeile"><b>§6</b><span>Auslösewerte L<sub>EX,8h</sub>: unterer <b>80 dB(A)</b>, oberer <b>85 dB(A)</b> (Spitze 135/137 dB(C)).</span><i>LärmVibrationsArbSchV § 6</i></div>`
+     +`<div class="dguvzeile"><b>↦</b><span>Der am Platz gemessene L<sub>pAeq</sub> ist noch nicht der Tageswert. Umrechnung: L<sub>EX,8h</sub> = L<sub>pAeq</sub> + 10·lg(T<sub>e</sub>/8), T<sub>e</sub> = Expositionsdauer in h.</span><i>TRLV Lärm Teil 2, 5.6</i></div>`
+     +`<div class="dguvzeile"><b>🎙</b><span>Handy in Kopfhöhe (ca. 1,55 m stehend / 0,8 m über Sitzfläche), Mikrofon zum Arbeitsplatz; bei anwesender Person 0,1–0,4 m seitlich vom Ohr.</span><i>TRLV Lärm Teil 2, 5.3.3</i></div>`
+     +`<div class="dguvzeile"><b>⏱</b><span>Messdauer bei konstantem Geräusch ca. 15 s; bei Schwankungen mehrere Zyklen.</span><i>TRLV Lärm Teil 2, 5.5.1</i></div>`
+     +`<div class="dguvzeile"><b>±</b><span>Genauigkeitsklasse 1/2/3 → Unsicherheit ΔL 0/3/6 dB. <b>Handy = Klasse 3 (6 dB)</b> → nur orientierend; für die Entscheidung über einen Auslösewert belastbar messen.</span><i>TRLV Lärm Teil 2</i></div>`
+     +`</div><p class="hint">Lässt sich die Einhaltung nicht sicher ermitteln, ist n. TRLV Lärm Teil 2 zu messen – sonst gilt der Auslösewert als überschritten (§ 6).</p>`;
+  } else {
+    h=`<h3>Licht – Methodik & Sollwerte</h3>`
+     +`<div class="dguvliste">`
+     +`<div class="dguvzeile"><b>lx</b><span>Mindest-Beleuchtungsstärken: Verkehrsweg 100 · Maschinenbeschickung 200 · Fertigung/Spritzguss 300 · Werkzeugraum/Prüfplatz 500 · Präzision/Kontrolle 750.</span><i>ASR A3.4 Anhang 1</i></div>`
+     +`<div class="dguvzeile"><b>▦</b><span>Belastbar ist die orientierende Rastermessung: Messpunkte im Raster (Teilfläche 0,2 m · kleiner Raum ~0,6 m · mittlerer Raum ~1,0 m · große Halle ~3,0 m), Mittelwert & Gleichmäßigkeit bilden.</span><i>DGUV Information 215-210 §7.3, Tab. 1</i></div>`
+     +`<div class="dguvzeile"><b>📷</b><span>Die Handy-Messung ist eine Einpunkt-Schätzung aus der Bildhelligkeit – für einen groben Richtwert die Kamera auf eine weiße Fläche am Arbeitsplatz richten.</span><i>Orientierung</i></div>`
+     +`</div><p class="hint">Der Wert ersetzt keine Messung mit kalibriertem Luxmeter; er dient der groben Einordnung vor Ort.</p>`;
+  }
+  pk.innerHTML=`<div class="pcard">${h}<div class="toolrow" style="margin-top:12px">`
+    +`<button class="btn primary" id="mmOk" style="margin-left:auto">Schließen</button></div></div>`;
+  document.body.appendChild(pk);
+  const zu=()=>pk.remove();
+  pk.querySelector("#mmOk").addEventListener("click",zu);
+  pk.addEventListener("click",e=>{ if(e.target===pk) zu(); });
 }
 if(document.getElementById("btnLaerm")) document.getElementById("btnLaerm").addEventListener("click", async()=>{
   const btn=document.getElementById("btnLaerm"), box=document.getElementById("messBox");
   const kal=ladeKalib();
   btn.disabled=true; btn.textContent="messe …";
-  box.innerHTML=`<div class="messerg"><div class="messsub">Handy ruhig am Arbeitsplatz halten – nicht sprechen.</div>`
+  box.innerHTML=`<div class="messerg"><div class="messsub"><b>Handy in Kopfhöhe halten</b> (ca. 1,55 m stehend), Mikrofon zum Arbeitsplatz gerichtet – bei anwesender Person 0,1–0,4 m seitlich vom Ohr. 15 s ruhig halten, nicht sprechen. <span style="color:var(--muted)">(TRLV Lärm Teil 2 §5.3.3 / §5.5.1)</span></div>`
     +`<div class="messbalken"><i id="mBal"></i></div></div>`;
   const bal=document.getElementById("mBal");
   try{
-    const r=await laermMessen(10,(db,pct)=>{ if(bal) bal.style.width=Math.min(100,Math.max(0,pct))+"%"; });
+    const r=await laermMessen(15,(db,pct)=>{ if(bal) bal.style.width=Math.min(100,Math.max(0,pct))+"%"; });
     const abgeglichen = kal.laerm_offset!=null;
     const dba = r.dbfs + (abgeglichen ? kal.laerm_offset : LAERM_STD_OFFSET);
     state.meta.laerm={ dbfs:+r.dbfs.toFixed(2), spitze_dbfs:+r.spitze_dbfs.toFixed(2),
-      dba:+dba.toFixed(1), abgeglichen, offset: kal.laerm_offset??null, dauer_s:10,
+      dba:+dba.toFixed(1), abgeglichen, expo_h:(state.meta.laerm&&state.meta.laerm.expo_h)||8, offset: kal.laerm_offset??null, dauer_s:15,
       zeit:new Date().toLocaleString("de-DE"), screening:true, geeicht:false };
     save(); renderMess();
     // Grenznähe → Befund IMMER in die GBU
@@ -2389,7 +2435,7 @@ if(document.getElementById("btnLaerm")) document.getElementById("btnLaerm").addE
                       : ("Gemessen: ca. "+dba.toFixed(0)+" dB(A) – Schätzung ohne Abgleich."));
 
   }catch(e){ toast("Kein Mikrofonzugriff – bitte erlauben."); }
-  btn.disabled=false; btn.textContent="🔊 Lärm prüfen (10 s)";
+  btn.disabled=false; btn.textContent="🔊 Lärm prüfen (15 s)";
 });
 if(document.getElementById("btnLux")) document.getElementById("btnLux").addEventListener("click", async()=>{
   const btn=document.getElementById("btnLux"), kal=ladeKalib();
@@ -2413,7 +2459,8 @@ function sollWaehlen(){
     const pk=document.createElement("div"); pk.className="mpicker";
     pk.innerHTML=`<div class="pcard"><h3>Welcher Sollwert gilt hier?</h3>`
       +`<p class="hint">Mindestwerte nach ASR A3.4 Anhang 1. Für die Vergleichbarkeit die Kamera auf eine
-        <b>weiße Fläche</b> (Blatt Papier) am Arbeitsplatz richten.</p><div class="mpal">`
+        <b>weiße Fläche</b> (Blatt Papier) am Arbeitsplatz richten. Orientierende Einpunkt-Messung –
+        die belastbare Rastermessung folgt <b>DGUV Information 215-210 §7.3</b>.</p><div class="mpal">`
       +LUX_SOLL.map((s,i)=>`<button class="btn" data-soll="${i}">${esc(s.t)}</button>`).join("")
       +`</div><div class="toolrow"><button class="btn" id="soAbbr" style="margin-left:auto">Abbrechen</button></div></div>`;
     document.body.appendChild(pk);
