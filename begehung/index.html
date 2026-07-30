@@ -1750,19 +1750,20 @@ function renderAllgThumbs(){
           +";font-size:14px;cursor:pointer";
         pin.addEventListener("click",ev=>{ ev.stopPropagation(); pinPrompt(f); });
         t.appendChild(pin);
-        /* Sichtbar machen, wozu schon etwas erfasst ist - sonst merkt man erst am
-           Schreibtisch, dass ein Foto ohne Beschreibung geblieben ist. */
-        const hatNotiz=(state.audios||[]).some(a=>a.fotoId===f.id);
-        const hatText=(state.maengel||[]).some(m=>m.fotoId===f.id);
-        if(hatNotiz||hatText){
-          const bd=document.createElement("span");
-          bd.textContent=hatNotiz?"🎙":"✎";
-          bd.title=hatNotiz?"Sprachnotiz vorhanden":"Beschreibung vorhanden";
-          bd.style.cssText="position:absolute;right:4px;bottom:4px;border-radius:8px;padding:2px 5px;"
-            +"background:rgba(27,67,50,.85);color:#fff;font-size:12px";
-          t.appendChild(bd);
-        }
       }
+      /* Sprachnotiz/Beschreibung je Foto - ALLE Fotos (auch allgemeine/positive), fest an foto.id.
+         Gefuellt gruen = Notiz vorhanden; Klick: aufnehmen / ansehen / aendern. So merkt man vor Ort
+         (nicht erst am Schreibtisch), wozu schon etwas erfasst ist. */
+      const hatNotiz=(state.audios||[]).some(a=>a.fotoId===f.id);
+      const hatText=!!((f.beschreibung&&f.beschreibung.trim()) || (state.maengel||[]).some(m=>m.fotoId===f.id));
+      const mic=document.createElement("button"); mic.type="button"; mic.className="tmic";
+      mic.textContent="🎙";
+      mic.title=(hatNotiz||hatText)?"Notiz zu diesem Foto ansehen/ändern":"Kurze Sprachnotiz/Beschreibung zu diesem Foto";
+      mic.style.cssText="position:absolute;right:4px;bottom:4px;border:0;border-radius:8px;padding:2px 6px;"
+        +"background:"+((hatNotiz||hatText)?"rgba(27,67,50,.9)":"rgba(255,255,255,.85)")
+        +";color:"+((hatNotiz||hatText)?"#fff":"#1B4332")+";font-size:14px;cursor:pointer";
+      mic.addEventListener("click",ev=>{ ev.stopPropagation(); fotoNotizDialog(f); });
+      t.appendChild(mic);
       box.appendChild(t);
     });
   });
@@ -2054,6 +2055,74 @@ function mangelDialog(foto){
     pk.querySelector("#mdOk").addEventListener("click",()=>schliessen(true));
     pk.querySelector("#mdSkip").addEventListener("click",()=>schliessen(false));
   });
+}
+/* Kurze Sprachnotiz + optionale Beschreibung zu EINEM Foto (auch positive Befunde) – fest an
+   foto.id verknuepft, damit die Zuordnung Foto<->Aussage spaeter nicht verloren geht.
+   Regel Nikolai 30.07.: unter "Allgemeine Befunde" je Bild kurz sagen, WARUM es drin ist. */
+function fotoNotizDialog(foto){
+  if(!foto) return;
+  if(!foto.id) foto.id="f"+Date.now()+"-"+Math.random().toString(36).slice(2,7);
+  let rec=null, chunks=[], stream=null, timer=null, start=0, aufnahme=null;
+  const alt=(state.audios||[]).find(a=>a.fotoId===foto.id && a.allgemein);
+  const pk=document.createElement("div"); pk.className="mpicker";
+  pk.innerHTML=`<div class="pcard"><h3>Notiz zu diesem Foto</h3>`
+    +`<p class="hint">Warum ist das Foto drin? Kurz eintippen <b>oder</b> diktieren – auch ein <b>Positiv-Beispiel</b>. Wird fest am Foto gespeichert.</p>`
+    +`<input type="text" id="fnText" placeholder="z. B. Positiv: LOTO korrekt gesichert" autocomplete="off" value="${(foto.beschreibung||'').replace(/"/g,'&quot;')}"`
+    +` style="width:100%;box-sizing:border-box;padding:10px;font-size:16px;border:1px solid var(--rand,#cfd8d3);border-radius:9px">`
+    +`<div class="toolrow" style="margin-top:10px;align-items:center">`
+    +`<button class="btn" id="fnRec" type="button">🎙 ${alt?'Neu aufnehmen':'Diktieren'}</button>`
+    +`<span class="messsub" id="fnInfo" style="margin-left:8px">${alt?('Notiz '+Math.floor(alt.dauer/60)+':'+String(alt.dauer%60).padStart(2,'0')+' vorhanden'):''}</span></div>`
+    +`<div class="toolrow" style="margin-top:14px">`
+    +`<button class="btn" id="fnCancel" type="button">Abbrechen</button>`
+    +`<button class="btn primary" id="fnOk" type="button" style="margin-left:auto">Speichern</button>`
+    +`</div></div>`;
+  document.body.appendChild(pk);
+  const txt=pk.querySelector("#fnText"), btnRec=pk.querySelector("#fnRec"), info=pk.querySelector("#fnInfo");
+  const stoppen=()=>{ try{ if(rec && rec.state!=="inactive") rec.stop(); }catch(e){} };
+  btnRec.addEventListener("click",async()=>{
+    if(rec){ stoppen(); return; }
+    const mime=audioMime();
+    if(!mime || !navigator.mediaDevices){ info.textContent="Aufnahme auf diesem Gerät nicht möglich."; return; }
+    try{ stream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+    catch(e){ info.textContent="Kein Mikrofon-Zugriff."; return; }
+    chunks=[]; rec=new MediaRecorder(stream,{mimeType:mime,audioBitsPerSecond:32000});
+    rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>{
+      clearInterval(timer);
+      const dauer=Math.round((Date.now()-start)/1000);
+      const blob=new Blob(chunks,{type:mime});
+      try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+      stream=null; rec=null;
+      btnRec.classList.remove("active"); btnRec.textContent="🎙 Erneut aufnehmen";
+      const r=new FileReader();
+      r.onload=()=>{ aufnahme={mime, dauer, data:r.result};
+        info.textContent="Notiz "+Math.floor(dauer/60)+":"+String(dauer%60).padStart(2,"0")+" aufgenommen ✓"; };
+      r.readAsDataURL(blob);
+    };
+    start=Date.now(); rec.start(); btnRec.classList.add("active");
+    timer=setInterval(()=>{
+      const sk=Math.round((Date.now()-start)/1000);
+      btnRec.textContent="⏹ Stop ("+Math.floor(sk/60)+":"+String(sk%60).padStart(2,"0")+")";
+      if(sk>=AUDIO_MAX_S) stoppen();
+    },500);
+  });
+  const schliessen=async(uebernehmen)=>{
+    stoppen();
+    await new Promise(r=>setTimeout(r, aufnahme||rec?250:0));
+    if(uebernehmen){
+      foto.beschreibung=(txt.value||"").trim();
+      if(aufnahme){
+        state.audios=state.audios||[];
+        state.audios=state.audios.filter(a=>!(a.fotoId===foto.id && a.allgemein));   // vorhandene Foto-Notiz ersetzen
+        state.audios.push({name:"fotonotiz-"+(state.audios.length+1)+"."+(aufnahme.mime.indexOf("mp4")>=0?"m4a":"webm"),
+          mime:aufnahme.mime, dauer:aufnahme.dauer, data:aufnahme.data, ts:Date.now(), fotoId:foto.id, allgemein:true});
+      }
+      save(); if(typeof renderAudio==="function") renderAudio(); renderAllgThumbs();
+    }
+    pk.remove();
+  };
+  pk.querySelector("#fnOk").addEventListener("click",()=>schliessen(true));
+  pk.querySelector("#fnCancel").addEventListener("click",()=>schliessen(false));
 }
 function pinPrompt(mFoto, zielKat){
   if(!mFoto || !mFoto.id) return;
