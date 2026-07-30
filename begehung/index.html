@@ -867,6 +867,25 @@ async function driveUpload(m){
     return (e && e.name==="AbortError") ? "abbruch" : "unbestaetigt";
   } finally { clearTimeout(t); }
 }
+/* Wie driveUpload, aber fuer die GANZE Begehung (Sammlung inkl. Standortplan + allgemeine Befunde).
+   Landet als EINE Datei im Drive-eingang – kein Downloads-Umweg mehr. Server schreibt Payload ohne Token. */
+async function driveUploadPaket(paket, name){
+  const url=(localStorage.getItem(UPLOADKEY)||"").trim(); if(!url) return "keine-url";
+  const body=JSON.stringify(Object.assign({}, paket,
+    { token:(localStorage.getItem(UPLOADTOKENKEY)||""), dateiname:name }));
+  const ms=20000+Math.ceil(body.length/1048576)*15000;   // Timeout an Paketgroesse koppeln (Mobilfunk!)
+  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(), ms);
+  try{
+    const r=await fetch(url,{method:"POST",mode:"cors",
+      headers:{"Content-Type":"text/plain;charset=utf-8"}, body, signal:ctl.signal});
+    const txt=((await r.text())||"").trim();
+    if(!r.ok) return "unbestaetigt";
+    if(/^(ok|updated)/i.test(txt)) return "ok";
+    if(/forbidden/i.test(txt)) return "verboten";
+    return "unbestaetigt";
+  }catch(e){ return (e && e.name==="AbortError") ? "abbruch" : "unbestaetigt"; }
+  finally { clearTimeout(t); }
+}
 /* Alle noch nicht bestaetigten Maschinen erneut senden. */
 async function sendeAusstehende(){
   const offen=collection.filter(m=>m._upload && m._upload!=="gesendet");
@@ -2818,8 +2837,17 @@ async function teileAlles(btn){
   const inhalt=JSON.stringify(paket);
   const mb=(inhalt.length/1048576).toFixed(1);
   const alt=btn?btn.textContent:null;
-  if(btn){ btn.disabled=true; btn.textContent="Teile "+mb+" MB…"; }
+  const hatBridge=!!(localStorage.getItem(UPLOADKEY)||"").trim();
+  if(btn){ btn.disabled=true; btn.textContent=(hatBridge?"Lade ":"Teile ")+mb+" MB…"; }
   try{
+    // 0) BEVORZUGT: ganze Begehung über die Bridge direkt in den Drive-eingang (kein Downloads-Umweg).
+    if(hatBridge){
+      const erg=await driveUploadPaket(paket, name);
+      if(erg==="ok"){ toast("✓ Ganze Begehung in Drive/eingang ("+paket.anzahl+" Masch. + Allgemeines, "+mb+" MB)"); return; }
+      if(erg==="verboten"){ alert("Drive lehnt den Upload ab – Token prüfen (📋 → ⚙ Drive).\nIch nutze stattdessen Teilen/Download (nichts geht verloren)."); }
+      else { toast("Bridge nicht bestätigt – Rückfall auf Teilen/Download."); }
+      // -> faellt bewusst auf den bisherigen Weg durch (Share/Download)
+    }
     if(navigator.canShare){
       for(const typ of ["application/json","text/plain"]){
         const file=new File([inhalt],name,{type:typ});
