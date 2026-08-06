@@ -384,7 +384,9 @@
     <h2>📋 Allgemeine Befunde</h2>
     <div class="allgbox">Alles, was <b>keiner Maschine</b> gehört: ungeprüfte Leitern im ganzen Betrieb,
       Fußbodenmarkierung, herumstehende Gebinde, abgelaufene Filter … Kommt ins
-      <b>Begehungsprotokoll</b>, nicht in eine Maschinen-GBU. Wird laufend gesichert.</div>
+      <b>Begehungsprotokoll</b> und in die allgemeinen GBU, nicht in eine Maschinen-GBU.
+      Wird laufend gesichert – mit <b>⤴ Befunde senden</b> gehen sie als eigene Datei nach Drive
+      (auch ohne Sammlungs-Export).</div>
     <button class="btn big" data-addfoto="mangel">📷 Foto vom Befund</button>
     <div class="thumbs allgThumbs"></div>
   </section>
@@ -456,7 +458,7 @@
 
 <div class="actionbar">
   <button class="btn primary nur-maschine" id="btnSave">✓ Speichern &amp; neu</button>
-  <span class="allghint nur-allgemein">🏢 wird laufend gesichert</span>
+  <button class="btn primary nur-allgemein" id="btnSaveAllg">⤴ Befunde senden</button>
   <button class="btn nur-maschine" id="btnReset">✕ Neu</button>
   <button class="btn" id="btnList">📋 <span id="machCount">0</span></button>
   <input type="file" accept="application/json,.json" id="importInput" multiple hidden>
@@ -843,9 +845,9 @@ function machineFileName(m){
    NIE einfach "true": die Begehung am 22.07. zeigte vier gruene Haken, obwohl nichts ankam.
    Ursache war mode:"no-cors" (Antwort prinzipiell unlesbar) plus ein verschluckter catch.
    text/plain bleibt - das ist eine simple request, also kein CORS-Preflight noetig. */
-async function driveUpload(m){
+async function driveUpload(m, typ){
   const url=(localStorage.getItem(UPLOADKEY)||"").trim(); if(!url) return "keine-url";
-  const paket={ _typ:"OAK-Begehung-Maschine", _version:1, _exportiert:new Date().toISOString(),
+  const paket={ _typ: typ||"OAK-Begehung-Maschine", _version:1, _exportiert:new Date().toISOString(),
     token:(localStorage.getItem(UPLOADTOKENKEY)||""), dateiname:machineFileName(m), maschine:m };
   const koerper=JSON.stringify(paket);
   /* Timeout an die Paketgroesse koppeln. Fest 15 s war der zweite Grund fuer den Fehlschlag:
@@ -903,9 +905,9 @@ window.addEventListener("online", ()=>{
   if(collection.some(m=>m._upload && m._upload!=="gesendet")) toast("Netz wieder da – in 📋 mit ⤴ erneut senden.");
 });
 /* Einzelne Maschine als eigene Datei teilen (→ Drive eingang) bzw. herunterladen */
-async function teileEinzel(m){
+async function teileEinzel(m, typ){
   const name=machineFileName(m);
-  const paket={ _typ:"OAK-Begehung-Maschine", _version:1, _exportiert:new Date().toISOString(), maschine:m };
+  const paket={ _typ: typ||"OAK-Begehung-Maschine", _version:1, _exportiert:new Date().toISOString(), maschine:m };
   const inhalt=JSON.stringify(paket);
   if(navigator.canShare){
     for(const typ of ["application/json","text/plain"]){
@@ -984,12 +986,36 @@ function pflichtDialog(fehlt){
   });
 }
 async function saveAndNeu(){
-  const btn=document.getElementById("btnSave");
-  /* Die Begehungs-Ebene ist keine Maschine – sie wird nicht in die Sammlung gelegt, sondern
-     reist als eigener Block im Sammlungs-Export mit. */
+  const btn=document.getElementById(imAllgModus()?"btnSaveAllg":"btnSave");
+  /* Die Begehungs-Ebene ist keine Maschine – sie wird nicht in die Sammlung gelegt.
+     Sie reist im 📤 Sammlungs-Export mit UND geht hier als EIGENE Datei nach Drive.
+     Warum eigener Upload (Begehung 30.07.2026): Wer je Maschine speichert und hochlädt,
+     macht nie einen Sammlungs-Export – die allgemeinen Befunde blieben dann im Gerät
+     liegen und kamen nie an. Genau die geraeteuebergreifenden Befunde (Sacktransport,
+     Leitern, offene Flamme) sind aber der Kern der allgemeinen GBU. */
   if(imAllgModus()){
-    await persistAll();
-    toast("Allgemeine Befunde sind gesichert – sie reisen im 📤 Sammlungs-Export mit.");
+    const leerA = !((state.audios||[]).length) && !(state.fotosAllg||[]).length
+      && !((state.maengel||[]).length);
+    if(leerA){ toast("Noch nichts erfasst – erst Foto, Mangel oder Sprachnotiz aufnehmen."); return; }
+    /* Ohne Datum hiesse die Datei "…_.json" und ueberschriebe die vom Vortag. */
+    if(!(state.meta.datum||"").trim()) state.meta.datum=new Date().toISOString().slice(0,10);
+    if(!await persistAll()){ rescueExport(); alert("Speicher voll – lokal NICHT gesichert. Ein Rettungs-Export wurde heruntergeladen."); return; }
+    const hatUploadA=!!(localStorage.getItem(UPLOADKEY)||"").trim();
+    if(!hatUploadA){
+      await teileEinzel(state, "OAK-Begehung-Allgemein");
+      toast("Allgemeine Befunde gesichert & als Datei geteilt (→ Drive).");
+      return;
+    }
+    if(navigator.onLine===false){
+      toast("Allgemeine Befunde gesichert · offline – zum Senden später nochmal ✓ Speichern drücken.");
+      return;
+    }
+    if(btn){ btn.disabled=true; btn.textContent="Lade hoch…"; }
+    const ergA=await driveUpload(state, "OAK-Begehung-Allgemein");
+    if(btn){ btn.disabled=false; btn.textContent="⤴ Befunde senden"; }
+    toast(ergA==="ok" ? "✓ Allgemeine Befunde → in Drive bestätigt"
+      : ergA==="verboten" ? "Allgemeine Befunde gesichert · Drive lehnt ab – Token prüfen (📋 → ⚙ Drive)"
+      : "Allgemeine Befunde gesichert · Upload NICHT bestätigt – nochmal ✓ Speichern drücken");
     return;
   }
   const leer = !(state.meta.maschine||"").trim() && !((state.audios||[]).length)
@@ -2878,6 +2904,9 @@ function download(name, content, type){
   document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500);
 }
 document.getElementById("btnSave").addEventListener("click", saveAndNeu);
+/* Eigener Sende-Knopf der Begehungs-Ebene: der Maschinen-Speichern-Button ist hier ausgeblendet
+   (Klasse nur-maschine), es gab also gar keinen Weg, die allgemeinen Befunde zu senden. */
+document.getElementById("btnSaveAllg").addEventListener("click", saveAndNeu);
 
 /* Neu: nur den aktuellen Bogen verwerfen – gesicherte Maschinen bleiben erhalten */
 document.getElementById("btnReset").addEventListener("click",async()=>{
