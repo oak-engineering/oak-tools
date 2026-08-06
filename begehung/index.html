@@ -377,7 +377,6 @@
   <section class="card nur-allgemein">
     <h2>🔧 Maschinen &amp; Anlagen</h2>
     <div id="maschListe"></div>
-    <button class="btn big primary" id="btnMaschNeu">＋ Maschine hinzufügen</button>
   </section>
 
   <section class="card nur-allgemein">
@@ -385,19 +384,12 @@
     <div class="allgbox">Alles, was <b>keiner Maschine</b> gehört: ungeprüfte Leitern im ganzen Betrieb,
       Fußbodenmarkierung, herumstehende Gebinde, abgelaufene Filter … Kommt ins
       <b>Begehungsprotokoll</b> und in die allgemeinen GBU, nicht in eine Maschinen-GBU.
-      Wird laufend gesichert – mit <b>⤴ Befunde senden</b> gehen sie als eigene Datei nach Drive
-      (auch ohne Sammlungs-Export).</div>
+      Wird laufend gesichert – mit <b>⬆ Begehung hochladen</b> geht die ganze Begehung nach Drive.</div>
     <!-- Abschluss der Begehung. Beides lag bisher NUR in der Maschinenliste (📋) und war dort
          nicht zu finden (Nikolai 06.08.2026: "es fehlt bereits ein Button Neue Begehung").
          Der Sammel-Upload hiess ausserdem "Alles teilen" - das klang nach Teilen-Dialog,
          nicht nach "eine Datei mit allem nach Drive". -->
-    <div class="toolrow" style="margin-top:14px">
-      <button class="btn big primary" id="btnAllesSenden">📦 Ganze Begehung senden</button>
-      <button class="btn" id="btnNeueBegehung2">🆕 Neue Begehung</button>
-    </div>
-    <div class="messsub">Sendet <b>alles auf einmal</b> als eine Datei: alle Maschinen, die
-      allgemeinen Befunde und den Standortplan. Die Einzel-Uploads beim Speichern sind nur die
-      Sicherung für unterwegs.</div>
+
     <button class="btn big" data-addfoto="mangel">📷 Foto vom Befund</button>
     <div class="thumbs allgThumbs"></div>
   </section>
@@ -486,9 +478,11 @@
 
 <div class="actionbar">
   <button class="btn primary nur-maschine" id="btnSave">✓ Speichern &amp; neu</button>
-  <button class="btn primary nur-allgemein" id="btnSaveAllg">⤴ Befunde senden</button>
+  <button class="btn primary nur-allgemein" id="btnSaveAllg">⬆ Begehung hochladen</button>
   <button class="btn nur-maschine" id="btnReset">✕ Neu</button>
   <button class="btn" id="btnList">📋 <span id="machCount">0</span></button>
+  <!-- Neue Begehung gehoert ans Ende des Ablaufs, nicht mitten in die Erfassung (Vorgabe 06.08.2026). -->
+  <button class="btn nur-allgemein" id="btnNeueBegehung2" title="Neue Begehung beginnen">🆕</button>
   <input type="file" accept="application/json,.json" id="importInput" multiple hidden>
 </div>
 
@@ -925,6 +919,19 @@ async function driveUploadPaket(paket, name){
    Absichtlich OHNE Fotos - sie soll klein bleiben und nur die Frage beantworten:
    was ist schon erfasst und wo stand es? */
 const FORTSCHRITTKEY="oak_begehung_fortschritt_v1";
+/* Startbestand: Was VOR der Einfuehrung dieser Liste schon erfasst wurde, weiss das Handy
+   nicht - diese Daten liegen im Repo. Damit "wo habe ich aufgehoert?" sofort stimmt und nicht
+   erst ab der naechsten Maschine, wird der bekannte Stand einmalig eingespielt (Begehungen
+   16.07. / 22.07. / 30.07.2026, 26 Anlagen). Spaeter erfasste Maschinen ueberschreiben ihren
+   Eintrag ueber den Namen - doppelt kann dadurch nichts entstehen. */
+const FORTSCHRITT_START = { "wibo kunststofftechnik gmbh": [{"name": "D150/3", "datum": "2026-07-16"}, {"name": "D200/3", "datum": "2026-07-16"}, {"name": "D170", "datum": "2026-07-16"}, {"name": "D150/9", "datum": "2026-07-16"}, {"name": "D150/10", "datum": "2026-07-16"}, {"name": "D50/2", "datum": "2026-07-16"}, {"name": "D50/1", "datum": "2026-07-16"}, {"name": "neben D50/1", "datum": "2026-07-16"}, {"name": "D40/1", "datum": "2026-07-16"}, {"name": "D35/1", "datum": "2026-07-16"}, {"name": "D50/6", "datum": "2026-07-16"}, {"name": "D50/5", "datum": "2026-07-16"}, {"name": "D100/4", "datum": "2026-07-16"}, {"name": "Ergotech 35-120 (o. Kennz.)", "datum": "2026-07-16"}, {"name": "D60/4", "datum": "2026-07-16"}, {"name": "Ständerbohrmaschine an D60/4", "datum": "2026-07-16"}, {"name": "KM200/1", "datum": "2026-07-16"}, {"name": "D250/1", "datum": "2026-07-22"}, {"name": "D210/1", "datum": "2026-07-22"}, {"name": "D80/1", "datum": "2026-07-22"}, {"name": "D100/2", "datum": "2026-07-22"}, {"name": "D100/1", "datum": "2026-07-30"}, {"name": "D120", "datum": "2026-07-30"}, {"name": "Poliermaschine Nr. 552", "datum": "2026-07-30"}, {"name": "D110/1", "datum": "2026-07-30"}, {"name": "D110/2", "datum": "2026-07-30"}] };
+function fortschrittStartEinspielen(){
+  try{
+    if(localStorage.getItem(FORTSCHRITTKEY)) return;      // schon vorhanden: nichts anfassen
+    localStorage.setItem(FORTSCHRITTKEY, JSON.stringify(FORTSCHRITT_START));
+  }catch(e){}
+}
+fortschrittStartEinspielen();
 function ladeFortschritt(){
   try{ return JSON.parse(localStorage.getItem(FORTSCHRITTKEY))||{}; }catch(e){ return {}; }
 }
@@ -1078,7 +1085,7 @@ async function saveAndNeu(){
     }
     if(btn){ btn.disabled=true; btn.textContent="Lade hoch…"; }
     const ergA=await driveUpload(state, "OAK-Begehung-Allgemein");
-    if(btn){ btn.disabled=false; btn.textContent="⤴ Befunde senden"; }
+    if(btn){ btn.disabled=false; btn.textContent="⬆ Begehung hochladen"; }
     toast(ergA==="ok" ? "✓ Allgemeine Befunde → in Drive bestätigt"
       : ergA==="verboten" ? "Allgemeine Befunde gesichert · Drive lehnt ab – Token prüfen (📋 → ⚙ Drive)"
       : "Allgemeine Befunde gesichert · Upload NICHT bestätigt – nochmal ✓ Speichern drücken");
@@ -3051,12 +3058,21 @@ function download(name, content, type){
   document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500);
 }
 document.getElementById("btnSave").addEventListener("click", saveAndNeu);
-/* Eigener Sende-Knopf der Begehungs-Ebene: der Maschinen-Speichern-Button ist hier ausgeblendet
-   (Klasse nur-maschine), es gab also gar keinen Weg, die allgemeinen Befunde zu senden. */
-document.getElementById("btnSaveAllg").addEventListener("click", saveAndNeu);
-/* Dieselben Aktionen wie in der Uebersicht, aber dort sichtbar, wo die Begehung beginnt und endet. */
-document.getElementById("btnAllesSenden").addEventListener("click", e=>teileAlles(e.currentTarget));
-document.getElementById("btnNeueBegehung2").addEventListener("click", neueBegehung);
+/* EIN Knopf fuer den Upload (Vorgabe Nikolai 06.08.2026: "warum gibt es nicht genau einen
+   Button fuer den Upload und dann wird alles hochgeladen"). Er sichert zuerst die allgemeinen
+   Befunde und schickt dann die GANZE Begehung als eine Datei nach Drive - Maschinen,
+   allgemeine Befunde und Standortplan zusammen. */
+document.getElementById("btnSaveAllg").addEventListener("click", async e=>{
+  const btn=e.currentTarget;
+  const hatInhalt = ((state.audios||[]).length || (state.fotosAllg||[]).length || (state.maengel||[]).length);
+  if(hatInhalt){
+    if(!(state.meta.datum||"").trim()) state.meta.datum=new Date().toISOString().slice(0,10);
+    await persistAll();
+  }
+  await teileAlles(btn);
+});
+const _nb=document.getElementById("btnNeueBegehung2");
+if(_nb) _nb.addEventListener("click", neueBegehung);
 
 /* Neu: nur den aktuellen Bogen verwerfen – gesicherte Maschinen bleiben erhalten */
 document.getElementById("btnReset").addEventListener("click",async()=>{
