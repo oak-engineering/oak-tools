@@ -126,6 +126,7 @@
   <section class="card">
     <h2>Maschine &amp; Prüfung</h2>
     <div class="desc">Angaben stehen auf dem Typenschild. Kunde und Prüfer bleiben gespeichert.</div>
+    <div id="fortschrittBox"></div>
     <button class="btn big" data-addfoto="typenschild">📷 Typenschild aufnehmen</button>
     <button class="btn big" data-addfoto="gesamt">📷 Gesamtansicht aufnehmen</button>
     <div class="thumbs" id="kopfThumbs"></div>
@@ -536,6 +537,42 @@ async function driveUpload(p){
     return true;
   }catch(e){ return false; }
 }
+/* ===== Fortschritt: welche Maschinen sind schon geprueft? =====
+   Gleicher Bedarf wie im Begehungsbogen (Nikolai 06.08.2026): Nach "Neu" ist der Bogen leer,
+   und nach zwei Wochen weiss niemand mehr, wo er stehengeblieben ist. Schlanke Liste je Kunde
+   in localStorage - nur Name, Datum, Anlass. Keine Fotos. */
+const FORTSCHRITTKEY="oak_pruefung_fortschritt_v1";
+function ladeFortschritt(){
+  try{ return JSON.parse(localStorage.getItem(FORTSCHRITTKEY))||{}; }catch(e){ return {}; }
+}
+function fortschrittKunde(){
+  const k=(state.meta.kunde||"").trim().toLowerCase();
+  return k ? (ladeFortschritt()[k]||[]) : [];
+}
+function merkeFortschritt(){
+  const m=state.meta||{};
+  const kunde=(m.kunde||"").trim().toLowerCase(); if(!kunde) return;
+  const name=(m.maschine||"").trim(); if(!name) return;
+  const alle=ladeFortschritt(), liste=alle[kunde]||[];
+  const eintrag={ name, datum:(m.datum||"").trim(), anlass:(m.anlass||"").trim() };
+  const i=liste.findIndex(x=>(x.name||"").toLowerCase()===name.toLowerCase());
+  if(i>=0) liste[i]=eintrag; else liste.push(eintrag);
+  alle[kunde]=liste;
+  try{ localStorage.setItem(FORTSCHRITTKEY, JSON.stringify(alle)); }catch(e){}
+}
+/* Achtung: renderFortschritt() ist schon vergeben - das ist der Bearbeitungsstand der
+   Pruefliste. Diese hier zeigt, welche MASCHINEN beim Kunden bereits geprueft sind. */
+function renderGepruefteMaschinen(){
+  const box=document.getElementById("fortschrittBox"); if(!box) return;
+  const f=fortschrittKunde();
+  if(!f.length){ box.innerHTML=""; return; }
+  const letzte=f[f.length-1];
+  const d=(letzte.datum||"").split("-").reverse().join(".");
+  box.innerHTML=`<div class="desc" style="border-left:3px solid #2D6A4F;padding-left:8px;margin-top:6px">`
+    +`<b>Zuletzt geprüft:</b> ${letzte.name}${d?" am "+d:""} · <b>${f.length}</b> Maschine(n) bei diesem Kunden`
+    +(f.length>1?`<br><span style="opacity:.75">zuletzt: ${f.slice(-3).map(x=>x.name).join(" · ")}</span>`:"")
+    +`</div>`;
+}
 document.getElementById("btnTeilen").addEventListener("click", async()=>{
   if(!(state.meta.maschine||"").trim()){ toast("Bitte zuerst die Maschine benennen."); return; }
   if(!(state.meta.pruefer||"").trim()){ toast("Bitte den Prüfer eintragen (befähigte Person)."); return; }
@@ -544,6 +581,7 @@ document.getElementById("btnTeilen").addEventListener("click", async()=>{
   if(z.offen && !confirm(z.offen+" Punkt(e) sind noch offen.\nTrotzdem sichern?")) return;
   const p=paket();
   const txt=JSON.stringify(p);
+  merkeFortschritt();      // "wo habe ich aufgehoert" - ueberlebt "Neu"
   const hatUpload=!!(localStorage.getItem(UPLOADKEY)||"").trim();
   if(hatUpload){
     const ok=await driveUpload(p);
@@ -573,7 +611,7 @@ function init(){
   });
   const d=document.querySelector('[data-meta="datum"]');
   if(d && !state.meta.datum){ const h=new Date().toISOString().slice(0,10); d.value=h; state.meta.datum=h; }
-  renderKopfThumbs(); renderGruppen(); renderFortschritt(); renderUrteil();
+  renderKopfThumbs(); renderGruppen(); renderFortschritt(); renderGepruefteMaschinen(); renderUrteil();
 }
 (async function boot(){
   try{

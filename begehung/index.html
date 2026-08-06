@@ -906,6 +906,35 @@ async function driveUploadPaket(paket, name){
   }catch(e){ return (e && e.name==="AbortError") ? "abbruch" : "unbestaetigt"; }
   finally { clearTimeout(t); }
 }
+/* ===== Fortschritt ueber Begehungen hinweg =====
+   Problem (Nikolai 06.08.2026): "Mir fehlt eine Angabe, wo ich bei der letzten Begehung
+   aufgehoert habe." Die Sammlung `collection` gilt nur fuer die LAUFENDE Begehung - nach
+   "Neue Begehung" ist sie leer, das Wissen ueber bereits erfasste Maschinen weg.
+   Deshalb eine schlanke Zweitliste je Kunde in localStorage: Name, Datum, Planposition.
+   Absichtlich OHNE Fotos - sie soll klein bleiben und nur die Frage beantworten:
+   was ist schon erfasst und wo stand es? */
+const FORTSCHRITTKEY="oak_begehung_fortschritt_v1";
+function ladeFortschritt(){
+  try{ return JSON.parse(localStorage.getItem(FORTSCHRITTKEY))||{}; }catch(e){ return {}; }
+}
+function fortschrittKunde(){
+  const k=(state.meta.kunde||"").trim().toLowerCase();
+  return k ? (ladeFortschritt()[k]||[]) : [];
+}
+/* Nach jedem Speichern einer Maschine fortschreiben (gleicher Name = aktualisieren). */
+function merkeFortschritt(m){
+  const meta=(m&&m.meta)||{};
+  const kunde=(meta.kunde||"").trim().toLowerCase(); if(!kunde) return;
+  const name=(meta.maschine||"").trim(); if(!name) return;
+  const alle=ladeFortschritt();
+  const liste=alle[kunde]||[];
+  const eintrag={ name, datum: meta.datum||"", plan_pos: meta.plan_pos||null,
+                  zustand: meta.zustand_begehung||"" };
+  const i=liste.findIndex(x=>(x.name||"").toLowerCase()===name.toLowerCase());
+  if(i>=0) liste[i]=eintrag; else liste.push(eintrag);
+  alle[kunde]=liste;
+  try{ localStorage.setItem(FORTSCHRITTKEY, JSON.stringify(alle)); }catch(e){}
+}
 /* EINE Definition von "offen" fuer Anzeige UND Aktion. Vorher liefen zwei auseinander: die
    Uebersicht zaehlte `m._upload!=="gesendet"` (also auch Maschinen ganz ohne Feld), das Senden
    filterte `m._upload && …` und uebersprang genau die. Anzeige sagte "nicht bestaetigt", das
@@ -1102,6 +1131,7 @@ async function saveAndNeu(){
   //    Maschine. Ergebnis der Begehung 07/2026: 12 Maschinen mit byte-identischer Gefährdungsmatrix
   //    und dem Hersteller der Testmaschine. blankState() übernimmt via ladePrefs() nur Kunde,
   //    Begeher und Arbeitssystem – alles andere wird bewusst neu erfasst.
+  merkeFortschritt(rec);          // ueberlebt "Neue Begehung" - siehe FORTSCHRITTKEY
   state=blankState();
   await persistAll();
   const suffix = !hatUpload ? " & geteilt"
@@ -2249,7 +2279,7 @@ async function openPlan(){
   const ov=document.createElement("div"); ov.id="mark";
   const wer=(state.meta.maschine||"").trim()||"aktuelle Maschine";
   ov.innerHTML=`<canvas></canvas>`
-    +`<div class="markhint">Antippen: „${esc(wer)}" hier verorten · grün = bereits gesicherte Maschinen</div>`
+    +`<div class="markhint">Antippen: „${esc(wer)}" hier verorten · <b style="color:#6ee7a8">grün</b> = diese Begehung · <b style="color:#c8cfcb">grau</b> = frühere Begehungen</div>`
     +`<div class="markbar">`
     +`<button class="btn" id="plNeu">🖼 Plan ersetzen</button>`
     +`<button class="btn" id="plWeg">✕ Punkt löschen</button>`
@@ -2264,6 +2294,14 @@ async function openPlan(){
     const W=cv.width, H=cv.height;
     /* Radius gedeckelt: er skalierte mit der Bitmap, nicht mit der Anzeige. */
     const rr=Math.max(9,Math.min(26,Math.round(Math.min(W,H)*0.011)));
+    /* Grau: frühere Begehungen (aus dem Fortschritt, überlebt "Neue Begehung") - so sieht man
+       auf dem Plan sofort, wo man aufgehört hat. Namen dazu, sonst sagen die Punkte nichts. */
+    const laufend=new Set(collection.map(m=>((m.meta||{}).maschine||"").toLowerCase()));
+    fortschrittKunde().forEach(f=>{
+      if(!f.plan_pos || laufend.has((f.name||"").toLowerCase())) return;
+      planPunkt(ctx, f.plan_pos.rx*W, f.plan_pos.ry*H, rr, "rgba(120,130,125,.75)", (f.name||"").slice(0,12));
+    });
+    /* Grün: in dieser Begehung erfasst. */
     collection.forEach(m=>{
       const p=(m.meta||{}).plan_pos; if(!p) return;
       /* Beschriftung nur fuer den aktuellen Punkt - sonst ueberlagern sich die Kaesten. */
@@ -2291,11 +2329,28 @@ async function openPlan(){
 document.querySelectorAll("[data-plan]").forEach(b=>b.addEventListener("click",openPlan));
 
 /* ===== Begehungs-Startseite: Plan + Maschinenliste ===== */
+/* "Wo habe ich aufgehoert?" - eine Zeile, die auch nach Wochen und nach "Neue Begehung"
+   noch stimmt: zuletzt erfasste Maschine mit Datum + Gesamtzahl beim Kunden. */
+function fortschrittZeile(){
+  const f=fortschrittKunde();
+  if(!f.length) return "";
+  const letzte=f[f.length-1];
+  const d=(letzte.datum||"").split("-").reverse().join(".");
+  const namen=f.slice(-3).map(x=>esc(x.name)).join(" · ");
+  return `<div class="messsub" style="margin-top:6px;border-left:3px solid var(--gruen);padding-left:8px">`
+    +`<b>Zuletzt erfasst:</b> ${esc(letzte.name)}${d?" am "+esc(d):""} · `
+    +`<b>${f.length}</b> Maschine(n) bei diesem Kunden insgesamt`
+    +(f.length>1?`<br><span style="color:var(--muted)">zuletzt: ${namen}</span>`:"")
+    +`</div>`;
+}
 function renderPlanBox(){
   const box=document.getElementById("planBox"); if(!box) return;
-  if(!planBild){ box.innerHTML=`<div class="messsub">Noch kein Plan – Foto, Screenshot oder Skizze genügt.</div>`; return; }
+  if(!planBild){
+    box.innerHTML=`<div class="messsub">Noch kein Plan – Foto, Screenshot oder Skizze genügt.</div>`+fortschrittZeile();
+    return;
+  }
   const verortet=collection.filter(m=>(m.meta||{}).plan_pos).length;
-  box.innerHTML=`<div class="thumbs"></div><div class="messsub">${verortet} von ${collection.length} Maschinen verortet · Plan antippen zum Ansehen</div>`;
+  box.innerHTML=`<div class="thumbs"></div><div class="messsub">${verortet} von ${collection.length} Maschinen verortet · Plan antippen zum Ansehen</div>`+fortschrittZeile();
   const t=document.createElement("div"); t.className="thumb";
   const im=document.createElement("img"); im.src=planBild.data; im.addEventListener("click",openPlan);
   t.appendChild(im);
