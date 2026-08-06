@@ -2374,7 +2374,10 @@ const MESSKEY="oak_begehung_kalibrierung_v1";
    Bei Smartphone-MEMS-Mikrofonen entspricht 94 dB SPL etwa -26 dBFS, also dB(A) ~ dBFS + 120.
    Genau so rechnen die Apps aus dem Store. Der individuelle Abgleich ueberschreibt den Wert. */
 const LAERM_STD_OFFSET=120;
-const LAERM_UNTERER=80, LAERM_OBERER=85;      // dB(A), LärmVibrationsArbSchV §6
+const LAERM_UNTERER=80, LAERM_OBERER=85;      // L_EX,8h in dB(A), LärmVibrationsArbSchV § 6
+/* Spitzenschalldruckpegel L_pC,peak, LärmVibrationsArbSchV § 6 - die zweite Groesse neben dem
+   Tages-Expositionspegel. Wird seit 06.08.2026 mitgemessen (C-bewertet, Vorgabe Nikolai). */
+const PEAK_UNTERER=135, PEAK_OBERER=137;      // dB(C)
 const A_NORM_DB=1.97;                          // A-Kurve auf 0 dB @ 1 kHz normieren (ausgemessen; Literaturwert +2,0)
 /* Unsicherheit ΔL nach TRLV Lärm Teil 2: Genauigkeitsklasse 1/2/3 = 0/3/6 dB.
    Ein Handy-Mikrofon ist Klasse 3 → 6 dB. Eine sichere Entscheidung über einen Auslösewert
@@ -2414,22 +2417,50 @@ function aGewichtung(ctx, quelle){
   let k=quelle; kette.forEach(f=>{ k.connect(f); k=f; }); k.connect(g);
   return g;
 }
+/* C-Bewertung nach IEC 61672 fuer den SPITZENpegel. Die LaermVibrationsArbSchV verlangt in § 6
+   zwei verschiedene Groessen: den Tages-Expositionspegel in dB(A) UND den Spitzenschalldruckpegel
+   in dB(C). Ein A-bewerteter Spitzenwert waere die falsche Groesse.
+   Die C-Kurve ist die A-Kurve OHNE das mittlere Polpaar (107,7/737,9 Hz): nur Doppelpol bei
+   20,6 Hz und bei 12194 Hz. Deshalb hier dieselben zwei Biquads wie in aGewichtung(), aber ohne
+   den Bandpass dazwischen - und wieder mit qdB(), weil die Web-Audio-API Q in Dezibel nimmt.
+   Normierung auf 0 dB @ 1 kHz: bei C liegt der Kurvenwert dort per Definition auf 0, der
+   Restfehler der beiden Pole betraegt rechnerisch rund 0,06 dB (vernachlaessigbar). */
+function cGewichtung(ctx, quelle){
+  const mk=(t,f,q)=>{ const b=ctx.createBiquadFilter(); b.type=t; b.frequency.value=f; b.Q.value=qdB(q); return b; };
+  const kette=[ mk("highpass",20.598997,0.5), mk("lowpass",12194.217,0.5) ];
+  let k=quelle; kette.forEach(f=>{ k.connect(f); k=f; });
+  return k;
+}
+/* Liefert BEIDE Groessen aus einer Aufnahme: LAeq (A-bewertet, energetisch ueber die Messdauer)
+   und den hoechsten Momentanwert der C-Kette = L_pC,peak. Zwei parallele Ketten an derselben
+   Quelle - eine zweite Aufnahme waere ein anderer Zeitausschnitt und damit ein anderer Peak. */
 async function laermMessen(sek, aufTick){
   const stream=await navigator.mediaDevices.getUserMedia({audio:{
     echoCancellation:false, noiseSuppression:false, autoGainControl:false}});   // sonst ist jeder Pegel wertlos
   const ctx=new (window.AudioContext||window.webkitAudioContext)();
-  const an=ctx.createAnalyser(); an.fftSize=2048;
-  aGewichtung(ctx, ctx.createMediaStreamSource(stream)).connect(an);
-  const buf=new Float32Array(an.fftSize);
-  let summe=0, n=0, spitze=0;
+  const quelle=ctx.createMediaStreamSource(stream);
+  const anA=ctx.createAnalyser(); anA.fftSize=2048;
+  const anC=ctx.createAnalyser(); anC.fftSize=2048;
+  aGewichtung(ctx, quelle).connect(anA);
+  cGewichtung(ctx, quelle).connect(anC);
+  const bufA=new Float32Array(anA.fftSize), bufC=new Float32Array(anC.fftSize);
+  let summe=0, n=0, spitzeC=0, uebersteuert=false;
   const ende=performance.now()+sek*1000;
   await new Promise(res=>{
     const tick=()=>{
-      an.getFloatTimeDomainData(buf);
+      anA.getFloatTimeDomainData(bufA);
+      anC.getFloatTimeDomainData(bufC);
       let s=0;
-      for(let i=0;i<buf.length;i++){ const v=buf[i]; s+=v*v; if(Math.abs(v)>spitze) spitze=Math.abs(v); }
-      summe+=s; n+=buf.length;
-      const rms=Math.sqrt(s/buf.length);
+      for(let i=0;i<bufA.length;i++){ const v=bufA[i]; s+=v*v; }
+      /* Peak aus der C-Kette. Ein Wert an der Vollaussteuerung heisst: das Mikrofon war am
+         Anschlag - der echte Spitzenpegel liegt dann HOEHER als angezeigt. */
+      for(let i=0;i<bufC.length;i++){
+        const a=Math.abs(bufC[i]);
+        if(a>spitzeC) spitzeC=a;
+        if(a>=0.99) uebersteuert=true;
+      }
+      summe+=s; n+=bufA.length;
+      const rms=Math.sqrt(s/bufA.length);
       if(aufTick) aufTick(rms>0?20*Math.log10(rms):-120, (sek*1000-(ende-performance.now()))/(sek*10));
       if(performance.now()<ende) requestAnimationFrame(tick); else res();
     };
@@ -2437,7 +2468,9 @@ async function laermMessen(sek, aufTick){
   });
   try{ stream.getTracks().forEach(t=>t.stop()); ctx.close(); }catch(e){}
   const rms=Math.sqrt(summe/Math.max(1,n));
-  return { dbfs: rms>0?20*Math.log10(rms):-120, spitze_dbfs: spitze>0?20*Math.log10(spitze):-120 };
+  return { dbfs: rms>0?20*Math.log10(rms):-120,
+           spitze_dbfs: spitzeC>0?20*Math.log10(spitzeC):-120,
+           uebersteuert };
 }
 /* Rohwert der Belichtung: je kürzer belichtet und je kleiner ISO, desto heller die Szene.
    exposureTime kommt laut W3C Media Capture in 100-µs-Schritten. */
@@ -2545,20 +2578,32 @@ function renderMess(){
   const box=document.getElementById("messBox"); if(!box) return;
   const teile=[], kal=ladeKalib();
   const ls=laermSerie(), xs=luxSerie();
-  if(kal.laerm_offset==null && kal.lux_faktor==null && !ls.length && !xs.length)
+  if(!ls.length && !xs.length)
     teile.push(`<div class="messsub" style="margin-top:8px">Lärm &amp; Licht liefern sofort einen
-      groben Orientierungswert – kein Messgerät nötig. Über <b>🔊 Lärm</b> / <b>💡 Licht</b> ein
-      Raster (bis 6 Punkte) messen.
-      <a href="#" id="kalibLink" style="color:var(--muted)">optional: gegen Messgerät abgleichen</a></div>`);
+      groben Orientierungswert – kein Messgerät nötig. <b>🔊 Lärm</b> misst einen Wert am
+      Steuerpult, <b>💡 Licht</b> ein Raster.</div>`);
 
   if(ls.length){
-    const lm=laermMittel(ls), abg=ls.every(p=>p.abgeglichen);
-    teile.push(`<div class="messerg"><div class="messwert">ca. ${lm.toFixed(0)}<span class="einheit">dB(A) Ø</span></div>`
-      +messRasterHtml("laerm", ls)
-      +`<div class="messsub"><b>Orientierungswert Handy-Mikrofon</b>${abg?"":" · grobe Schätzung"} · `
-      +`${state.meta.mess_bereich?"Arbeitsbereich "+esc(state.meta.mess_bereich)+" · ":""}${ls.length} Punkt(e), energetischer Mittelwert `
-      +`<a href="#" id="mLaermInfo" style="color:var(--gruen);font-weight:600">ℹ️ Methodik &amp; Auslösewerte</a>`
-      +(abg?"":` · <a href="#" id="kalibLink2" style="color:var(--muted)">optional genauer</a>`)
+    /* EIN Wert am Steuerpult (Vorgabe 06.08.2026). Gezeigt werden beide Groessen, die
+       LaermVibrationsArbSchV § 6 kennt: Tages-Expositionspegel in dB(A) und Spitzenpegel in
+       dB(C) - jeweils gegen unteren und oberen Ausloesewert. Bewusst OHNE Ampel/Urteil:
+       es ist ein Richtwert, die Beurteilung macht Nikolai. */
+    const p=ls[0];
+    const peak=(p.dbc_peak!=null)?p.dbc_peak:null;
+    const bal=(w,g)=>w>=g?'style="color:#b5462f;font-weight:700"':'';
+    teile.push(`<div class="messerg">`
+      +`<div class="messwert">ca. ${p.dba.toFixed(0)}<span class="einheit">dB(A)</span></div>`
+      +(peak!=null?`<div class="messwert" style="font-size:22px;margin-top:2px">Spitze ca. ${peak.toFixed(0)}<span class="einheit">dB(C)</span></div>`:"")
+      +`<table class="afeld" style="margin-top:8px;font-size:12.5px"><tbody>`
+      +`<tr><td>unterer Auslösewert</td><td ${bal(p.dba,LAERM_UNTERER)}>80 dB(A)</td>`
+      +`<td ${peak!=null?bal(peak,PEAK_UNTERER):""}>135 dB(C)</td></tr>`
+      +`<tr><td>oberer Auslösewert</td><td ${bal(p.dba,LAERM_OBERER)}>85 dB(A)</td>`
+      +`<td ${peak!=null?bal(peak,PEAK_OBERER):""}>137 dB(C)</td></tr>`
+      +`</tbody></table>`
+      +`<div class="messsub" style="margin-top:6px"><b>Richtwert</b> (Handy-Mikrofon, ungeeicht) · `
+      +`${esc(state.meta.mess_bereich||"Steuerpult")} · 15 s`
+      +(p.uebersteuert?` · <b style="color:#b5462f">Mikrofon übersteuert – echte Spitze liegt höher</b>`:"")
+      +` <a href="#" id="mLaermInfo" style="color:var(--gruen);font-weight:600">ℹ️ Methodik &amp; Auslösewerte</a>`
       +`</div></div>`);
   }
   if(xs.length){
@@ -2570,10 +2615,10 @@ function renderMess(){
       +`${abg?"":" · grobe Schätzung"} · ${state.meta.mess_bereich?"Arbeitsbereich "+esc(state.meta.mess_bereich)+" · ":""}${xs.length} Punkt(e) · Gleichmäßigkeit U0 = ${u0.toFixed(2)} (min/Ø) · Soll ${xs[0].soll} lx `
       +`<a href="#" id="mLichtInfo" style="color:var(--gruen);font-weight:600">ℹ️ Methodik &amp; Sollwerte</a></div></div>`);
   }
-  if(ls.length||xs.length) teile.push(`<div class="messsub" style="margin-top:6px"><a href="#" id="kalibLink" style="color:var(--muted)">⚙ Abgleich</a></div>`);
+  /* Der „⚙ Abgleich"-Link ist raus (Vorgabe Nikolai 06.08.2026: "ich kalibriere nicht, es ist ein
+     Richtwert"). kalibrieren() bleibt ungenutzt im Code, falls doch einmal gegen ein Messgeraet
+     abgeglichen werden soll. */
   box.innerHTML=teile.join("");
-  box.querySelectorAll("#kalibLink,#kalibLink2").forEach(kl=>
-    kl.addEventListener("click",e=>{ e.preventDefault(); kalibrieren(); }));
   const li=box.querySelector("#mLaermInfo"); if(li) li.addEventListener("click",e=>{ e.preventDefault(); messMethodik("laerm"); });
   const xi=box.querySelector("#mLichtInfo"); if(xi) xi.addEventListener("click",e=>{ e.preventDefault(); messMethodik("licht"); });
   box.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",e=>{
@@ -2582,15 +2627,13 @@ function renderMess(){
     const serie = art==="laerm" ? laermSerie() : luxSerie();
     const k=serie.findIndex(p=>p.zelle===z); if(k>=0){ serie.splice(k,1); save(); renderMess(); }
   }));
-  /* Tipp auf das Mini-Raster oeffnet das Overlay zum Nachmessen. */
-  box.querySelectorAll(".messerg").forEach((erg,idx)=>{
-    const istLaerm = idx===0 && laermSerie().length;
-    const mini=erg.querySelector(".rasterMini");
-    if(mini) mini.addEventListener("click",async()=>{
-      if(istLaerm){ if(state.meta.mess_bereich||await bereichWaehlen()) zeigeRaster("laerm"); }
-      else { const b=state.meta.mess_bereich||await bereichWaehlen(); if(!b) return;
-             const so=luxSerie()[0]; const soll=so?{v:so.soll,t:so.soll_txt}:await sollWaehlen();
-             if(soll) zeigeRaster("licht",soll); }
+  /* Tipp auf das Mini-Raster oeffnet das Overlay zum Nachmessen - nur noch bei LICHT.
+     Laerm hat kein Raster mehr; dort fuehrt der 🔊-Knopf direkt zur Einzelmessung. */
+  box.querySelectorAll(".messerg .rasterMini").forEach(mini=>{
+    mini.addEventListener("click",async()=>{
+      const b=state.meta.mess_bereich||await bereichWaehlen(); if(!b) return;
+      const so=luxSerie()[0]; const soll=so?{v:so.soll,t:so.soll_txt}:await sollWaehlen();
+      if(soll) zeigeRaster("licht",soll);
     });
   });
 }
@@ -2609,6 +2652,7 @@ function messMethodik(art){
      +`<div class="dguvzeile"><b>🎙</b><span>Handy in Kopfhöhe (ca. 1,55 m stehend / 0,8 m über Sitzfläche), Mikrofon zum Arbeitsplatz; bei anwesender Person 0,1–0,4 m seitlich vom Ohr.</span><i>TRLV Lärm Teil 2, 5.3.3</i></div>`
      +`<div class="dguvzeile"><b>⏱</b><span>Messdauer bei konstantem Geräusch ca. 15 s; bei Schwankungen mehrere Zyklen.</span><i>TRLV Lärm Teil 2, 5.5.1</i></div>`
      +`<div class="dguvzeile"><b>±</b><span>Genauigkeitsklasse 1/2/3 → Unsicherheit ΔL 0/3/6 dB. <b>Handy = Klasse 3 (6 dB)</b> → nur orientierend; für die Entscheidung über einen Auslösewert belastbar messen.</span><i>TRLV Lärm Teil 2</i></div>`
+     +`<div class="dguvzeile"><b>⚡</b><span>Die <b>Spitze</b> wird C-bewertet erfasst (L<sub>pC,peak</sub>), wie in § 6 gefordert. <b>Grenze:</b> Handy-Mikrofone übersteuern weit unter 135 dB(C) – ein echter Spitzenpegel ist so <b>nicht</b> messbar. Der Wert zeigt nur, ob Spitzen überhaupt auffallen; bei Übersteuerung wird das angezeigt.</span><i>IEC 61672 · Gerätegrenze</i></div>`
      +`</div><p class="hint">Lässt sich die Einhaltung nicht sicher ermitteln, ist n. TRLV Lärm Teil 2 zu messen – sonst gilt der Auslösewert als überschritten (§ 6).</p>`;
   } else {
     h=`<h3>Licht – Methodik & Sollwerte</h3>`
@@ -2631,15 +2675,39 @@ async function messeLaermZelle(zelle, balSel){
   const bal=document.querySelector(balSel);
   const r=await laermMessen(15,(db,pct)=>{ if(bal) bal.style.width=Math.min(100,Math.max(0,pct))+"%"; });
   const abgeglichen = kal.laerm_offset!=null;
-  const dba = r.dbfs + (abgeglichen ? kal.laerm_offset : LAERM_STD_OFFSET);
+  const versatz = abgeglichen ? kal.laerm_offset : LAERM_STD_OFFSET;
+  const dba = r.dbfs + versatz;
+  const dbc = r.spitze_dbfs + versatz;         // L_pC,peak - gleicher Mikrofon-Versatz
   const serie=laermSerie();
   const eintrag={ zelle, dbfs:+r.dbfs.toFixed(2), spitze_dbfs:+r.spitze_dbfs.toFixed(2),
-    dba:+dba.toFixed(1), abgeglichen, expo_h:8, offset: kal.laerm_offset??null, dauer_s:15,
+    dba:+dba.toFixed(1), dbc_peak:+dbc.toFixed(1), uebersteuert:!!r.uebersteuert,
+    abgeglichen, expo_h:8, offset: kal.laerm_offset??null, dauer_s:15,
     zeit:new Date().toLocaleString("de-DE"), screening:true, geeicht:false };
   const k=serie.findIndex(p=>p.zelle===zelle);
   if(k>=0) serie[k]=eintrag; else serie.push(eintrag);
   save();
   return dba;
+}
+/* EIN Messpunkt am Steuerpult statt Raster (Vorgabe Nikolai 06.08.2026: "Für Lärm brauche ich
+   nur 1 Wert (am Steuerpult), nicht 6"). Kein Bereichs-Dialog, kein Gitter - antippen, 15 s
+   halten, fertig. Die Serie traegt genau diesen einen Eintrag (Zelle 4 = Arbeitsbereich). */
+async function laermEinPunkt(){
+  const serie=laermSerie();
+  if(serie.length && !await frageZwei("Neu messen?","Für diese Maschine liegt bereits ein Lärm-Richtwert vor.","🔊 Neu messen","Behalten")) return;
+  state.meta.mess_bereich = state.meta.mess_bereich || "Steuerpult";
+  const ov=document.createElement("div"); ov.className="mpicker";
+  ov.innerHTML=`<div class="pcard"><h3>🔊 Lärm am Steuerpult</h3>`
+    +`<p class="hint">Handy in Kopfhöhe (ca. 1,55 m) am Bedienplatz ruhig halten – 15 s.
+       Orientierungswert, keine Messung nach DIN EN ISO 9612.</p>`
+    +`<div class="messbalken" style="margin-top:8px"><i id="rBal"></i></div>`
+    +`<div class="messsub" id="lepStatus" style="margin-top:8px">misst …</div></div>`;
+  document.body.appendChild(ov);
+  try{
+    serie.length=0;                                   // genau ein Wert je Maschine
+    await messeLaermZelle(4, "#rBal");
+  }catch(e){ toast("Messung fehlgeschlagen – Mikrofonzugriff erlauben."); }
+  ov.remove();
+  renderMess();
 }
 async function messeLichtZelle(zelle, soll){
   const kal=ladeKalib();
@@ -2721,10 +2789,7 @@ function zeigeRaster(art, soll){
   const zu=()=>{ ov.remove(); renderMess(); };
   ov.querySelector("#rasterFertig").addEventListener("click",zu);
 }
-if(document.getElementById("btnLaerm")) document.getElementById("btnLaerm").addEventListener("click", async()=>{
-  const b=await bereichWaehlen(); if(b==null) return;   // Arbeitsbereich einmal je Maschine
-  zeigeRaster("laerm");
-});
+if(document.getElementById("btnLaerm")) document.getElementById("btnLaerm").addEventListener("click", laermEinPunkt);
 if(document.getElementById("btnLux")) document.getElementById("btnLux").addEventListener("click", async()=>{
   const b=await bereichWaehlen(); if(b==null) return;
   const soll=await sollWaehlen(); if(soll==null) return;   // Sollwert einmal fuers ganze Raster
