@@ -387,6 +387,17 @@
       <b>Begehungsprotokoll</b> und in die allgemeinen GBU, nicht in eine Maschinen-GBU.
       Wird laufend gesichert – mit <b>⤴ Befunde senden</b> gehen sie als eigene Datei nach Drive
       (auch ohne Sammlungs-Export).</div>
+    <!-- Abschluss der Begehung. Beides lag bisher NUR in der Maschinenliste (📋) und war dort
+         nicht zu finden (Nikolai 06.08.2026: "es fehlt bereits ein Button Neue Begehung").
+         Der Sammel-Upload hiess ausserdem "Alles teilen" - das klang nach Teilen-Dialog,
+         nicht nach "eine Datei mit allem nach Drive". -->
+    <div class="toolrow" style="margin-top:14px">
+      <button class="btn big primary" id="btnAllesSenden">📦 Ganze Begehung senden</button>
+      <button class="btn" id="btnNeueBegehung2">🆕 Neue Begehung</button>
+    </div>
+    <div class="messsub">Sendet <b>alles auf einmal</b> als eine Datei: alle Maschinen, die
+      allgemeinen Befunde und den Standortplan. Die Einzel-Uploads beim Speichern sind nur die
+      Sicherung für unterwegs.</div>
     <button class="btn big" data-addfoto="mangel">📷 Foto vom Befund</button>
     <div class="thumbs allgThumbs"></div>
   </section>
@@ -3031,7 +3042,7 @@ async function teileAlles(btn){
     download(name, inhalt, "application/json");                  // Desktop / kein Share-API
     toast("Sammlung gespeichert ("+paket.anzahl+" Maschinen, "+mb+" MB)");
   } finally {
-    if(btn){ btn.disabled=false; btn.textContent=alt||"📦 Alles teilen"; }
+    if(btn){ btn.disabled=false; btn.textContent=alt||"📦 Ganze Begehung senden"; }
   }
 }
 function download(name, content, type){
@@ -3043,6 +3054,9 @@ document.getElementById("btnSave").addEventListener("click", saveAndNeu);
 /* Eigener Sende-Knopf der Begehungs-Ebene: der Maschinen-Speichern-Button ist hier ausgeblendet
    (Klasse nur-maschine), es gab also gar keinen Weg, die allgemeinen Befunde zu senden. */
 document.getElementById("btnSaveAllg").addEventListener("click", saveAndNeu);
+/* Dieselben Aktionen wie in der Uebersicht, aber dort sichtbar, wo die Begehung beginnt und endet. */
+document.getElementById("btnAllesSenden").addEventListener("click", e=>teileAlles(e.currentTarget));
+document.getElementById("btnNeueBegehung2").addEventListener("click", neueBegehung);
 
 /* Neu: nur den aktuellen Bogen verwerfen – gesicherte Maschinen bleiben erhalten */
 document.getElementById("btnReset").addEventListener("click",async()=>{
@@ -3087,7 +3101,7 @@ function zeigeUebersicht(){
   ov.innerHTML=`<div class="ovcard"><h2>Gesicherte Maschinen (${collection.length})</h2>`
     +`<div class="ovlist">${body}</div>`
     +`<div class="toolrow" style="margin-top:12px">`
-    +`<button class="btn primary" id="ovAllesTeilen">📦 Alles teilen</button>`
+    +`<button class="btn primary" id="ovAllesTeilen">📦 Ganze Begehung senden</button>`
     +`<button class="btn" id="ovNeueBegehung">🆕 Neue Begehung</button>`
     +`<button class="btn" id="ovUpload">⚙ Drive</button>`
     +`<button class="btn" id="ovLoad">⬆︎ Laden</button>`
