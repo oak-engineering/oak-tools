@@ -423,17 +423,15 @@
     </div>
     <div class="thumbs allgThumbs"></div>
     <div class="toolrow">
-      <button class="btn" data-mark>🖼 Auf Gesamtansicht markieren</button>
       <button class="btn" data-plan>🗺 Auf Standortplan verorten</button>
     </div>
+    <!-- „Auf Gesamtansicht markieren" ist raus (Vorgabe Nikolai 06.08.2026): Der Pin wird nach
+         jedem Mangelfoto automatisch abgefragt, der Knopf war eine zweite Tür zum selben Raum. -->
 
-    <!-- Lärm & Licht: gehören hierher, weil sie NUR vor Ort erfassbar sind – aus Foto oder
-         Sprachnotiz lässt sich kein Pegel ableiten. Ohne Erklärtext: Der Befund („belastbare
-         Messung veranlassen") entsteht im Hintergrund und steht ausformuliert in der GBU. -->
-    <div class="toolrow">
-      <button class="btn" id="btnLaerm">🔊 Lärm</button>
-      <button class="btn" id="btnLux">💡 Licht</button>
-    </div>
+    <!-- Lärm/Licht-Screening ist aus der Erfassung genommen (Vorgabe Nikolai 06.08.2026:
+         „bringt so nicht wirklich etwas"). Die Funktionen bleiben im Code, der Block hier
+         kann sie jederzeit wieder sichtbar machen. Eine belastbare Messung ist ohnehin
+         DIN EN ISO 9612 (Lärm) bzw. DIN EN 12464-1 (Licht) und nicht Handy-Sache. -->
     <div id="messBox"></div>
 
     <!-- Gefährdungsfaktoren stehen hier NICHT mehr: Sie sind das Ergebnis der Auswertung, nicht
@@ -1029,6 +1027,14 @@ async function saveAndNeu(){
     if(fehlt.length){ toast("Bitte noch ergänzen: "+fehlt.map(x=>x.txt).join(", ")); return; }
   }
   const name=state.meta.maschine;
+  /* Standortplan-Erinnerung (Vorgabe Nikolai 06.08.2026: "vergesse ich oft"). Nur fragen, wenn
+     es ueberhaupt einen Plan gibt - sonst waere es eine Huerde ohne Nutzen. Kein Zwang: die
+     Verortung ist Komfort fuer die Auswertung, kein Pflichtfeld. */
+  if(planBild && !state.meta.plan_pos){
+    const jetzt=await frageZwei('Noch nicht auf dem Plan',
+      name + ' ist noch nicht auf dem Standortplan verortet.', '🗺 Jetzt orten', 'Ohne Plan speichern');
+    if(jetzt){ openPlan(); return; }   // nach dem Verorten erneut ✓ Speichern druecken
+  }
   /* Baujahr/Serien-Nr. werden nicht mehr geprüft – sie stehen auf dem Typenschild-Foto und
      werden beim Erstellen der GBU daraus gelesen. */
   const hatUpload=!!(localStorage.getItem(UPLOADKEY)||"").trim();
@@ -2169,14 +2175,33 @@ function fotoNotizDialog(foto){
   pk.querySelector("#fnOk").addEventListener("click",()=>schliessen(true));
   pk.querySelector("#fnCancel").addEventListener("click",()=>schliessen(false));
 }
-function pinPrompt(mFoto, zielKat){
+/* Zwei benannte Auswahlmoeglichkeiten statt confirm(). Grund (Nikolai 06.08.2026): Der
+   Browser beschriftet confirm() mit "Annehmen/Abbrechen" - bei der Frage "Vorderansicht oder
+   Rueckseite?" ist das schlicht nicht beantwortbar. Liefert true fuer die erste Option. */
+function frageZwei(titel, text, jaText, neinText){
+  return new Promise(res=>{
+    const pk=document.createElement("div"); pk.className="mpicker";
+    pk.innerHTML=`<div class="pcard"><h3>${esc(titel)}</h3>`
+      +(text?`<p class="hint">${esc(text)}</p>`:"")
+      +`<div class="toolrow" style="margin-top:14px">`
+      +`<button class="btn" id="z2Nein" type="button">${esc(neinText)}</button>`
+      +`<button class="btn primary" id="z2Ja" type="button" style="margin-left:auto">${esc(jaText)}</button>`
+      +`</div></div>`;
+    document.body.appendChild(pk);
+    const weg=v=>{ pk.remove(); res(v); };
+    pk.querySelector("#z2Ja").addEventListener("click",()=>weg(true));
+    pk.querySelector("#z2Nein").addEventListener("click",()=>weg(false));
+  });
+}
+async function pinPrompt(mFoto, zielKat){
   if(!mFoto || !mFoto.id) return;
   const rueck=fotoByKat("gesamt_rueck");
   /* Steht eine Rueckseite zur Verfuegung, zuerst fragen - sonst landet ein Befund von hinten
      zwangslaeufig auf der Vorderansicht. */
   if(!zielKat && rueck && fotoByKat("gesamt")){
-    const r=confirm("Ist der Befund auf der VORDERANSICHT zu sehen?\n\nOK = Vorderansicht · Abbrechen = Rückseite");
-    zielKat = r ? "gesamt" : "gesamt_rueck";
+    const vorne=await frageZwei("Wo ist der Befund?",
+      "Auf welcher Ansicht soll der Pin gesetzt werden?", "📷 Vorderansicht", "📷 Rückseite");
+    zielKat = vorne ? "gesamt" : "gesamt_rueck";
   }
   const g=fotoByKat(zielKat||"gesamt") || fotoByKat("gesamt") || rueck;
   const n=mangelNummer(mFoto.id);
