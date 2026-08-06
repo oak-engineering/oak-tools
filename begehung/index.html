@@ -428,10 +428,13 @@
     <!-- „Auf Gesamtansicht markieren" ist raus (Vorgabe Nikolai 06.08.2026): Der Pin wird nach
          jedem Mangelfoto automatisch abgefragt, der Knopf war eine zweite Tür zum selben Raum. -->
 
-    <!-- Lärm/Licht-Screening ist aus der Erfassung genommen (Vorgabe Nikolai 06.08.2026:
-         „bringt so nicht wirklich etwas"). Die Funktionen bleiben im Code, der Block hier
-         kann sie jederzeit wieder sichtbar machen. Eine belastbare Messung ist ohnehin
-         DIN EN ISO 9612 (Lärm) bzw. DIN EN 12464-1 (Licht) und nicht Handy-Sache. -->
+    <!-- Lärm & Licht: gehören hierher, weil sie NUR vor Ort erfassbar sind – aus Foto oder
+         Sprachnotiz lässt sich kein Pegel ableiten. Der Befund („belastbare Messung
+         veranlassen") entsteht im Hintergrund und steht ausformuliert in der GBU. -->
+    <div class="toolrow">
+      <button class="btn" id="btnLaerm">🔊 Lärm</button>
+      <button class="btn" id="btnLux">💡 Licht</button>
+    </div>
     <div id="messBox"></div>
 
     <!-- Gefährdungsfaktoren stehen hier NICHT mehr: Sie sind das Ergebnis der Auswertung, nicht
