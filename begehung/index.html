@@ -419,7 +419,23 @@
       <button class="btn" data-addfoto="gesamt_rueck">📷 Rückseite</button>
       <button class="btn" data-addfoto="typenschild">📷 Typenschild</button>
       <button class="btn" data-addfoto="mangel">📷 Mangel-Foto</button>
-      <button class="btn" data-addvideo="1">🎬 Kurzvideo (10 s)</button>
+    </div>
+    <!-- Kurzvideo entfernt (Vorgabe Nikolai 06.08.2026): wanderte als base64 in jeden Upload,
+         wurde aber von keiner Auswertung gelesen. Alte Datensaetze mit kat:"video" bleiben
+         lesbar, werden aber nicht als Bild ausgegeben. -->
+
+    <!-- Zustand der Anlage WAEHREND der Begehung. Pflicht, weil er entscheidet, was ueberhaupt
+         beurteilt werden konnte: Am 30.07.2026 standen alle fuenf Anlagen still, das musste
+         hinterher aus den Sprachnotizen rekonstruiert werden. Steht es hier, entsteht die
+         Bewertungsgrenze in GBU und Protokoll automatisch (§ 3 BetrSichV, §§ 5/6 ArbSchG). -->
+    <div class="feld">
+      <label>Zustand bei der Begehung</label>
+      <div class="chips" data-single="zustand_begehung" id="zustandChips">
+        <span class="chip" data-val="laeuft">▶ läuft (Produktion)</span>
+        <span class="chip" data-val="steht_kein_auftrag">⏸ steht – kein Auftrag</span>
+        <span class="chip" data-val="steht_wartung">🔧 steht – Wartung</span>
+        <span class="chip" data-val="ruesten">🔄 Rüsten/Werkzeugwechsel</span>
+      </div>
     </div>
     <div class="thumbs allgThumbs"></div>
     <div class="toolrow">
@@ -755,7 +771,8 @@ const PLANKEY = "oak_begehung_plan_v1";     // Standortplan-Bild (je Kunde, nur 
    Technisch: derselbe Bogen-Aufbau, nur ein anderer Datensatz – der inaktive wird geparkt. */
 const ALLGKEY  = "oak_begehung_allg_v1";    // geparkte Begehungs-Ebene
 const MASCHKEY = "oak_begehung_masch_v1";   // geparkter Maschinen-Bogen
-const EBENEKEY = "oak_begehung_ebene";      // "masch" | "allg"
+/* EBENEKEY entfernt (06.08.2026): wurde an drei Stellen geschrieben und nie gelesen.
+   Die aktive Ebene ergibt sich aus state._istAllgemein - eine Quelle genuegt. */
 const UPLOADKEY = "oak_begehung_uploadurl";     // Apps-Script Web-App-URL für Auto-Upload (pro Gerät)
 const UPLOADTOKENKEY = "oak_begehung_uploadtoken"; // Geheim-Token (muss mit dem Script übereinstimmen)
 
@@ -889,9 +906,14 @@ async function driveUploadPaket(paket, name){
   }catch(e){ return (e && e.name==="AbortError") ? "abbruch" : "unbestaetigt"; }
   finally { clearTimeout(t); }
 }
+/* EINE Definition von "offen" fuer Anzeige UND Aktion. Vorher liefen zwei auseinander: die
+   Uebersicht zaehlte `m._upload!=="gesendet"` (also auch Maschinen ganz ohne Feld), das Senden
+   filterte `m._upload && …` und uebersprang genau die. Anzeige sagte "nicht bestaetigt", das
+   Senden tat nichts - das war der Kern von "Upload unzuverlaessig" (gefunden 06.08.2026). */
+function istOffen(m){ return !m || m._upload!=="gesendet"; }
 /* Alle noch nicht bestaetigten Maschinen erneut senden. */
 async function sendeAusstehende(){
-  const offen=collection.filter(m=>m._upload && m._upload!=="gesendet");
+  const offen=collection.filter(istOffen);
   if(!offen.length){ toast("Nichts ausstehend."); return; }
   let ok=0;
   for(const m of offen){
@@ -903,7 +925,7 @@ async function sendeAusstehende(){
   if(document.getElementById("ovl")) zeigeUebersicht();
 }
 window.addEventListener("online", ()=>{
-  if(collection.some(m=>m._upload && m._upload!=="gesendet")) toast("Netz wieder da – in 📋 mit ⤴ erneut senden.");
+  if(collection.some(istOffen)) toast("Netz wieder da – in 📋 mit ⤴ erneut senden.");
 });
 /* Einzelne Maschine als eigene Datei teilen (→ Drive eingang) bzw. herunterladen */
 async function teileEinzel(m, typ){
@@ -930,6 +952,9 @@ async function teileEinzel(m, typ){
 function fehlendePflicht(){
   const m=state.meta, f=[];
   if(!(m.maschine||"").trim())            f.push({feld:"maschine", txt:"Name der Maschine"});
+  /* Der Betriebszustand ist Pflicht (Vorgabe Nikolai 06.08.2026): Ohne ihn steht spaeter nicht
+     fest, ob die Schutzeinrichtungen ueberhaupt im Betrieb geprueft werden konnten. */
+  if(!(m.zustand_begehung||"").trim())    f.push({feld:"zustand",  txt:"Zustand der Anlage (läuft / steht / Rüsten)"});
   if(!fotoByKat("gesamt"))                f.push({feld:"foto",     txt:"Foto der Gesamtansicht"});
   if(!m.notiz_entfaellt && !((state.audios||[]).length))
                                           f.push({feld:"audio",    txt:"Mindestens eine Sprachnotiz (sie trägt Hersteller, Typ und die Befunde)"});
@@ -1041,7 +1066,12 @@ async function saveAndNeu(){
   /* Baujahr/Serien-Nr. werden nicht mehr geprüft – sie stehen auf dem Typenschild-Foto und
      werden beim Erstellen der GBU daraus gelesen. */
   const hatUpload=!!(localStorage.getItem(UPLOADKEY)||"").trim();
-  if(!confirm("„"+name+"“ speichern"+(hatUpload?" und automatisch in Drive ablegen?":" und als Datei teilen (→ Drive)?"))) return;
+  /* Die alte Rueckfrage "… speichern und automatisch in Drive ablegen?" ist raus (06.08.2026):
+     Sie bestaetigte genau die Aktion, die gerade gedrueckt wurde - ein Klick je Maschine ohne
+     Erkenntnisgewinn. Das Ergebnis steht im Toast am Ende. */
+  /* Steht die Anlage, konnte die Funktion der Schutzeinrichtungen nicht geprueft werden.
+     Das Flag traegt diese Bewertungsgrenze in GBU und Protokoll. */
+  state.meta.nicht_pruefbar = /^steht/.test(state.meta.zustand_begehung||"");
   const editIdx=(typeof state._editIdx==="number")?state._editIdx:null;
   const rec=JSON.parse(JSON.stringify(state)); delete rec._editIdx; delete rec._ts;
   // 1) Ohne Auto-Upload: Datei-Share ZUERST (solange die Nutzer-Geste aktiv ist – vor den IDB-Awaits)
@@ -1102,7 +1132,6 @@ async function wechsleEbene(zielAllg){
   if(!Array.isArray(state.maengel)) state.maengel=[];
   if(!Array.isArray(state.markierungen)) state.markierungen=[];
   migrateFotos(state);
-  try{ localStorage.setItem(EBENEKEY, zielAllg?"allg":"masch"); }catch(e){}
   await persistAll();
   neuZeichnen();
 }
@@ -1111,7 +1140,8 @@ function blankState(){
   return { meta:{ kunde:p.kunde||"",maschine:"",hersteller:"",typ:"",baujahr:"",seriennr:"",
     standort:"",bereich:p.bereich||"",datum:p.datum||"",begeher:p.begeher||"",ce:"",anleitung:"",lebensphasen:[],
     allg_notiz:"", ma_hinweise:"", modus:"schnell", arbeitssystem:p.arbeitssystem||"", teilschritt:"",
-    typenschild_fehlt:false, plan_pos:null, laerm:null, lux:null },
+    typenschild_fehlt:false, plan_pos:null, laerm:null, lux:null,
+    zustand_begehung:"", nicht_pruefbar:false },
     items:{}, pruefung:{}, maengel:[], fotosAllg:[], markierungen:[], audio:null, audios:[] };
 }
 /* Synchroner Sofort-Stand aus localStorage (i. d. R. das Skelett ohne Fotos).
@@ -1120,7 +1150,6 @@ function blankState(){
    Begeher und Hallenplan, danach werden Maschinen hinzugefügt. */
 function loadState(){
   try{ const s=JSON.parse(localStorage.getItem(LSKEY)); if(s&&s.meta){ if(!Array.isArray(s.maengel)) s.maengel=[]; if(!Array.isArray(s.markierungen)) s.markierungen=[]; if(!s.meta.modus) s.meta.modus="schnell"; migrateFotos(s); return s; } }catch(e){}
-  try{ localStorage.setItem(EBENEKEY,"allg"); }catch(e){}
   return blankAllg();
 }
 let saveT;
@@ -1644,58 +1673,11 @@ function migrateFotos(s){
 /* Kurzvideo. Bewusst klein gehalten: Fotos haben die Begehung am 22.07. schon auf 92 MB
    getrieben. Alles ueber ~12 s oder 8 MB wird abgelehnt, statt den Upload spaeter scheitern
    zu lassen. Keine Kompression moeglich - der Browser kann Video nicht neu kodieren. */
-/* Kurzvideo. Der native Kamera-Input war unbrauchbar: er nimmt in voller Qualitaet auf,
-   damit riss die Groessengrenze schon nach 8 Sekunden. Jetzt nimmt die App selbst auf -
-   640x480, 800 kbit/s, ohne Ton, harter Stopp nach 10 s. Ergibt rund 1 MB, kalkulierbar. */
-const VIDEO_MAX_S=10, VIDEO_BREITE=640, VIDEO_BITRATE=800000;
-function videoMime(){
-  if(!window.MediaRecorder) return null;
-  for(const m of ["video/webm;codecs=vp8","video/webm","video/mp4"])
-    if(MediaRecorder.isTypeSupported(m)) return m;
-  return null;
-}
-async function nimmVideoAuf(){
-  const mime=videoMime();
-  if(!mime || !navigator.mediaDevices){ toast("Videoaufnahme auf diesem Gerät nicht möglich."); return; }
-  let stream;
-  try{ stream=await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:{ideal:"environment"}, width:{ideal:VIDEO_BREITE}, height:{ideal:480}}, audio:false }); }
-  catch(e){ toast("Kein Kamerazugriff."); return; }
-
-  const ov=document.createElement("div"); ov.id="mark";
-  ov.innerHTML=`<video autoplay muted playsinline style="flex:0 1 auto;max-width:100%;max-height:100%;margin:auto"></video>`
-    +`<div class="markhint">Aufnahme läuft – <b id="vidRest">${VIDEO_MAX_S}</b> s</div>`
-    +`<div class="markbar"><button class="btn" id="vidStop" style="margin-left:auto">⏹ Stop</button></div>`;
-  document.body.appendChild(ov);
-  const vEl=ov.querySelector("video"); vEl.srcObject=stream; vEl.play().catch(()=>{});
-
-  const chunks=[];
-  const rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:VIDEO_BITRATE});
-  rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
-  let rest=VIDEO_MAX_S;
-  const tick=setInterval(()=>{ rest--; const el=ov.querySelector("#vidRest"); if(el) el.textContent=rest;
-    if(rest<=0 && rec.state!=="inactive") rec.stop(); },1000);
-  rec.onstop=()=>{
-    clearInterval(tick);
-    try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
-    ov.remove();
-    const blob=new Blob(chunks,{type:mime});
-    const r=new FileReader();
-    r.onload=()=>{
-      addFotoKat("video",{name:"video-"+Date.now()+(mime.indexOf("mp4")>=0?".mp4":".webm"),
-        data:r.result, dauer:VIDEO_MAX_S-Math.max(0,rest), mime});
-      renderAllgThumbs(); save();
-      toast("Video gesichert ("+(blob.size/1048576).toFixed(1)+" MB).");
-    };
-    r.readAsDataURL(blob);
-  };
-  ov.querySelector("#vidStop").addEventListener("click",()=>{ if(rec.state!=="inactive") rec.stop(); });
-  rec.start();
-}
-document.addEventListener("click",e=>{
-  const b=e.target.closest && e.target.closest("[data-addvideo]");
-  if(b) nimmVideoAuf();
-});
+/* Kurzvideo entfernt am 06.08.2026 (Vorgabe Nikolai): Die Aufnahme lag als kat:"video" im
+   selben fotosAllg-Array wie die Fotos, wanderte damit base64 in jeden Upload (~1,3 MB je
+   10 s) - ausgewertet hat sie nie jemand (weder transkribiere.py noch die Dokumentenerzeugung),
+   und beim Erstellen von Protokoll/GBU waere sie als Bild durchgereicht worden. Alte
+   Datensaetze mit kat:"video" bleiben ladbar (siehe renderAllgThumbs). */
 /* Alle [data-addfoto]-Buttons öffnen die native Kamera-App.
    Ziel-Kategorie und Callback müssen den Umweg über den <input>-change überleben – sonst
    landet das Foto ohne kat in fotosAllg (genau das passierte früher im Galerie-Fallback). */
@@ -2255,9 +2237,11 @@ function planPunkt(ctx,x,y,rr,farbe,txt){
   ctx.fillStyle="rgba(255,255,255,.9)"; ctx.fillRect(x-w/2, y+rr+3, w, h);
   ctx.fillStyle="#1B4332"; ctx.fillText(txt, x, y+rr+5);
 }
-function openPlan(){
+async function openPlan(){
   if(!planBild){
-    if(!confirm("Noch kein Standortplan hinterlegt.\nJetzt einen aufnehmen oder auswählen?\n(Foto, Screenshot oder Skizze genügt – gilt für diesen Kunden.)")) return;
+    if(!await frageZwei("Kein Standortplan",
+      "Foto, Screenshot oder Skizze genügt – gilt für diesen Kunden.",
+      "🗺 Plan aufnehmen", "Später")) return;
     dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ toast("Standortplan gesetzt."); openPlan(); }); });
     return;
   }
@@ -2345,14 +2329,15 @@ function renderMaschListe(){
 /* Gesicherte Maschine zum Nachschärfen öffnen – wechselt auf die Maschinen-Ebene. */
 async function maschineOeffnen(idx){
   const m=collection[idx]; if(!m) return;
-  if(!confirm("„"+((m.meta||{}).maschine||"Maschine")+"“ zum Nachschärfen öffnen?\n(Sie wird aus der Liste genommen und beim Speichern wieder eingefügt.)")) return;
+  if(!await frageZwei("Zum Nachschärfen öffnen?",
+    ((m.meta||{}).maschine||"Maschine")+" wird aus der Liste genommen und beim Speichern wieder eingefügt.",
+    "✎ Öffnen", "Abbrechen")) return;
   const rec=JSON.parse(JSON.stringify(m));
   collection.splice(idx,1);
   rec._editIdx=idx;
   await mitTimeout(idbPut(MASCHKEY, JSON.stringify(rec)), 5000, false);
   await mitTimeout(idbPut(ALLGKEY, JSON.stringify(state)), 5000, false);
   state=rec; delete state._istAllgemein;
-  try{ localStorage.setItem(EBENEKEY,"masch"); }catch(e){}
   await persistAll(); neuZeichnen();
   toast("„"+((state.meta||{}).maschine||"Maschine")+"“ geöffnet – Änderungen werden beim Speichern übernommen.");
 }
@@ -2555,19 +2540,13 @@ function luxSerie(){
   }
   return m.lux_serie;
 }
-/* Energetischer Mittelwert (Schallpegel): Lm = 10·lg( (1/n)·Σ 10^(Li/10) ). */
-function laermMittel(serie){
-  if(!serie.length) return null;
-  const s=serie.reduce((a,p)=>a+Math.pow(10, p.dba/10), 0);
-  return 10*Math.log10(s/serie.length);
-}
 function messRasterHtml(art, serie){
   /* 3×3-Miniraster (nur Anzeige) - Mitte (Zelle 4) = Arbeitsbereich. */
   const pf=["↖","↑","↗","←","🎛","→","↙","↓","↘"];
   let z=`<div class="rasterMini">`;
   for(let i=0;i<9;i++){
     const p=serie.find(q=>q.zelle===i), mitte=(i===4);
-    const wert = p ? (art==="laerm" ? p.dba.toFixed(0) : Math.round(p.lux)) : "";
+    const wert = p ? Math.round(p.lux) : "";   // nur noch Licht nutzt das Raster
     z+=`<div class="rz${p?" voll":""}${mitte?" mitte":""}">`+(p
         ?`<b>${pf[i]}</b><span>${wert}</span><button class="rzdel" data-del="${art}:${i}" title="löschen">×</button>`
         :`<span class="rzleer">${pf[i]}</span>`)+`</div>`;
@@ -2729,7 +2708,7 @@ async function messeLichtZelle(zelle, soll){
 /* 3×3-Raster: Mitte (Zelle 4) = Arbeitsbereich, die 8 Aussenzellen relativ dazu (optional).
    Richtung je Zelle 0..8: ↖ ↑ ↗ / ← ● → / ↙ ↓ ↘ */
 const RASTER_PFEIL=["↖","↑","↗","←","●","→","↙","↓","↘"];
-const MESS_BEREICHE=["Bedienpult","Materialaufgabe / Trichter","Teileentnahme / Förderband","Rückseite / Aggregat"];
+const MESS_BEREICHE=["Steuerpult","Materialaufgabe / Trichter","Teileentnahme / Förderband","Rückseite / Aggregat"];
 function bereichWaehlen(){
   return new Promise(res=>{
     if(state.meta.mess_bereich){ res(state.meta.mess_bereich); return; }
@@ -2771,7 +2750,9 @@ function zeigeRaster(art, soll){
     ov.querySelectorAll("[data-zelle]").forEach(b=>b.addEventListener("click",async()=>{
       const z=+b.dataset.zelle;
       const belegt=serie.some(p=>p.zelle===z);
-      if(belegt && !confirm((z===4?"Arbeitsbereich":"Punkt")+" neu messen?")) return;
+      if(belegt && !await frageZwei("Punkt neu messen?",
+        "Für "+(z===4?"den Arbeitsbereich":"diesen Punkt")+" liegt bereits ein Wert vor.",
+        "Neu messen", "Behalten")) return;
       ov.querySelectorAll("[data-zelle]").forEach(x=>x.disabled=true);
       b.classList.add("aktiv"); b.querySelector("span").textContent="misst …";
       try{
@@ -2815,6 +2796,9 @@ function sollWaehlen(){
    Anzeigewert – ändert nichts daran, dass er ungeeicht bleibt. */
 /* Abgleich: einmalig je Gerät gegen ein echtes Messgerät. Kein Button auf dem Rundgang –
    erreichbar über den Link im Ergebnis-Kasten. */
+/* DERZEIT NICHT VERDRAHTET: Der Abgleich-Link ist am 06.08.2026 aus dem Ergebnis
+   genommen worden (Vorgabe: "ich kalibriere nicht, es ist ein Richtwert").
+   Funktion bleibt, falls doch einmal gegen ein Messgeraet abgeglichen werden soll. */
 async function kalibrieren(){
   const kal=ladeKalib();
   const was=prompt("Abgleich – was möchtest du kalibrieren?\n\n1 = Lärm (Referenz-Messgerät nötig)\n2 = Licht (Luxmeter nötig)\n0 = Abgleich zurücksetzen","1");
@@ -2908,7 +2892,11 @@ function renderAudio(){
     info.textContent=Math.floor((a.dauer||0)/60)+":"+String((a.dauer||0)%60).padStart(2,"0");
     const del=document.createElement("button"); del.className="btn"; del.textContent="×";
     del.title="Notiz "+(i+1)+" löschen";
-    del.addEventListener("click",()=>{ if(confirm("Notiz "+(i+1)+" löschen?")){ state.audios.splice(i,1); save(); renderAudio(); } });
+    del.addEventListener("click",async()=>{
+      if(await frageZwei("Notiz löschen?","Sprachnotiz "+(i+1)+" wird entfernt – das lässt sich nicht rückgängig machen.","🗑 Löschen","Behalten")){
+        state.audios.splice(i,1); save(); renderAudio();
+      }
+    });
     row.appendChild(nr); row.appendChild(player); row.appendChild(info); row.appendChild(del);
     box.appendChild(row);
   });
@@ -3022,16 +3010,21 @@ function zeigeUebersicht(){
     body+=`<div class="ovgroup">Arbeitssystem: <b>${esc(sys)}</b> · ${groups[sys].length} Maschine(n)</div>`;
     groups[sys].forEach(i=>{
       const m=collection[i], c=coverage(m), teil=((m.meta||{}).teilschritt||"").trim();
+      /* Status und Knoepfe folgen derselben Definition wie sendeAusstehende() - siehe istOffen(). */
       const up = m._upload==="gesendet" ? ' · <b style="color:var(--gruen)">✓ in Drive</b>'
-        : (m._upload==="verboten" ? ' · <b style="color:#b5462f">✗ abgelehnt</b>'
-        : (m._upload ? ' · <b style="color:#b5462f">⤴ nicht bestätigt</b>' : ""));
+        : (m._upload==="verboten" ? ' · <b style="color:#b5462f">✗ abgelehnt – Token prüfen</b>'
+        : (hatUp ? ' · <b style="color:#b5462f">⤴ offen</b>' : ""));
+      /* 📤 Teilen ist der Notausgang, nicht der Normalweg: nur zeigen, wenn keine Drive-Bridge
+         eingerichtet ist oder diese Maschine dort nicht angekommen ist. Sonst standen drei
+         Sendewege nebeneinander und keiner war erkennbar der richtige. */
+      const zeigeTeilen = !hatUp || istOffen(m);
       body+=`<div class="ovrow"><div class="ovname"><b>${esc((m.meta||{}).maschine||"?")}</b>`
         +(teil?` <span style="color:var(--muted)">· ${esc(teil)}</span>`:"")
         +`<span>${coverageText(c)}${up}</span></div>`
         +`<div class="ovacts">`
         +`<button class="mdel" data-ovedit="${i}" title="Nachschärfen">✎</button>`
         +(hatUp?`<button class="mdel" data-ovup="${i}" title="Nach Drive hochladen">⤴</button>`:"")
-        +`<button class="mdel" data-ovshare="${i}" title="Als Datei teilen">📤</button>`
+        +(zeigeTeilen?`<button class="mdel" data-ovshare="${i}" title="Als Datei teilen (Notausgang)">📤</button>`:"")
         +`<button class="mdel" data-ovdel="${i}" title="Löschen">×</button></div></div>`;
     });
   });
@@ -3151,7 +3144,7 @@ async function alleLoeschen(){
   if(!confirm("ALLE "+collection.length+" gesicherten Maschinen UND den aktuellen Bogen löschen?")) return;
   if(!confirm("Wirklich sicher? Vorher gespeichert/geteilt?")) return;
   state=blankState(); collection=[]; allgemeinGeparkt=null;
-  localStorage.removeItem(LSKEY); localStorage.removeItem(COLLKEY); localStorage.removeItem(EBENEKEY);
+  localStorage.removeItem(LSKEY); localStorage.removeItem(COLLKEY);
   await idbDel(LSKEY); await idbDel(COLLKEY);
   await idbDel(ALLGKEY); await idbDel(MASCHKEY);   // beide Ebenen mit abräumen
   neuZeichnen();                                   // Standortplan bleibt: gehört dem Kunden, nicht dem Tag
