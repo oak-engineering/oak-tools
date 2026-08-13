@@ -236,6 +236,18 @@
   #mark canvas{flex:0 1 auto;min-height:0;display:block;margin:auto;width:auto;height:auto;
     max-width:100%;max-height:100%;touch-action:manipulation}
   #mark .markhint{color:#fff;font-size:13px;text-align:center;padding:6px 0 0}
+  /* Interaktiver Vektorplan (SVG) statt Planfoto: Maschinen sind antippbar, Risikofarben sichtbar. */
+  #mark .svgwrap{flex:1 1 auto;min-height:0;overflow:auto;background:#fff;border-radius:10px;
+    position:relative;-webkit-overflow-scrolling:touch}
+  #mark .svgwrap svg{width:100%;height:auto;display:block}
+  #mark .svgwrap .pin{position:absolute;transform:translate(-50%,-50%);border-radius:999px;
+    width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:#fff;
+    font:700 12px/1 system-ui,sans-serif;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  #mark .svgwrap .pin.notiz{background:#e88a3c} #mark .svgwrap .pin.hier{background:#c62828}
+  #mark .svgwrap .pin.frueher{background:rgba(120,130,125,.85)}
+  #mark .svgwrap .pinlbl{position:absolute;transform:translate(-50%,4px);background:rgba(255,255,255,.92);
+    border-radius:6px;padding:1px 5px;font:600 11px/1.4 system-ui,sans-serif;color:#1B4332;
+    white-space:nowrap;pointer-events:none}
   .markchips{display:flex;gap:6px;overflow-x:auto;padding-top:8px;flex:0 0 auto}
   .markchips .chip{background:#fff;white-space:nowrap}
   .markbar{display:flex;gap:8px;padding-top:10px;flex:0 0 auto}
@@ -2275,6 +2287,38 @@ async function pinPrompt(mFoto, zielKat){
    Maschine steckt in meta.plan_pos und geht damit auch beim Einzel-Export mit. */
 let planBild=null;   // {name, data}
 async function setzePlan(obj){ planBild=obj; await mitTimeout(idbPut(PLANKEY, JSON.stringify(obj)), 5000, false); }
+
+/* Notiz-Pins auf dem Standortplan (Vorgabe Nikolai 13.08.2026: "einfach einen Pin mit Freitext",
+   den Claude ins Kundenportal nachtraegt). Gehoeren dem KUNDEN, nicht der Maschine - sie ueberleben
+   "Neue Begehung" und reisen im Sammlungs-Export mit (Feld planpins). */
+/* Vektorplan (SVG aus tools/hallenplan.py) – zeigt Risikofarben und Bearbeitungsstand und ist
+   antippbar. Liegt wie das Planfoto im Geraet; ohne SVG faellt alles auf das Foto zurueck. */
+const PLANSVGKEY="oak_begehung_plansvg_v1";
+let planSVG=null;    // {name, svg}
+async function setzePlanSVG(o){ planSVG=o; await mitTimeout(idbPut(PLANSVGKEY, JSON.stringify(o)), 5000, false); }
+function planSvgWaehlen(){
+  const inp=document.createElement("input");
+  inp.type="file"; inp.accept=".svg,.html,image/svg+xml";
+  inp.addEventListener("change",()=>{
+    const f=inp.files&&inp.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=async()=>{
+      let t=String(r.result||"");
+      const m=t.match(/<svg[\s\S]*?<\/svg>/i);          // aus hallenplan.html das SVG herausziehen
+      if(!m){ toast("Kein SVG in der Datei gefunden."); return; }
+      await setzePlanSVG({name:f.name, svg:m[0]});
+      toast("Vektorplan hinterlegt.");
+      const ov=document.getElementById("mark"); if(ov) ov.remove();
+      openPlan();
+    };
+    r.readAsText(f);
+  });
+  inp.click();
+}
+
+const PINKEY="oak_begehung_planpins_v1";
+function planPins(){ try{ return JSON.parse(localStorage.getItem(PINKEY)||"[]"); }catch(e){ return []; } }
+function planPinsSetzen(l){ try{ localStorage.setItem(PINKEY, JSON.stringify(l)); }catch(e){} }
 function planPunkt(ctx,x,y,rr,farbe,txt){
   ctx.beginPath(); ctx.arc(x,y,rr,0,2*Math.PI);
   ctx.fillStyle=farbe; ctx.fill();
@@ -2285,7 +2329,106 @@ function planPunkt(ctx,x,y,rr,farbe,txt){
   ctx.fillStyle="rgba(255,255,255,.9)"; ctx.fillRect(x-w/2, y+rr+3, w, h);
   ctx.fillStyle="#1B4332"; ctx.fillText(txt, x, y+rr+5);
 }
+/* Interaktiver Vektorplan: Maschine antippen = verorten (und Bezeichnung uebernehmen),
+   Notiz-Modus = freier Pin mit Text. Ersetzt das Planfoto, sobald ein SVG hinterlegt ist. */
+function openPlanSVG(){
+  const alt=document.getElementById("mark"); if(alt) alt.remove();
+  const ov=document.createElement("div"); ov.id="mark";
+  const wer=(state.meta.maschine||"").trim()||"aktuelle Maschine";
+  ov.innerHTML=`<div class="markhint" id="plHint">Maschine antippen: „${esc(wer)}" hier verorten`
+    +` · <b style="color:#e88a3c">📍 Notiz</b> für freie Hinweise</div>`
+    +`<div class="svgwrap" id="svgwrap"></div>`
+    +`<div class="markbar">`
+    +`<button class="btn" id="plNotiz">📍 Notiz-Pin</button>`
+    +`<button class="btn" id="plNeu">🗺 Plan ersetzen</button>`
+    +`<button class="btn" id="plFoto">🖼 Foto-Plan</button>`
+    +`<button class="btn" id="plWeg">✕ Punkt löschen</button>`
+    +`<button class="btn" id="plAbbr">Abbrechen</button>`
+    +`<button class="btn primary" id="plOk" style="margin-left:auto">✓ Übernehmen</button></div>`;
+  document.body.appendChild(ov);
+  const wrap=ov.querySelector("#svgwrap");
+  wrap.innerHTML=planSVG.svg;
+  const svg=wrap.querySelector("svg");
+  let pos = state.meta.plan_pos ? {rx:state.meta.plan_pos.rx, ry:state.meta.plan_pos.ry} : null;
+  let notizModus=false;
+
+  const marker=()=>{
+    wrap.querySelectorAll(".pin,.pinlbl").forEach(n=>n.remove());
+    const setz=(rx,ry,cls,txt,lbl)=>{
+      const d=document.createElement("div");
+      d.className="pin "+cls; d.style.left=(rx*100)+"%"; d.style.top=(ry*100)+"%";
+      d.textContent=txt||""; wrap.appendChild(d);
+      if(lbl){ const l=document.createElement("div"); l.className="pinlbl";
+        l.style.left=(rx*100)+"%"; l.style.top=(ry*100)+"%"; l.textContent=lbl; wrap.appendChild(l); }
+    };
+    const laufend=new Set(collection.map(m=>((m.meta||{}).maschine||"").toLowerCase()));
+    fortschrittKunde().forEach(f=>{
+      if(!f.plan_pos || laufend.has((f.name||"").toLowerCase())) return;
+      setz(f.plan_pos.rx, f.plan_pos.ry, "frueher", "✓", "");
+    });
+    collection.forEach(m=>{ const p=(m.meta||{}).plan_pos; if(p) setz(p.rx,p.ry,"hier","✓",""); });
+    planPins().forEach((p,i)=> setz(p.rx,p.ry,"notiz",String(i+1),(p.text||"").slice(0,26)));
+    if(pos) setz(pos.rx,pos.ry,"hier","●",wer.slice(0,20));
+  };
+  marker();
+
+  wrap.addEventListener("click",e=>{
+    const r=wrap.getBoundingClientRect();
+    const rx=(e.clientX-r.left+wrap.scrollLeft)/wrap.scrollWidth;
+    const ry=(e.clientY-r.top+wrap.scrollTop)/wrap.scrollHeight;
+    if(notizModus){
+      const liste=planPins();
+      const nah=liste.findIndex(p=>Math.hypot(p.rx-rx,p.ry-ry)<0.015);
+      if(nah>=0){
+        const neu=prompt("Notiz ändern (leer = löschen):", liste[nah].text||"");
+        if(neu===null) return;
+        if(!neu.trim()) liste.splice(nah,1); else liste[nah].text=neu.trim();
+      }else{
+        const t=prompt("Notiz für diesen Punkt:",""); if(t===null||!t.trim()) return;
+        liste.push({id:"P"+Date.now().toString(36), rx, ry, text:t.trim(),
+                    zeit:new Date().toISOString(), begehung:(state.meta.datum||"")});
+      }
+      planPinsSetzen(liste); marker(); return;
+    }
+    /* Auf eine Maschine getippt: verorten und - wenn noch leer - die Bezeichnung uebernehmen. */
+    const g=e.target.closest && e.target.closest("g.m");
+    if(g){
+      const t=g.querySelector("text");
+      const name=t?t.textContent.trim():"";
+      const b=g.getBoundingClientRect();
+      pos={rx:(b.left+b.width/2-r.left+wrap.scrollLeft)/wrap.scrollWidth,
+           ry:(b.top+b.height/2-r.top+wrap.scrollTop)/wrap.scrollHeight};
+      if(name && !(state.meta.maschine||"").trim()){
+        const el=document.getElementById("f_maschine");
+        state.meta.maschine=name; if(el) el.value=name; save();
+        ov.querySelector("#plHint").innerHTML=`„${esc(name)}" übernommen und verortet`;
+      }
+      marker(); return;
+    }
+    pos={rx,ry}; marker();
+  });
+
+  ov.querySelector("#plNotiz").addEventListener("click",e=>{
+    notizModus=!notizModus;
+    e.currentTarget.classList.toggle("primary", notizModus);
+    ov.querySelector("#plHint").innerHTML = notizModus
+      ? `<b style="color:#e88a3c">Notiz-Modus:</b> auf den Plan tippen → Text · auf einen Pin tippen → ändern/löschen`
+      : `Maschine antippen: „${esc(wer)}" hier verorten`;
+  });
+  ov.querySelector("#plNeu").addEventListener("click", planSvgWaehlen);
+  ov.querySelector("#plFoto").addEventListener("click",()=>{ ov.remove(); openPlanFoto(); });
+  ov.querySelector("#plWeg").addEventListener("click",()=>{ pos=null; marker(); });
+  ov.querySelector("#plAbbr").addEventListener("click",()=>ov.remove());
+  ov.querySelector("#plOk").addEventListener("click",()=>{
+    state.meta.plan_pos=pos; save(); ov.remove();
+    toast(pos?"Auf dem Standortplan verortet.":"Verortung entfernt.");
+  });
+}
 async function openPlan(){
+  if(planSVG && planSVG.svg) return openPlanSVG();
+  return openPlanFoto();
+}
+async function openPlanFoto(){
   if(!planBild){
     if(!await frageZwei("Kein Standortplan",
       "Foto, Screenshot oder Skizze genügt – gilt für diesen Kunden.",
@@ -2297,8 +2440,10 @@ async function openPlan(){
   const ov=document.createElement("div"); ov.id="mark";
   const wer=(state.meta.maschine||"").trim()||"aktuelle Maschine";
   ov.innerHTML=`<canvas></canvas>`
-    +`<div class="markhint">Antippen: „${esc(wer)}" hier verorten · <b style="color:#6ee7a8">grün</b> = diese Begehung · <b style="color:#c8cfcb">grau</b> = frühere Begehungen</div>`
+    +`<div class="markhint" id="plHint">Antippen: „${esc(wer)}" hier verorten · <b style="color:#6ee7a8">grün</b> = diese Begehung · <b style="color:#c8cfcb">grau</b> = frühere Begehungen</div>`
     +`<div class="markbar">`
+    +`<button class="btn" id="plNotiz">📍 Notiz-Pin</button>`
+    +`<button class="btn" id="plSvg">🗺 Vektorplan laden</button>`
     +`<button class="btn" id="plNeu">🖼 Plan ersetzen</button>`
     +`<button class="btn" id="plWeg">✕ Punkt löschen</button>`
     +`<button class="btn" id="plAbbr">Abbrechen</button>`
@@ -2325,15 +2470,46 @@ async function openPlan(){
       /* Beschriftung nur fuer den aktuellen Punkt - sonst ueberlagern sich die Kaesten. */
       planPunkt(ctx, p.rx*W, p.ry*H, rr, "rgba(45,106,79,.9)", "");
     });
+    /* Orange: freie Notiz-Pins des Kunden (Text im Plan, unabhaengig von Maschinen). */
+    planPins().forEach((p,i)=>
+      planPunkt(ctx, p.rx*W, p.ry*H, rr, "rgba(232,138,60,.95)", (i+1)+" "+(p.text||"").slice(0,16)));
     if(pos) planPunkt(ctx, pos.rx*W, pos.ry*H, rr*1.2, "rgba(198,40,40,.92)", wer.slice(0,12));
   };
   img.onload=()=>{ cv.width=img.naturalWidth; cv.height=img.naturalHeight; zeichne(); };
   img.src=planBild.data;
+  let notizModus=false;
   cv.addEventListener("click",e=>{
     const r=cv.getBoundingClientRect(); if(!r.width||!r.height) return;
-    pos={rx:(e.clientX-r.left)/r.width, ry:(e.clientY-r.top)/r.height};
+    const rx=(e.clientX-r.left)/r.width, ry=(e.clientY-r.top)/r.height;
+    if(notizModus){
+      const liste=planPins();
+      /* auf einen vorhandenen Pin getippt -> bearbeiten oder loeschen */
+      const nah=liste.findIndex(p=>Math.hypot(p.rx-rx,p.ry-ry)<0.02);
+      if(nah>=0){
+        const neu=prompt("Notiz ändern (leer = löschen):", liste[nah].text||"");
+        if(neu===null) return;
+        if(!neu.trim()) liste.splice(nah,1); else liste[nah].text=neu.trim();
+      }else{
+        const t=prompt("Notiz für diesen Punkt:","");
+        if(t===null||!t.trim()) return;
+        liste.push({id:"P"+Date.now().toString(36), rx, ry, text:t.trim(),
+                    zeit:new Date().toISOString(), begehung:(state.meta.datum||"")});
+      }
+      planPinsSetzen(liste); zeichne();
+      toast("Notiz-Pins: "+planPins().length);
+      return;
+    }
+    pos={rx, ry};
     zeichne();
   });
+  ov.querySelector("#plNotiz").addEventListener("click",e=>{
+    notizModus=!notizModus;
+    e.currentTarget.classList.toggle("primary", notizModus);
+    ov.querySelector("#plHint").innerHTML = notizModus
+      ? `<b style="color:#e88a3c">Notiz-Modus:</b> auf den Plan tippen → Text eingeben · auf einen Pin tippen → ändern/löschen`
+      : `Antippen: „${esc(wer)}" hier verorten · <b style="color:#6ee7a8">grün</b> = diese Begehung · <b style="color:#c8cfcb">grau</b> = frühere Begehungen`;
+  });
+  ov.querySelector("#plSvg").addEventListener("click", planSvgWaehlen);
   ov.querySelector("#plNeu").addEventListener("click",()=>{
     dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ ov.remove(); toast("Standortplan ersetzt."); openPlan(); }); });
   });
@@ -2998,7 +3174,9 @@ function exportPaket(){
   if(!machines.length && !allgHatInhalt) return null;
   return { _typ:"OAK-Begehung-Sammlung", _version:3, _exportiert:new Date().toISOString(),
     kunde:state.meta.kunde||"", datum:state.meta.datum||"", anzahl:machines.length,
-    plan:planBild||null, allgemein: allgHatInhalt ? allg : null, maschinen:machines };
+    plan:planBild||null, planvektor: planSVG?planSVG.name:null,
+    planpins: planPins(),          // freie Notiz-Pins auf dem Plan (Claude traegt sie nach)
+    allgemein: allgHatInhalt ? allg : null, maschinen:machines };
 }
 function rescueExport(){
   const p=exportPaket(); if(!p) return;
@@ -3272,6 +3450,8 @@ if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
     if(rawC){ const c=JSON.parse(rawC); if(Array.isArray(c)) collection=c; }
     const rawP=await mitTimeout(idbGet(PLANKEY), 4000, null);
     if(rawP){ const p=JSON.parse(rawP); if(p&&p.data) planBild=p; }
+    const rawS=await mitTimeout(idbGet(PLANSVGKEY), 4000, null);
+    if(rawS){ const s=JSON.parse(rawS); if(s&&s.svg) planSVG=s; }
     /* Die geparkte Gegen-Ebene laden – der Export braucht beide, egal wo Nikolai gerade steht. */
     if(!imAllgModus()){
       const rawA=await mitTimeout(idbGet(ALLGKEY), 4000, null);
