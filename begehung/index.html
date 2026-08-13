@@ -415,7 +415,9 @@
        Der Rundgang-Leitfaden bleibt: er ist Gedankenstütze, kein Eingabefeld. -->
   <section class="card nur-maschine">
     <label class="f">Maschine / Anlage</label>
-    <input type="text" data-meta="maschine" placeholder="z. B. D150/3">
+    <input type="text" data-meta="maschine" placeholder="z. B. D150/3" list="portalMaschinen">
+    <!-- Vorschlaege aus dem Kundenportal: bereits dokumentierte Anlagen (Bezeichnung + ID). -->
+    <datalist id="portalMaschinen"></datalist>
     <details class="rundgang">
       <summary>🧭 Rundgang – wo finde ich was?</summary>
       <div class="rundgangbox" id="rundgangBox"></div>
@@ -2293,9 +2295,140 @@ async function setzePlan(obj){ planBild=obj; await mitTimeout(idbPut(PLANKEY, JS
    "Neue Begehung" und reisen im Sammlungs-Export mit (Feld planpins). */
 /* Vektorplan (SVG aus tools/hallenplan.py) – zeigt Risikofarben und Bearbeitungsstand und ist
    antippbar. Liegt wie das Planfoto im Geraet; ohne SVG faellt alles auf das Foto zurueck. */
+/* ===== Kundenportal als Datenquelle =====
+   Vorgabe Nikolai 13.08.2026: "am ende soll alles zusammenhaengen". Statt Dateien zu importieren,
+   holt das Tool Hallenplan und Maschinenliste direkt aus dem Portal (Supabase, Login + RLS je
+   Kunde). Ohne Anmeldung laeuft alles unveraendert offline weiter. */
+const PORTAL={ url:"https://ayieotppxrjrzdpeofkx.supabase.co",
+               anon:"sb_publishable_fz1o6tjpwa7gjiNb17uuEg_-ZwNdFcS",
+               bucket:"kundendokumente", sessKey:"oak_portal_session" };
+function portalSession(){ try{ return JSON.parse(localStorage.getItem(PORTAL.sessKey)||"null"); }catch(e){ return null; } }
+function portalSessionSetzen(s){
+  s.expires_at = Date.now() + (s.expires_in||3600)*1000 - 60000;
+  localStorage.setItem(PORTAL.sessKey, JSON.stringify(s));
+}
+async function portalFetch(pfad, opt){
+  const s=portalSession();
+  const kopf=Object.assign({apikey:PORTAL.anon,
+    Authorization:"Bearer "+((s&&s.access_token)||PORTAL.anon)}, (opt&&opt.headers)||{});
+  const r=await fetch(PORTAL.url+pfad, Object.assign({}, opt, {headers:kopf}));
+  if(!r.ok) throw new Error("Portal "+r.status+" "+(await r.text()).slice(0,140));
+  return r;
+}
+async function portalAnmelden(email, passwort){
+  const r=await fetch(PORTAL.url+"/auth/v1/token?grant_type=password", {
+    method:"POST", headers:{apikey:PORTAL.anon,"Content-Type":"application/json"},
+    body:JSON.stringify({email, password:passwort})});
+  if(!r.ok) throw new Error("Anmeldung fehlgeschlagen");
+  const d=await r.json(); portalSessionSetzen(d); return d;
+}
+async function portalListe(kategorie){
+  const r=await portalFetch("/rest/v1/portal_dokumente?select=kategorie,titel,maschine,maschinen_id,"
+    +"storage_path,doc_typ,stand,status&kategorie=eq."+encodeURIComponent(kategorie)
+    +"&order=sortierung.asc,maschine.asc");
+  return r.json();
+}
+async function portalDatei(storagePath){
+  /* signierte URL holen und Inhalt laden - der Bucket ist privat. */
+  const r=await portalFetch("/storage/v1/object/sign/"+PORTAL.bucket+"/"+storagePath,
+    {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({expiresIn:600})});
+  const d=await r.json();
+  const q=await fetch(PORTAL.url+"/storage/v1"+d.signedURL);
+  if(!q.ok) throw new Error("Datei konnte nicht geladen werden");
+  return q.text();
+}
+
 const PLANSVGKEY="oak_begehung_plansvg_v1";
 let planSVG=null;    // {name, svg}
 async function setzePlanSVG(o){ planSVG=o; await mitTimeout(idbPut(PLANSVGKEY, JSON.stringify(o)), 5000, false); }
+/* Maschinenliste aus dem Portal als Vorschlagsliste – so heisst eine Anlage vor Ort genauso
+   wie in ihrer Beurteilung, und die Zuordnung im Hallenplan bleibt sauber. */
+const PORTALMASCHKEY="oak_begehung_portalmaschinen_v1";
+function maschinenlisteZeichnen(liste){
+  const dl=document.getElementById("portalMaschinen"); if(!dl) return;
+  dl.innerHTML="";
+  (liste||[]).forEach(z=>{
+    const o=document.createElement("option");
+    o.value=z.maschine||z.titel||"";
+    o.label=(z.maschinen_id? z.maschinen_id+" · ":"")+(z.stand||"");
+    dl.appendChild(o);
+  });
+}
+async function maschinenAusPortal(still){
+  try{
+    const liste=(await portalListe("anlagen")).filter(z=>z.maschine);
+    const kurz=liste.map(z=>({maschine:z.maschine, maschinen_id:z.maschinen_id, stand:z.stand}));
+    localStorage.setItem(PORTALMASCHKEY, JSON.stringify(kurz));
+    maschinenlisteZeichnen(kurz);
+    if(!still) toast(kurz.length+" Maschinen aus dem Portal übernommen");
+    return kurz;
+  }catch(e){ if(!still) toast("Portal: "+(e.message||e)); return null; }
+}
+/* Beim Start das zuletzt Geladene anzeigen (offline) und still auffrischen, wenn angemeldet. */
+addEventListener("load",()=>{
+  try{ maschinenlisteZeichnen(JSON.parse(localStorage.getItem(PORTALMASCHKEY)||"[]")); }catch(e){}
+  const s=portalSession();
+  if(s && s.access_token && (s.expires_at||0) > Date.now()) maschinenAusPortal(true);
+});
+
+/* Begehung ins Portal zurueckschreiben: Datei in den privaten Bucket + Katalogzeile.
+   Rueckgabe "ok" | "kein-login" | Fehlertext – der Aufrufer faellt sonst auf Bridge/Teilen zurueck. */
+async function portalUploadPaket(paket, dateiname){
+  if(!paket) return "nichts zu senden";
+  const s=portalSession();
+  if(!s || !s.access_token || (s.expires_at||0) < Date.now()) return "kein-login";
+  const kunde=slug(paket.kunde||"kunde");
+  const pfad=kunde+"/begehungen/"+dateiname;
+  try{
+    await portalFetch("/storage/v1/object/"+PORTAL.bucket+"/"+encodeURI(pfad), {
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-upsert":"true","cache-control":"3600"},
+      body:JSON.stringify(paket)});
+    const zeile={kunde:kunde, kunde_slug:kunde, kategorie:"begehungen",
+      titel:"Begehung "+(paket.datum||"")+" ("+paket.anzahl+" Maschinen)",
+      doc_typ:"json", storage_path:pfad, stand:paket.datum||"", sortierung:0, status:"aktuell"};
+    const vor=await (await portalFetch("/rest/v1/portal_dokumente?select=id&kunde_slug=eq."
+      +encodeURIComponent(kunde)+"&storage_path=eq."+encodeURIComponent(pfad))).json();
+    if(vor && vor.length){
+      await portalFetch("/rest/v1/portal_dokumente?id=eq."+vor[0].id, {method:"PATCH",
+        headers:{"Content-Type":"application/json",Prefer:"return=minimal"}, body:JSON.stringify(zeile)});
+    }else{
+      await portalFetch("/rest/v1/portal_dokumente", {method:"POST",
+        headers:{"Content-Type":"application/json",Prefer:"return=minimal"}, body:JSON.stringify(zeile)});
+    }
+    return "ok";
+  }catch(e){ return (e.message||String(e)).slice(0,120); }
+}
+
+/* Plan direkt aus dem Portal holen – kein Dateiimport mehr noetig. */
+async function planAusPortal(){
+  try{
+    let s=portalSession();
+    if(!s || !s.access_token || (s.expires_at||0) < Date.now()){
+      const mail=prompt("Portal-Anmeldung – E-Mail:", (s&&s.email)||"");
+      if(!mail) return;
+      const pw=prompt("Passwort:");
+      if(!pw) return;
+      toast("Anmelden …");
+      await portalAnmelden(mail.trim(), pw);
+    }
+    toast("Plan wird geladen …");
+    const liste=await portalListe("hallenplan");
+    const svgZeile=liste.find(z=>(z.doc_typ||"").toLowerCase()==="svg")
+                 || liste.find(z=>/\.svg$/i.test(z.storage_path||""));
+    if(!svgZeile){ toast("Im Portal liegt kein Vektorplan."); return; }
+    const txt=await portalDatei(svgZeile.storage_path);
+    const m=txt.match(/<svg[\s\S]*?<\/svg>/i);
+    if(!m){ toast("Datei enthält kein SVG."); return; }
+    await setzePlanSVG({name:svgZeile.titel||"Hallenplan", svg:m[0],
+                        stand:svgZeile.stand||"", quelle:"portal"});
+    toast("Hallenplan aus dem Portal geladen"+(svgZeile.stand?" (Stand "+svgZeile.stand+")":""));
+    maschinenAusPortal(true);            // Maschinenliste gleich mitnehmen
+    const ov=document.getElementById("mark"); if(ov) ov.remove();
+    openPlan();
+  }catch(e){ toast("Portal: "+(e.message||e)); }
+}
+
 function planSvgWaehlen(){
   const inp=document.createElement("input");
   inp.type="file"; inp.accept=".svg,.html,image/svg+xml";
@@ -2340,6 +2473,7 @@ function openPlanSVG(){
     +`<div class="svgwrap" id="svgwrap"></div>`
     +`<div class="markbar">`
     +`<button class="btn" id="plNotiz">📍 Notiz-Pin</button>`
+    +`<button class="btn" id="plPortal">☁ Aus Portal laden</button>`
     +`<button class="btn" id="plNeu">🗺 Plan ersetzen</button>`
     +`<button class="btn" id="plFoto">🖼 Foto-Plan</button>`
     +`<button class="btn" id="plWeg">✕ Punkt löschen</button>`
@@ -2415,6 +2549,7 @@ function openPlanSVG(){
       ? `<b style="color:#e88a3c">Notiz-Modus:</b> auf den Plan tippen → Text · auf einen Pin tippen → ändern/löschen`
       : `Maschine antippen: „${esc(wer)}" hier verorten`;
   });
+  ov.querySelector("#plPortal").addEventListener("click", planAusPortal);
   ov.querySelector("#plNeu").addEventListener("click", planSvgWaehlen);
   ov.querySelector("#plFoto").addEventListener("click",()=>{ ov.remove(); openPlanFoto(); });
   ov.querySelector("#plWeg").addEventListener("click",()=>{ pos=null; marker(); });
@@ -2443,6 +2578,7 @@ async function openPlanFoto(){
     +`<div class="markhint" id="plHint">Antippen: „${esc(wer)}" hier verorten · <b style="color:#6ee7a8">grün</b> = diese Begehung · <b style="color:#c8cfcb">grau</b> = frühere Begehungen</div>`
     +`<div class="markbar">`
     +`<button class="btn" id="plNotiz">📍 Notiz-Pin</button>`
+    +`<button class="btn" id="plPortal2">☁ Aus Portal laden</button>`
     +`<button class="btn" id="plSvg">🗺 Vektorplan laden</button>`
     +`<button class="btn" id="plNeu">🖼 Plan ersetzen</button>`
     +`<button class="btn" id="plWeg">✕ Punkt löschen</button>`
@@ -2509,6 +2645,7 @@ async function openPlanFoto(){
       ? `<b style="color:#e88a3c">Notiz-Modus:</b> auf den Plan tippen → Text eingeben · auf einen Pin tippen → ändern/löschen`
       : `Antippen: „${esc(wer)}" hier verorten · <b style="color:#6ee7a8">grün</b> = diese Begehung · <b style="color:#c8cfcb">grau</b> = frühere Begehungen`;
   });
+  ov.querySelector("#plPortal2").addEventListener("click", planAusPortal);
   ov.querySelector("#plSvg").addEventListener("click", planSvgWaehlen);
   ov.querySelector("#plNeu").addEventListener("click",()=>{
     dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ ov.remove(); toast("Standortplan ersetzt."); openPlan(); }); });
@@ -3198,7 +3335,16 @@ async function teileAlles(btn){
   const hatBridge=!!(localStorage.getItem(UPLOADKEY)||"").trim();
   if(btn){ btn.disabled=true; btn.textContent=(hatBridge?"Lade ":"Teile ")+mb+" MB…"; }
   try{
-    // 0) BEVORZUGT: ganze Begehung über die Bridge direkt in den Drive-eingang (kein Downloads-Umweg).
+    // 0a) BEVORZUGT: direkt ins Kundenportal – dort liegen die Daten ohnehin (Vorgabe 13.08.2026).
+    const pErg=await portalUploadPaket(paket, name);
+    if(pErg==="ok"){
+      toast("✓ Begehung im Kundenportal ("+paket.anzahl+" Masch., "+mb+" MB)");
+      return;
+    }
+    if(pErg==="kein-login"){ /* still weiter auf die bisherigen Wege */ }
+    else if(pErg) toast("Portal: "+pErg+" – Rückfall auf den bisherigen Weg.");
+
+    // 0b) Bridge in den Drive-eingang (Rückfall).
     if(hatBridge){
       const erg=await driveUploadPaket(paket, name);
       if(erg==="ok"){ toast("✓ Ganze Begehung in Drive/eingang ("+paket.anzahl+" Masch. + Allgemeines, "+mb+" MB)"); return; }
