@@ -10,7 +10,7 @@
 
    WICHTIG: Bei JEDER Aenderung am Tool die Cache-Version hochzaehlen (v2 -> v3 ...), damit
    activate den alten Cache purged. */
-const CACHE = "oak-begehung-v22";
+const CACHE = "oak-begehung-v23";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", e => {

@@ -538,6 +538,31 @@
   </section></div>
 </div>
 
+<!-- Was Beschäftigte während der Begehung sagen, ist Beurteilungsgrundlage (§ 5 ArbSchG) und
+     gehört ins Begehungsprotokoll - es ging bisher in den Sprachnotizen unter. -->
+<div class="panel" id="pnlHinweise" hidden>
+  <div class="pnlkopf"><h2>Mitarbeiterhinweise</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
+  <div class="pnlbody"><section class="card">
+    <div class="hint">Was Beschäftigte vor Ort erzählen – Beobachtungen, Beinahe-Situationen,
+      „das klemmt immer". Kommt ins <b>Begehungsprotokoll</b> und in die Beurteilung; Namen sind
+      nicht nötig.</div>
+    <button class="btn big" id="btnHinweisNeu" data-ico="mikro">Hinweis aufnehmen</button>
+    <div id="hinweisListe"></div>
+  </section></div>
+</div>
+
+<!-- Unfall, Beinahe-Unfall, unsicherer Zustand, Umweltvorfall: gehoert ins Vorfall-Register
+     des Kundenportals. Vor Ort nur erfassen - eingetragen wird beim Auswerten. -->
+<div class="panel" id="pnlVorfaelle" hidden>
+  <div class="pnlkopf"><h2>Vorfälle</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
+  <div class="pnlbody"><section class="card">
+    <div class="hint">Unfall, Beinahe-Unfall, unsicherer Zustand oder Umweltvorfall, von dem dir vor
+      Ort erzählt wird. Wandert beim Auswerten ins <b>Vorfall-Register des Kundenportals</b>.</div>
+    <button class="btn big" id="btnVorfallNeu" data-ico="warnung">Vorfall erfassen</button>
+    <div id="vorfallListe"></div>
+  </section></div>
+</div>
+
 <div class="panel" id="pnlFotos" hidden>
   <div class="pnlkopf"><h2>Fotos</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
   <div class="pnlbody"><section class="card">
@@ -1348,7 +1373,8 @@ async function saveAndNeu(){
      Leitern, offene Flamme) sind aber der Kern der allgemeinen GBU. */
   if(imAllgModus()){
     const leerA = !((state.audios||[]).length) && !(state.fotosAllg||[]).length
-      && !((state.maengel||[]).length);
+      && !((state.maengel||[]).length) && !((state.hinweise||[]).length)
+      && !((state.vorfaelle||[]).length);
     if(leerA){ toast("Noch nichts erfasst – erst Foto, Mangel oder Sprachnotiz aufnehmen."); return; }
     /* Ohne Datum hiesse die Datei "…_.json" und ueberschriebe die vom Vortag. */
     if(!(state.meta.datum||"").trim()) state.meta.datum=new Date().toISOString().slice(0,10);
@@ -1452,6 +1478,8 @@ async function wechsleEbene(zielAllg){
   });
   if(!Array.isArray(state.maengel)) state.maengel=[];
   if(!Array.isArray(state.markierungen)) state.markierungen=[];
+  if(!Array.isArray(state.hinweise)) state.hinweise=[];
+  if(!Array.isArray(state.vorfaelle)) state.vorfaelle=[];
   migrateFotos(state);
   await persistAll();
   neuZeichnen();
@@ -1463,14 +1491,17 @@ function blankState(){
     allg_notiz:"", ma_hinweise:"", modus:"schnell", arbeitssystem:p.arbeitssystem||"", teilschritt:"",
     typenschild_fehlt:false, plan_pos:null, laerm:null, lux:null,
     zustand_begehung:"", nicht_pruefbar:false, linearroboter:"" },
-    items:{}, pruefung:{}, maengel:[], fotosAllg:[], markierungen:[], audio:null, audios:[] };
+    items:{}, pruefung:{}, maengel:[], fotosAllg:[], markierungen:[], audio:null, audios:[],
+    /* Gehoeren der BEGEHUNG (allgemeiner Bogen), reisen im Sammel-Export mit. */
+    hinweise:[], vorfaelle:[] };
 }
 /* Synchroner Sofort-Stand aus localStorage (i. d. R. das Skelett ohne Fotos).
    boot() ersetzt ihn gleich darauf durch den vollständigen Stand aus IndexedDB.
    Beim ALLERERSTEN Start beginnt die Begehung – nicht eine Maschine: erst Kunde, Datum,
    Begeher und Hallenplan, danach werden Maschinen hinzugefügt. */
 function loadState(){
-  try{ const s=JSON.parse(localStorage.getItem(LSKEY)); if(s&&s.meta){ if(!Array.isArray(s.maengel)) s.maengel=[]; if(!Array.isArray(s.markierungen)) s.markierungen=[]; if(!s.meta.modus) s.meta.modus="schnell"; migrateFotos(s); return s; } }catch(e){}
+  try{ const s=JSON.parse(localStorage.getItem(LSKEY)); if(s&&s.meta){ if(!Array.isArray(s.maengel)) s.maengel=[]; if(!Array.isArray(s.markierungen)) s.markierungen=[];
+      if(!Array.isArray(s.hinweise)) s.hinweise=[]; if(!Array.isArray(s.vorfaelle)) s.vorfaelle=[]; if(!s.meta.modus) s.meta.modus="schnell"; migrateFotos(s); return s; } }catch(e){}
   return blankAllg();
 }
 let saveT;
@@ -1498,6 +1529,7 @@ function neuZeichnen(){
   });
   renderRundgang(); renderAllgThumbs(); renderAudio(); renderMess();
   renderPlanBox(); renderMaschListe(); updateMachineCount();
+  renderHinweise(); renderVorfaelle();
   document.body.classList.toggle("ebene-allg", imAllgModus());
   const tA=document.getElementById("tabAllg"), tM=document.getElementById("tabMasch");
   if(tA&&tM){ tA.classList.toggle("on", imAllgModus()); tM.classList.toggle("on", !imAllgModus()); }
@@ -1561,6 +1593,15 @@ function renderKacheln(){
     bg.appendChild(kachel("liste","Maschinen",
       collection.length ? collection.length+" auf dem Gerät" : "noch keine erfasst",
       collection.length>0, "pnlListe"));
+    /* Zwei Dinge, die vor Ort nur muendlich kommen und bisher in den Sprachnotizen untergingen
+       (Vorgabe Nikolai 14.08.2026): was Beschaeftigte erzaehlen - und gemeldete Vorfaelle. */
+    const nHin=(state.hinweise||[]).length, nVor=(state.vorfaelle||[]).length;
+    bg.appendChild(kachel("mikro","MA-Hinweise",
+      nHin ? mehrzahl(nHin,"Hinweis","Hinweise") : "was Beschäftigte erzählen",
+      nHin>0, "pnlHinweise"));
+    bg.appendChild(kachel("warnung","Vorfälle",
+      nVor ? mehrzahl(nVor,"Vorfall","Vorfälle") : "Unfall · Beinahe · unsicher",
+      nVor>0, "pnlVorfaelle"));
     const sz=document.getElementById("standzeile");
     if(sz){
       const offen=collection.filter(istOffen).length;
@@ -1656,6 +1697,8 @@ function oeffnePanel(id){
   p.hidden=false; panelOffen=id;
   if(id==="pnlListe") renderMaschListe();
   if(id==="pnlMehr") renderMehrInfo();
+  if(id==="pnlHinweise") renderHinweise();
+  if(id==="pnlVorfaelle") renderVorfaelle();
   const b=p.querySelector(".pnlbody"); if(b) b.scrollTop=0;
   if(!warOffen){
     panelSchicht=()=>panelZu();
@@ -1778,6 +1821,10 @@ function init(){
   if(pu) pu.addEventListener("click",()=>{
     dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ toast("Planfoto gesetzt."); renderPlanBox(); renderKacheln(); }); });
   });
+  const bh=document.getElementById("btnHinweisNeu");
+  if(bh) bh.addEventListener("click", hinweisNeu);
+  const bv=document.getElementById("btnVorfallNeu");
+  if(bv) bv.addEventListener("click", vorfallNeu);
   const pp=document.getElementById("btnPlanPortal");
   if(pp) pp.addEventListener("click", planAusPortal);
   const psd=document.getElementById("btnPlanSvgDatei");
@@ -2643,15 +2690,18 @@ function mangelDialog(foto){
 /* Kurze Sprachnotiz + optionale Beschreibung zu EINEM Foto (auch positive Befunde) – fest an
    foto.id verknuepft, damit die Zuordnung Foto<->Aussage spaeter nicht verloren geht.
    Regel Nikolai 30.07.: unter "Allgemeine Befunde" je Bild kurz sagen, WARUM es drin ist. */
-function fotoNotizDialog(foto){
+/* Dieselbe Karte fuer JEDE kurze Notiz mit Bezug: Foto, Mitarbeiterhinweis, Vorfall.
+   opt = {titel, hinweis, platzhalter, fertig} - ohne opt bleibt es die Foto-Notiz. */
+function fotoNotizDialog(foto, opt){
   if(!foto) return;
+  opt=opt||{};
   if(!foto.id) foto.id="f"+Date.now()+"-"+Math.random().toString(36).slice(2,7);
   let rec=null, chunks=[], stream=null, timer=null, start=0, aufnahme=null;
   const alt=(state.audios||[]).find(a=>a.fotoId===foto.id && a.allgemein);
   const pk=document.createElement("div"); pk.className="mpicker";
-  pk.innerHTML=`<div class="pcard"><h3>Notiz zu diesem Foto</h3>`
-    +`<p class="hint">Warum ist das Foto drin? Kurz eintippen <b>oder</b> diktieren – auch ein <b>Positiv-Beispiel</b>. Wird fest am Foto gespeichert.</p>`
-    +`<input type="text" id="fnText" placeholder="z. B. Positiv: LOTO korrekt gesichert" autocomplete="off" value="${(foto.beschreibung||'').replace(/"/g,'&quot;')}"`
+  pk.innerHTML=`<div class="pcard"><h3>${esc(opt.titel||"Notiz zu diesem Foto")}</h3>`
+    +`<p class="hint">${opt.hinweis||"Warum ist das Foto drin? Kurz eintippen <b>oder</b> diktieren – auch ein <b>Positiv-Beispiel</b>. Wird fest am Foto gespeichert."}</p>`
+    +`<input type="text" id="fnText" placeholder="${esc(opt.platzhalter||"z. B. Positiv: LOTO korrekt gesichert")}" autocomplete="off" value="${(foto.beschreibung||'').replace(/"/g,'&quot;')}"`
     +` style="width:100%;box-sizing:border-box;padding:10px;font-size:16px;border:1px solid var(--rand,#cfd8d3);border-radius:9px">`
     +`<div class="toolrow" style="margin-top:10px;align-items:center">`
     +`<button class="btn" id="fnRec" type="button">${ico("mikro")}${alt?'Neu aufnehmen':'Diktieren'}</button>`
@@ -2705,9 +2755,116 @@ function fotoNotizDialog(foto){
       save(); if(typeof renderAudio==="function") renderAudio(); renderAllgThumbs();
     }
     pk.remove();
+    if(opt.fertig) opt.fertig(!!uebernehmen);
   };
   pk.querySelector("#fnOk").addEventListener("click",()=>schliessen(true));
   pk.querySelector("#fnCancel").addEventListener("click",()=>schliessen(false));
+}
+
+/* ===== Mitarbeiterhinweise und Vorfälle =====
+   Beides kommt vor Ort nur muendlich und ging bisher in den Sprachnotizen unter (Vorgabe
+   Nikolai 14.08.2026). Beides gehoert zur BEGEHUNG, nicht zu einer Maschine - es liegt
+   deshalb im allgemeinen Bogen und reist mit dem Sammel-Export.
+   Hinweise -> Begehungsprotokoll und Beurteilung (§ 5 ArbSchG, Beteiligung).
+   Vorfaelle -> Vorfall-Register des Kundenportals (Eintrag beim Auswerten). */
+const VORFALL_ARTEN=[
+  {wert:"unfall",  label:"Unfall",             sub:"Person ist zu Schaden gekommen"},
+  {wert:"beinahe", label:"Beinahe-Unfall",     sub:"gerade nochmal gutgegangen"},
+  {wert:"unsicher",label:"Unsicherer Zustand", sub:"Zustand/Verhalten, noch nichts passiert"},
+  {wert:"umwelt",  label:"Umweltvorfall",      sub:"Austritt von Öl, Chemikalien, …"}
+];
+function vorfallLabel(art){
+  const v=VORFALL_ARTEN.find(x=>x.wert===art); return v?v.label:"Vorfall";
+}
+function eintragId(p){ return p+Date.now()+"-"+Math.random().toString(36).slice(2,6); }
+function notizZuId(id){ return (state.audios||[]).find(a=>a.fotoId===id); }
+
+function hinweisNeu(){
+  const h={id:eintragId("h"), beschreibung:"", zeit:new Date().toISOString()};
+  fotoNotizDialog(h, {
+    titel:"Mitarbeiterhinweis",
+    hinweis:"Was wurde erzählt? Kurz eintippen <b>oder</b> diktieren. <b>Ohne Namen</b> – "
+      +"es zählt der Sachverhalt, nicht die Person.",
+    platzhalter:"z. B. Tür schließt oft nicht richtig",
+    fertig:(ok)=>{
+      if(!ok) return;
+      if(!(h.beschreibung||"").trim() && !notizZuId(h.id)) return;   // nichts erfasst
+      state.hinweise=(state.hinweise||[]).concat([h]);
+      save(); renderHinweise(); renderKacheln();
+    }
+  });
+}
+async function vorfallNeu(){
+  const art=await frageWahl("Was ist vorgefallen?", "", VORFALL_ARTEN.map((v,i)=>({
+    label:v.label, sub:v.sub, wert:v.wert, art:i===0?"warn":""})), "Abbrechen");
+  if(!art) return;
+  const v={id:eintragId("v"), art, beschreibung:"", zeit:new Date().toISOString()};
+  fotoNotizDialog(v, {
+    titel:"Vorfall: "+vorfallLabel(art),
+    hinweis:"<b>Was</b> ist passiert, <b>wo</b> und <b>wann</b>? Kurz eintippen oder diktieren. "
+      +(art==="unfall" ? "Bei Ausfall über 3 Tage oder Tod ist die Unfallanzeige an die BG Pflicht "
+        +"(§ 193 SGB VII) – das prüfen wir beim Auswerten."
+       : art==="umwelt" ? "Gelangt etwas in Kanalisation, Boden oder Gewässer, ist das unverzüglich "
+        +"anzuzeigen (§ 24 Abs. 2 AwSV)."
+       : "Ohne Namen – es zählt der Hergang."),
+    platzhalter:"z. B. Nachtschicht gestolpert, Gang Halle 2",
+    fertig:(ok)=>{
+      if(!ok) return;
+      if(!(v.beschreibung||"").trim() && !notizZuId(v.id)) return;
+      state.vorfaelle=(state.vorfaelle||[]).concat([v]);
+      save(); renderVorfaelle(); renderKacheln();
+    }
+  });
+}
+/* Eine Zeile je Eintrag: antippen = ändern, × = löschen. Bewusst dieselbe Optik wie die
+   Maschinenliste - vor Ort soll nichts neu gelernt werden. */
+function eintragsListe(box, liste, kopf, aendern, loeschen){
+  if(!box) return;
+  if(!liste.length){ box.innerHTML=`<div class="messsub">Noch nichts erfasst.</div>`; return; }
+  box.innerHTML="";
+  const wrap=document.createElement("div"); wrap.className="maschliste";
+  liste.forEach((e,i)=>{
+    const a=notizZuId(e.id);
+    const zeile=document.createElement("div"); zeile.className="mzrow";
+    const z=document.createElement("button"); z.type="button"; z.className="maschzeile";
+    z.innerHTML=`<span class="mz-name">${esc(kopf(e,i))}</span>`
+      +`<span class="mz-sub">${esc((e.beschreibung||"").trim()||"nur Sprachnotiz")}</span>`
+      +`<span class="mz-zahl">${a?ico("mikro","klein")+" "+Math.floor((a.dauer||0)/60)+":"+String((a.dauer||0)%60).padStart(2,"0"):""}</span>`;
+    z.addEventListener("click",()=>aendern(e));
+    const del=document.createElement("button"); del.type="button"; del.className="mdel";
+    del.textContent="×"; del.title="Löschen";
+    del.addEventListener("click", ()=>loeschen(e));
+    zeile.appendChild(z); zeile.appendChild(del); wrap.appendChild(zeile);
+  });
+  box.appendChild(wrap);
+}
+function renderHinweise(){
+  eintragsListe(document.getElementById("hinweisListe"), state.hinweise||[],
+    (e,i)=>"Hinweis "+(i+1),
+    e=>fotoNotizDialog(e,{titel:"Mitarbeiterhinweis", hinweis:"Ändern oder neu diktieren.",
+      fertig:()=>{ save(); renderHinweise(); renderKacheln(); }}),
+    async e=>{
+      const w=await frageWahl("Hinweis löschen","Der Eintrag und seine Sprachnotiz werden entfernt.",
+        [{label:"Ja, löschen", wert:"weg", art:"warn"}],"Abbrechen");
+      if(w!=="weg") return;
+      state.hinweise=(state.hinweise||[]).filter(x=>x!==e);
+      state.audios=(state.audios||[]).filter(a=>a.fotoId!==e.id);
+      save(); renderHinweise(); renderKacheln(); toast("Hinweis gelöscht.");
+    });
+}
+function renderVorfaelle(){
+  eintragsListe(document.getElementById("vorfallListe"), state.vorfaelle||[],
+    (e,i)=>vorfallLabel(e.art),
+    e=>fotoNotizDialog(e,{titel:"Vorfall: "+vorfallLabel(e.art), hinweis:"Ändern oder neu diktieren.",
+      fertig:()=>{ save(); renderVorfaelle(); renderKacheln(); }}),
+    async e=>{
+      const w=await frageWahl("Vorfall löschen","Der Eintrag und seine Sprachnotiz werden entfernt.",
+        [{label:"Ja, löschen", wert:"weg", art:"warn"}],"Abbrechen");
+      if(w!=="weg") return;
+      state.vorfaelle=(state.vorfaelle||[]).filter(x=>x!==e);
+      state.audios=(state.audios||[]).filter(a=>a.fotoId!==e.id);
+      save(); renderVorfaelle(); renderKacheln(); toast("Vorfall gelöscht.");
+    });
 }
 /* Zwei benannte Auswahlmoeglichkeiten statt confirm(). Grund (Nikolai 06.08.2026): Der
    Browser beschriftet confirm() mit "Annehmen/Abbrechen" - bei der Frage "Vorderansicht oder
@@ -3969,6 +4126,7 @@ function exportPaket(){
   const allg = imAllgModus() ? state : allgemeinGeparkt;
   const allgHatInhalt = allg && ((allg.fotosAllg||[]).length || (allg.audios||[]).length || (allg.audio&&allg.audio.data)
     || (allg.maengel||[]).length || (allg.meta&&(allg.meta.allg_notiz||"").trim())
+    || (allg.hinweise||[]).length || (allg.vorfaelle||[]).length
     || Object.values(allg.items||{}).some(i=>i.ja));
   if(!machines.length && !allgHatInhalt) return null;
   /* Kunde/Datum notfalls aus den Maschinen ziehen: sonst hiesse die Datei "Begehung_begehung_.json",
@@ -4089,7 +4247,8 @@ document.getElementById("btnSave").addEventListener("click", saveAndNeu);
    allgemeine Befunde und Standortplan zusammen. */
 document.getElementById("btnSaveAllg").addEventListener("click", async e=>{
   const btn=e.currentTarget;
-  const hatInhalt = ((state.audios||[]).length || (state.fotosAllg||[]).length || (state.maengel||[]).length);
+  const hatInhalt = ((state.audios||[]).length || (state.fotosAllg||[]).length || (state.maengel||[]).length
+    || (state.hinweise||[]).length || (state.vorfaelle||[]).length);
   if(hatInhalt){
     if(!(state.meta.datum||"").trim()) state.meta.datum=new Date().toISOString().slice(0,10);
     await persistAll();
@@ -4316,6 +4475,8 @@ if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
     }
   }catch(e){}
   if(!Array.isArray(state.markierungen)) state.markierungen=[];
+  if(!Array.isArray(state.hinweise)) state.hinweise=[];
+  if(!Array.isArray(state.vorfaelle)) state.vorfaelle=[];
   if(!state.meta.modus) state.meta.modus="schnell";
   migrateFotos(state);
   init();
