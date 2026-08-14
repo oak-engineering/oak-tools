@@ -1415,6 +1415,7 @@ async function saveAndNeu(){
     /* EIN Upload für die ganze Begehung (Vorgabe Nikolai 14.08.2026): Bis hierher lud dieser Knopf
        NUR die allgemeinen Befunde als eigene Datei hoch – Maschinen und Plan gingen getrennte Wege.
        Jetzt geht alles zusammen als eine Sammlung nach Drive. */
+    if(kundenModus()){ await erfassungenSenden(btn); return; }
     if(navigator.onLine===false){
       toast("Gesichert · offline – die Begehung später hochladen.");
       return;
@@ -1480,6 +1481,17 @@ async function saveAndNeu(){
   state=blankState();
   await persistAll();
   neuZeichnen();
+  if(kundenModus()){
+    /* Direkt abgeben: eine Anlage, ein Vorgang. Klappt es nicht (Funkloch), bleibt sie auf
+       dem Geraet und wird mit "Erfassung senden" nachgereicht - sichtbar in der Liste. */
+    if(btn){ btn.disabled=true; knopfText(btn,"Sende …"); }
+    const erg=await erfassungSenden(rec);
+    if(btn){ btn.disabled=false; knopfText(btn,"Maschine sichern"); }
+    if(erg==="ok"){ rec._upload="gesendet"; await persistAll(); renderKacheln(); renderMaschListe();
+      toast("„"+name+"“ übermittelt."); }
+    else toast("„"+name+"“ gesichert – Übermittlung offen ("+erg+")");
+    return;
+  }
   toast("„"+name+"“ gesichert ("+collection.length+" auf dem Gerät) – Upload am Ende der Begehung");
 }
 function ladePrefs(){ try{ return JSON.parse(localStorage.getItem(PREFSKEY))||{}; }catch(e){ return {}; } }
@@ -3092,7 +3104,12 @@ async function setzePlan(obj){ planBild=obj; await mitTimeout(idbPut(PLANKEY, JS
    Drive/eingang von OAK. */
 const KUNDENKEY="oak_begehung_kundenmodus_v1";
 function kundenModus(){
-  try{ const k=JSON.parse(localStorage.getItem(KUNDENKEY)||"null"); return (k&&k.token)?k:null; }catch(e){ return null; }
+  try{
+    const k=JSON.parse(localStorage.getItem(KUNDENKEY)||"null");
+    /* Zwei Zielwege: "portal" (Kundenbereich im Portal, Token) oder "drive" (eigener
+       eingang-Ordner beim Kunden ueber die Bridge). Beides ohne Konto beim Betrieb. */
+    return (k && (k.token || k.weg==="drive")) ? k : null;
+  }catch(e){ return null; }
 }
 const PORTAL={ url:"https://ayieotppxrjrzdpeofkx.supabase.co",
                anon:"sb_publishable_fz1o6tjpwa7gjiNb17uuEg_-ZwNdFcS",
@@ -3244,6 +3261,21 @@ async function erfassungSenden(m){
   const km=kundenModus(); if(!km) return "kein Kundenmodus";
   const meta=m.meta||{};
   const daten=JSON.parse(JSON.stringify(m)); delete daten._upload; delete daten._ts;
+  /* Weg 1: eigener Drive-Ordner des Kunden ueber die Bridge (Token bestimmt den Ordner).
+     Eine Datei je Anlage - dieselbe Struktur wie ein Einzel-Export, damit die Auswertung
+     unveraendert darueber laeuft. */
+  if(km.weg==="drive"){
+    const paket={_typ:"OAK-Begehung-Maschine", _version:3,
+      _quelle:"Selbsterfassung durch den Betrieb",
+      _exportiert:new Date().toISOString(),
+      kunde:(meta.kunde||km.kunde||""), datum:meta.datum||"", maschine:daten};
+    const erg=await driveUploadPaket(paket, machineFileName(m));
+    if(erg==="ok") return "ok";
+    return {"keine-url":"Kein Zugang hinterlegt – bitte den Link von OAK erneut öffnen",
+            "verboten":"Zugang abgelehnt – bitte bei OAK melden",
+            "abbruch":"Zeitüberschreitung – Netz zu langsam",
+            "unbestaetigt":"Server hat nicht bestätigt"}[erg] || erg;
+  }
   try{
     const r=await fetch(PORTAL.url+"/rest/v1/rpc/erfassung_melden",{
       method:"POST",
@@ -4678,7 +4710,8 @@ function applySetupHash(){
        merkt sich das Geraet den Modus (auch als installierte App). */
     const kt=p.get("kt");
     if(kt){
-      try{ localStorage.setItem(KUNDENKEY, JSON.stringify({token:kt.trim(), kunde:(p.get("kn")||"").trim()})); }catch(e){}
+      try{ localStorage.setItem(KUNDENKEY, JSON.stringify({weg:"portal", token:kt.trim(),
+        kunde:(p.get("kn")||"").trim()})); }catch(e){}
       history.replaceState(null,"",location.pathname+location.search);
       return "kunde";
     }
@@ -4686,6 +4719,13 @@ function applySetupHash(){
     if(!du) return false;
     localStorage.setItem(UPLOADKEY, du.trim());
     if(dt!=null) localStorage.setItem(UPLOADTOKENKEY, dt.trim());
+    /* Zweiter Weg fuer die Selbsterfassung: eigener Drive-Ordner je Kunde ueber die Bridge.
+       Der Betrieb braucht kein Google-Konto, sieht den Ordner nicht und kann nichts loeschen -
+       das ist die "nur Upload"-Freigabe, die Drive selbst nicht kennt. */
+    if((p.get("modus")||"")==="kunde"){
+      try{ localStorage.setItem(KUNDENKEY, JSON.stringify({weg:"drive",
+        kunde:(p.get("kn")||"").trim()})); }catch(e){}
+    }
     history.replaceState(null,"",location.pathname+location.search); // Token aus der Adresszeile entfernen
     return true;
   }catch(e){ return false; }
