@@ -367,6 +367,11 @@
     background:#fff;padding:4px;cursor:pointer}
   .planvorschau svg{width:100%;height:auto;display:block;pointer-events:none}
 
+  /* Kundenmodus: alles, was zur BEURTEILUNG gehoert, bleibt bei OAK engineering. */
+  body.modus-kunde .nur-oak{display:none!important}
+  body:not(.modus-kunde) .nur-kunde{display:none!important}
+  .kundenkopf{font-size:11.5px;color:var(--akzent);opacity:.95}
+
   .namensrow{display:flex;gap:8px;align-items:stretch;margin-top:2px}
   .namensrow input{flex:1;min-width:0}
   .namensrow .btn{flex:0 0 auto;padding:11px 13px;font-size:14px}
@@ -491,7 +496,7 @@
            Steht neben dem Feld, damit der Bildschirm nicht scrollen muss. -->
       <div class="namensrow">
         <input type="text" data-meta="maschine" placeholder="z. B. D150/3" list="portalMaschinen">
-        <button class="btn" id="btnMaschPortal" data-ico="liste" title="Anlage aus dem Kundenportal">Portal</button>
+        <button class="btn nur-oak" id="btnMaschPortal" data-ico="liste" title="Anlage aus dem Kundenportal">Portal</button>
       </div>
       <!-- Vorschlaege aus dem Kundenportal: bereits dokumentierte Anlagen (Bezeichnung + ID). -->
       <datalist id="portalMaschinen"></datalist>
@@ -525,7 +530,7 @@
   <div class="pnlbody"><section class="card">
     <!-- Der aktuelle Hallenplan kommt aus dem Kundenportal (Vektor, Maschinen antippbar).
          Foto/Skizze bleibt der Notweg, wenn es noch keinen gezeichneten Plan gibt. -->
-    <button class="btn big" id="btnPlanPortal" data-ico="wolke">Aktuellen Hallenplan aus dem Portal holen</button>
+    <button class="btn big nur-oak" id="btnPlanPortal" data-ico="wolke">Aktuellen Hallenplan aus dem Portal holen</button>
     <button class="btn big nur-maschine" data-plan data-ico="pin">Diese Maschine verorten</button>
     <div id="planBox"></div>
     <div class="toolrow" style="margin-top:10px">
@@ -637,6 +642,12 @@
       Typenschild, dann die Befunde in der Reihenfolge der Fotos.</div>
     <button class="btn rec big" id="audioRecBtn" data-ico="mikro">Notiz aufnehmen</button>
     <div id="audioBox"></div>
+    <!-- Im Kundenmodus muss niemand sprechen: eine getippte Beschreibung genuegt. -->
+    <div class="nur-kunde">
+      <label class="f" style="margin-top:14px">Oder kurz beschreiben</label>
+      <textarea data-meta="allg_notiz" rows="4"
+        placeholder="Was fällt an dieser Anlage auf? Was wurde verändert? Gibt es bekannte Probleme?"></textarea>
+    </div>
     <!-- Tippfeld raus: Vor Ort wird gesprochen, nicht getippt. Das Feld meta.allg_notiz bleibt
          im Datensatz, damit die Alt-Exporte 07/2026 unverändert lesbar sind. -->
   </section></div>
@@ -678,9 +689,9 @@
          Maschinen und war dort nicht zu finden. -->
     <button class="btn big" id="btnNeueBegehung2" data-ico="neu">Neue Begehung beginnen</button>
     <button class="btn big nur-maschine" id="btnReset" data-ico="kreuz">Aktuellen Bogen verwerfen</button>
-    <button class="btn big" id="btnImport" data-ico="laden">Begehung aus Datei laden</button>
-    <button class="btn big" id="btnDrive" data-ico="wolke">Drive einrichten</button>
-    <button class="btn big" id="btnDriveTest" data-ico="stecker">Drive testen</button>
+    <button class="btn big nur-oak" id="btnImport" data-ico="laden">Begehung aus Datei laden</button>
+    <button class="btn big nur-oak" id="btnDrive" data-ico="wolke">Drive einrichten</button>
+    <button class="btn big nur-oak" id="btnDriveTest" data-ico="stecker">Drive testen</button>
     <button class="btn big rec" id="btnAlleLoeschen" data-ico="papierkorb">Alles auf dem Gerät löschen</button>
     <div class="messsub" id="mehrInfo"></div>
   </section></div>
@@ -1322,8 +1333,10 @@ function fehlendePflicht(){
      fest, ob die Schutzeinrichtungen ueberhaupt im Betrieb geprueft werden konnten. */
   if(!(m.zustand_begehung||"").trim())    f.push({feld:"zustand",  txt:"Zustand der Anlage (läuft / steht)"});
   if(!fotoByKat("gesamt"))                f.push({feld:"foto",     txt:"Foto der Gesamtansicht"});
-  if(!m.notiz_entfaellt && !((state.audios||[]).length))
-                                          f.push({feld:"audio",    txt:"Mindestens eine Sprachnotiz (sie trägt Hersteller, Typ und die Befunde)"});
+  if(!m.notiz_entfaellt && !((state.audios||[]).length) && !(kundenModus() && (m.allg_notiz||"").trim()))
+                                          f.push({feld:"audio",    txt: kundenModus()
+                                            ? "Kurze Beschreibung oder Sprachnotiz"
+                                            : "Mindestens eine Sprachnotiz (sie trägt Hersteller, Typ und die Befunde)"});
   /* Bei einer Nachbegehung stehen Hersteller/Typ schon in der bestehenden Beurteilung -
      das Typenschild noch einmal zu fordern, waere reine Huerde (14.08.2026). */
   if(!m.typenschild_fehlt && !m.maschinen_id && !fotoByKat("typenschild"))
@@ -1560,7 +1573,7 @@ function neuZeichnen(){
      Fehlerfall zurueck). Das gehoert zu "drei Buttons, keiner funktioniert". */
   const bS=document.getElementById("btnSave"), bA=document.getElementById("btnSaveAllg");
   if(bS){ bS.disabled=false; knopfText(bS,"Maschine sichern"); }
-  if(bA){ bA.disabled=false; knopfText(bA,"Begehung hochladen"); }
+  if(bA){ bA.disabled=false; knopfText(bA, kundenModus()?"Erfassung senden":"Begehung hochladen"); }
   schliessePanel();                                  // ein abgeschlossener Schritt schliesst sein Panel
   const ov=document.getElementById("ovl"); if(ov) ov.remove();
   window.scrollTo(0,0);
@@ -1599,6 +1612,10 @@ function renderKacheln(){
   const nFoto=(state.fotosAllg||[]).length, nAudio=(state.audios||[]).length;
   const m=state.meta||{};
   renderNachzeile();
+  /* Beschriftung der Hauptaktion gehoert hierher, nicht nur ins neuZeichnen: sonst stand im
+     Kundenmodus nach dem Start noch "Begehung hochladen". */
+  const bAllg=document.getElementById("btnSaveAllg");
+  if(bAllg && !bAllg.disabled) knopfText(bAllg, kundenModus()?"Erfassung senden":"Begehung hochladen");
   const ks=document.getElementById("kopfSub");
   if(ks){
     const teile=[(m.kunde||"").trim(), m.datum?datumKurz(m.datum):"",
@@ -1613,7 +1630,7 @@ function renderKacheln(){
     bg.appendChild(kachel("stammdaten","Stammdaten",
       stammOk ? (m.kunde||"").slice(0,20)+" · "+datumKurz(m.datum) : "Kunde und Datum fehlen",
       stammOk, "pnlStamm"));
-    bg.appendChild(kachel("plan","Standortplan",
+    if(!kundenModus()) bg.appendChild(kachel("plan","Standortplan",
       (planSVG&&planSVG.svg) ? "Vektorplan · "+verortet+" von "+collection.length+" verortet"
         : (planBild ? "Planfoto · "+verortet+" von "+collection.length+" verortet"
                     : "noch kein Plan hinterlegt"),
@@ -1631,15 +1648,17 @@ function renderKacheln(){
     bg.appendChild(kachel("mikro","MA-Hinweise",
       nHin ? mehrzahl(nHin,"Hinweis","Hinweise") : "was Beschäftigte erzählen",
       nHin>0, "pnlHinweise"));
-    bg.appendChild(kachel("warnung","Vorfälle",
+    if(!kundenModus()) bg.appendChild(kachel("warnung","Vorfälle",
       nVor ? mehrzahl(nVor,"Vorfall","Vorfälle") : "Unfall · Beinahe · unsicher",
       nVor>0, "pnlVorfaelle"));
     const sz=document.getElementById("standzeile");
     if(sz){
       const offen=collection.filter(istOffen).length;
+      const ku=!!kundenModus();
       sz.innerHTML = !collection.length ? "Reiter <b>Maschine</b> – dort die erste Anlage erfassen."
-        : (offen ? "<b>"+offen+"</b> von "+collection.length+" Maschinen noch nicht hochgeladen."
-                 : "Alle "+collection.length+" Maschinen sind bestätigt in Drive.");
+        : (offen ? "<b>"+offen+"</b> von "+collection.length+(ku?" Anlagen noch nicht übermittelt.":" Maschinen noch nicht hochgeladen.")
+                 : (ku ? "Alle "+collection.length+" Anlagen sind übermittelt."
+                       : "Alle "+collection.length+" Maschinen sind bestätigt in Drive."));
     }
     return;
   }
@@ -1660,10 +1679,12 @@ function renderKacheln(){
   mg.appendChild(kachel("zustand","Zustand",
     [zust,rob].filter(Boolean).join(" · ") || "läuft oder steht?",
     !!zust && !!rob, "pnlZustand"));
-  mg.appendChild(kachel("pin","Plan-Position",
-    m.plan_pos ? "verortet" : ((planSVG&&planSVG.svg)||planBild ? "noch nicht verortet" : "kein Plan hinterlegt"),
-    !!m.plan_pos, "pnlPlan"));
-  mg.appendChild(kachel("mess","Lärm & Licht", mess || "orientierende Messung", !!(m.laerm||m.lux), "pnlMess"));
+  if(!kundenModus()){
+    mg.appendChild(kachel("pin","Plan-Position",
+      m.plan_pos ? "verortet" : ((planSVG&&planSVG.svg)||planBild ? "noch nicht verortet" : "kein Plan hinterlegt"),
+      !!m.plan_pos, "pnlPlan"));
+    mg.appendChild(kachel("mess","Lärm & Licht", mess || "orientierende Messung", !!(m.laerm||m.lux), "pnlMess"));
+  }
   mg.appendChild(kachel("rundgang","Rundgang","wo finde ich was?", null, "pnlRundgang"));
   /* Kurz halten: WAS fehlt, steht schon an den grauen Kacheln. Die Zeile sagt nur, ob
      gesichert werden kann - eine Aufzählung aller fünf Pflichtangaben las sich beim Start
@@ -1814,6 +1835,19 @@ function init(){
   const gb=document.getElementById("btnGfPick");
   if(gb) gb.addEventListener("click", gfDirektPicker);
   symboleSetzen();                 // Linien-Symbole in alle [data-ico] (statt Emoji)
+  /* Kundenmodus: Der Betrieb erfasst, OAK engineering beurteilt. Die Kopfzeile sagt das
+     ausdruecklich - niemand soll denken, hier entstuende schon eine Beurteilung. */
+  const km=kundenModus();
+  document.body.classList.toggle("modus-kunde", !!km);
+  if(km){
+    const h1=document.querySelector("header h1");
+    if(h1) h1.textContent="Anlagen-Erfassung";
+    const sub=document.getElementById("kopfSub");
+    if(sub){ sub.classList.add("kundenkopf"); }
+    if(km.kunde && !(state.meta.kunde||"").trim()){ state.meta.kunde=km.kunde; save(); }
+    const bs=document.getElementById("begehungSub");
+    if(bs) bs.innerHTML="Sie erfassen den Bestand – die <b>Beurteilung</b> erstellt OAK engineering.";
+  }
   /* "Nichts passiert" darf es nicht geben: ein Fehler im Feld muss sichtbar sein, sonst sucht
      man vor Ort an der falschen Stelle (13./14.08.2026). */
   let fehlerGemeldet=0;
@@ -3049,6 +3083,17 @@ async function setzePlan(obj){ planBild=obj; await mitTimeout(idbPut(PLANKEY, JS
    Vorgabe Nikolai 13.08.2026: "am ende soll alles zusammenhaengen". Statt Dateien zu importieren,
    holt das Tool Hallenplan und Maschinenliste direkt aus dem Portal (Supabase, Login + RLS je
    Kunde). Ohne Anmeldung laeuft alles unveraendert offline weiter. */
+/* ===== Kundenmodus =====
+   Der Betrieb erfasst mit demselben Werkzeug selbst - aber nur TATSACHEN: Anlage, Fotos in
+   festen Rollen, Zustand, Notiz. Alles Beurteilende (Nohl, Maengelkatalog, Pruefliste,
+   Plan-Editor, Messungen) bleibt ausgeblendet: Die Gefaehrdungsbeurteilung ist Pflicht des
+   Arbeitgebers (§ 5 ArbSchG), erstellt und verantwortet wird sie fachlich von OAK engineering.
+   Die Daten gehen in den KUNDENBEREICH des Portals (Token-Link, kein Login) - nicht in
+   Drive/eingang von OAK. */
+const KUNDENKEY="oak_begehung_kundenmodus_v1";
+function kundenModus(){
+  try{ const k=JSON.parse(localStorage.getItem(KUNDENKEY)||"null"); return (k&&k.token)?k:null; }catch(e){ return null; }
+}
 const PORTAL={ url:"https://ayieotppxrjrzdpeofkx.supabase.co",
                anon:"sb_publishable_fz1o6tjpwa7gjiNb17uuEg_-ZwNdFcS",
                bucket:"kundendokumente", sessKey:"oak_portal_session" };
@@ -3191,6 +3236,53 @@ async function maschineUebernehmen(){
   if(feld) feld.value=z.name;
   save(); renderKacheln();
   toast(z.id ? "Nachbegehung: "+z.name+" ("+z.id+")" : "Anlage übernommen: "+z.name);
+}
+/* Eine Anlage in den Kundenbereich des Portals melden (Kundenmodus, ohne Login).
+   Bewusst je Anlage statt als Paket: der Betrieb erfasst eine Maschine, schickt sie weg,
+   macht die naechste - und im Funkloch bleibt nur die eine haengen, nicht der ganze Tag. */
+async function erfassungSenden(m){
+  const km=kundenModus(); if(!km) return "kein Kundenmodus";
+  const meta=m.meta||{};
+  const daten=JSON.parse(JSON.stringify(m)); delete daten._upload; delete daten._ts;
+  try{
+    const r=await fetch(PORTAL.url+"/rest/v1/rpc/erfassung_melden",{
+      method:"POST",
+      headers:{"Content-Type":"application/json", apikey:PORTAL.anon, Authorization:"Bearer "+PORTAL.anon},
+      body:JSON.stringify({p_token:km.token, p_anlage:meta.maschine||"",
+        p_maschinen_id:meta.maschinen_id||"", p_daten:daten})
+    });
+    if(!r.ok){
+      let t=""; try{ t=(await r.json()).message||""; }catch(e){}
+      return t || ("Server "+r.status);
+    }
+    return "ok";
+  }catch(e){ return (e&&e.message)||"kein Netz"; }
+}
+/* Alles Offene der Reihe nach senden - mit sichtbarem Ergebnis je Anlage. */
+async function erfassungenSenden(btn){
+  const offen=collection.filter(istOffen);
+  if(!offen.length){ toast("Alles bereits übermittelt."); return; }
+  const alt=btn?knopfTextLesen(btn):null;
+  if(btn){ btn.disabled=true; }
+  let ok=0; const fehler=[];
+  for(let i=0;i<offen.length;i++){
+    if(btn) knopfText(btn,"Sende "+(i+1)+"/"+offen.length+" …");
+    const erg=await erfassungSenden(offen[i]);
+    if(erg==="ok"){ offen[i]._upload="gesendet"; ok++; }
+    else fehler.push(((offen[i].meta||{}).maschine||"?")+": "+erg);
+    await persistAll();
+  }
+  if(btn){ btn.disabled=false; knopfText(btn, alt||"Erfassung senden"); }
+  renderMaschListe(); renderKacheln(); updateMachineCount();
+  if(!fehler.length){
+    await hinweis("Übermittelt",
+      "<b>"+mehrzahl(ok,"Anlage","Anlagen")+"</b> an OAK engineering übermittelt. "
+      +"Die Auswertung erfolgt dort; die fertigen Unterlagen erscheinen in Ihrem Kundenportal.");
+  } else {
+    await hinweis("Teilweise übermittelt",
+      (ok?"<b>"+ok+"</b> übermittelt.<br>":"")+"<b>Nicht übermittelt:</b><br>"+fehler.map(esc).join("<br>")
+      +"<br><br>Die Daten bleiben auf dem Gerät – bei Netz einfach erneut senden.");
+  }
 }
 async function maschinenAusPortal(still){
   try{
@@ -4382,6 +4474,15 @@ document.getElementById("btnSave").addEventListener("click", saveAndNeu);
    allgemeine Befunde und Standortplan zusammen. */
 document.getElementById("btnSaveAllg").addEventListener("click", async e=>{
   const btn=e.currentTarget;
+  /* Kundenmodus: je Anlage in den Kundenbereich des Portals - nicht als Paket nach Drive. */
+  if(kundenModus()){
+    if((state.audios||[]).length || (state.fotosAllg||[]).length || (state.hinweise||[]).length){
+      if(!(state.meta.datum||"").trim()) state.meta.datum=new Date().toISOString().slice(0,10);
+      await persistAll();
+    }
+    await erfassungenSenden(btn);
+    return;
+  }
   const hatInhalt = ((state.audios||[]).length || (state.fotosAllg||[]).length || (state.maengel||[]).length
     || (state.hinweise||[]).length || (state.vorfaelle||[]).length);
   if(hatInhalt){
@@ -4572,6 +4673,15 @@ function applySetupHash(){
   try{
     if(!location.hash||location.hash.length<2) return false;
     const p=new URLSearchParams(location.hash.slice(1));
+    /* Kundenmodus: .../begehung/#kt=<token>&kn=<Firma> - der Betrieb erfasst selbst,
+       die Beurteilung macht OAK engineering. Der Link wird einmal geoeffnet, danach
+       merkt sich das Geraet den Modus (auch als installierte App). */
+    const kt=p.get("kt");
+    if(kt){
+      try{ localStorage.setItem(KUNDENKEY, JSON.stringify({token:kt.trim(), kunde:(p.get("kn")||"").trim()})); }catch(e){}
+      history.replaceState(null,"",location.pathname+location.search);
+      return "kunde";
+    }
     const du=p.get("du"), dt=p.get("dt");
     if(!du) return false;
     localStorage.setItem(UPLOADKEY, du.trim());
