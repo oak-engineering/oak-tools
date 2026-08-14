@@ -367,6 +367,14 @@
     background:#fff;padding:4px;cursor:pointer}
   .planvorschau svg{width:100%;height:auto;display:block;pointer-events:none}
 
+  .namensrow{display:flex;gap:8px;align-items:stretch;margin-top:2px}
+  .namensrow input{flex:1;min-width:0}
+  .namensrow .btn{flex:0 0 auto;padding:11px 13px;font-size:14px}
+
+  .nachzeile:not(:empty){font-size:12px;line-height:1.35;color:var(--dunkel);background:var(--akzent);
+    border-left:3px solid var(--gruen);border-radius:0 8px 8px 0;padding:7px 10px;margin-top:8px}
+  .nachzeile b{color:var(--gruen)}
+
   .standzeile{font-size:12px;color:var(--muted);text-align:center;margin-top:12px}
   .standzeile b{color:var(--dunkel)}
 
@@ -478,9 +486,16 @@
   <section class="screen mode-schnell nur-maschine" id="cardSchnell">
     <div class="screenkopf">
       <label class="f">Maschine / Anlage</label>
-      <input type="text" data-meta="maschine" placeholder="z. B. D150/3" list="portalMaschinen">
+      <!-- Auswahl statt Abtippen: nur so trifft die Begehung beim Auswerten auf die BESTEHENDE
+           Beurteilung derselben Anlage (Nachbegehung) statt ein Duplikat anzulegen.
+           Steht neben dem Feld, damit der Bildschirm nicht scrollen muss. -->
+      <div class="namensrow">
+        <input type="text" data-meta="maschine" placeholder="z. B. D150/3" list="portalMaschinen">
+        <button class="btn" id="btnMaschPortal" data-ico="liste" title="Anlage aus dem Kundenportal">Portal</button>
+      </div>
       <!-- Vorschlaege aus dem Kundenportal: bereits dokumentierte Anlagen (Bezeichnung + ID). -->
       <datalist id="portalMaschinen"></datalist>
+      <div class="nachzeile" id="nachZeile"></div>
     </div>
     <div class="kacheln" id="kachelnMaschine"></div>
     <div class="standzeile" id="standzeileM"></div>
@@ -1309,7 +1324,9 @@ function fehlendePflicht(){
   if(!fotoByKat("gesamt"))                f.push({feld:"foto",     txt:"Foto der Gesamtansicht"});
   if(!m.notiz_entfaellt && !((state.audios||[]).length))
                                           f.push({feld:"audio",    txt:"Mindestens eine Sprachnotiz (sie trägt Hersteller, Typ und die Befunde)"});
-  if(!m.typenschild_fehlt && !fotoByKat("typenschild"))
+  /* Bei einer Nachbegehung stehen Hersteller/Typ schon in der bestehenden Beurteilung -
+     das Typenschild noch einmal zu fordern, waere reine Huerde (14.08.2026). */
+  if(!m.typenschild_fehlt && !m.maschinen_id && !fotoByKat("typenschild"))
                                           f.push({feld:"schild",   txt:"Foto vom Typenschild"});
   return f;
 }
@@ -1490,7 +1507,9 @@ function blankState(){
     standort:"",bereich:p.bereich||"",datum:p.datum||"",begeher:p.begeher||"",ce:"",anleitung:"",lebensphasen:[],
     allg_notiz:"", ma_hinweise:"", modus:"schnell", arbeitssystem:p.arbeitssystem||"", teilschritt:"",
     typenschild_fehlt:false, plan_pos:null, laerm:null, lux:null,
-    zustand_begehung:"", nicht_pruefbar:false, linearroboter:"" },
+    zustand_begehung:"", nicht_pruefbar:false, linearroboter:"",
+    /* Nachbegehung: Anschluss an die bereits dokumentierte Anlage im Kundenportal. */
+    maschinen_id:"", maschinentyp:"", portal_name:"", portal_stand:"", portal_band:"", portal_maengel:0 },
     items:{}, pruefung:{}, maengel:[], fotosAllg:[], markierungen:[], audio:null, audios:[],
     /* Gehoeren der BEGEHUNG (allgemeiner Bogen), reisen im Sammel-Export mit. */
     hinweise:[], vorfaelle:[] };
@@ -1564,9 +1583,22 @@ function datumKurz(s){
   return t.length===3 ? t[2]+"."+t[1]+"." : (s||"ohne Datum");
 }
 function mehrzahl(n, ein, viele){ return n+" "+(n===1?ein:viele); }
+/* Zeile unter dem Maschinennamen: Haengt diese Erfassung an einer bereits dokumentierten
+   Anlage? Dann gehoert der Stand von damals sichtbar hierher - man steht davor und will
+   wissen, was beim letzten Mal offen war. */
+function renderNachzeile(){
+  const el=document.getElementById("nachZeile"); if(!el) return;
+  const m=state.meta||{};
+  if(!m.maschinen_id){ el.innerHTML=""; return; }
+  const teile=[m.maschinen_id, m.maschinentyp, m.portal_band,
+    m.portal_maengel?mehrzahl(m.portal_maengel,"Mangel","Mängel")+" offen":"",
+    m.portal_stand?"Stand "+datumKurz(m.portal_stand):""].filter(Boolean);
+  el.innerHTML=`<b>Nachbegehung</b> · ${esc(teile.join(" · "))}`;
+}
 function renderKacheln(){
   const nFoto=(state.fotosAllg||[]).length, nAudio=(state.audios||[]).length;
   const m=state.meta||{};
+  renderNachzeile();
   const ks=document.getElementById("kopfSub");
   if(ks){
     const teile=[(m.kunde||"").trim(), m.datum?datumKurz(m.datum):"",
@@ -1619,8 +1651,9 @@ function renderKacheln(){
   const mess=[m.laerm?"Lärm erfasst":"", m.lux?"Licht erfasst":""].filter(Boolean).join(" · ");
   mg.innerHTML="";
   mg.appendChild(kachel("kamera","Fotos",
-    nFoto ? mehrzahl(nFoto,"Foto","Fotos")+(gesamt?"":" · Gesamtansicht fehlt") : "Gesamtansicht + Typenschild",
-    gesamt&&schild, "pnlFotos"));
+    nFoto ? mehrzahl(nFoto,"Foto","Fotos")+(gesamt?"":" · Gesamtansicht fehlt")
+          : (m.maschinen_id ? "Gesamtansicht genügt" : "Gesamtansicht + Typenschild"),
+    gesamt && (schild || !!m.maschinen_id), "pnlFotos"));
   mg.appendChild(kachel("mikro","Sprachnotiz",
     nAudio ? mehrzahl(nAudio,"Aufnahme","Aufnahmen") : "trägt Typ, Baujahr und Befunde",
     nAudio>0 || !!m.notiz_entfaellt, "pnlAudio"));
@@ -1729,7 +1762,15 @@ function init(){
     const k=el.dataset.meta;
     if(el.tagName==="INPUT"||el.tagName==="TEXTAREA"){
       if(typeof state.meta[k]==="string") el.value=state.meta[k];
-      el.addEventListener("input",()=>{ state.meta[k]=el.value; save(); });
+      el.addEventListener("input",()=>{
+        state.meta[k]=el.value; 
+        if(k==="maschine" && state.meta.maschinen_id && !nameGleich(el.value, state.meta.portal_name||el.value)){
+          /* Von Hand umbenannt: der Bezug zur Portal-Anlage gilt nicht mehr. */
+          state.meta.maschinen_id=""; state.meta.portal_stand=""; state.meta.portal_band="";
+          state.meta.portal_maengel=0; renderNachzeile();
+        }
+        save();
+      });
     }
   });
   // Single-Choice Chips (ce / anleitung)
@@ -1821,6 +1862,8 @@ function init(){
   if(pu) pu.addEventListener("click",()=>{
     dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ toast("Planfoto gesetzt."); renderPlanBox(); renderKacheln(); }); });
   });
+  const bmp=document.getElementById("btnMaschPortal");
+  if(bmp) bmp.addEventListener("click", maschineUebernehmen);
   const bh=document.getElementById("btnHinweisNeu");
   if(bh) bh.addEventListener("click", hinweisNeu);
   const bv=document.getElementById("btnVorfallNeu");
@@ -3061,10 +3104,102 @@ function maschinenlisteZeichnen(liste){
     dl.appendChild(o);
   });
 }
+/* Anlage aus dem Kundenportal AUSWAEHLEN statt abtippen (Vorgabe Nikolai 14.08.2026).
+   Zweck ist nicht Bequemlichkeit: Nur wenn die Anlage vor Ort exakt so heisst wie in ihrer
+   Beurteilung, treffen Begehung, GBU, Hallenplan und Etikett hinterher aufeinander. Die
+   Liste liegt lokal (localStorage) - die Auswahl funktioniert also auch im Funkloch. */
+function nameGleich(a,b){
+  const n=s=>String(s||"").toLowerCase().replace(/[\s\/\-_.]/g,"");
+  return n(a)===n(b) && n(a)!=="";
+}
+async function maschineWaehlen(){
+  let liste=[]; try{ liste=JSON.parse(localStorage.getItem(PORTALMASCHKEY)||"[]"); }catch(e){}
+  const s=portalSession();
+  if(s && s.access_token && (s.expires_at||0)>Date.now()){
+    const neu=await maschinenAusPortal(true); if(neu && neu.length) liste=neu;
+  }
+  if(!liste.length){
+    const w=await frageWahl("Keine Anlagenliste",
+      "Auf diesem Gerät liegt noch keine Anlagenliste aus dem Kundenportal.",
+      [{label:ico("wolke")+"Jetzt aus dem Portal laden", sub:"einmalige Anmeldung", wert:"laden", art:"primaer"}],
+      "Abbrechen");
+    if(w!=="laden") return;
+    const neu=await maschinenAusPortal(false);
+    if(!neu || !neu.length){ return; }
+    liste=neu;
+  }
+  const frueher=fortschrittKunde();
+  const BAND={gefahr:"Gefahrbereich", besorgnis:"Besorgnisbereich", akzeptanz:"Akzeptanzbereich"};
+  const zeilen=liste.map(z=>{
+    const name=z.maschine||z.titel||"";
+    const heute=collection.some(m=>nameGleich((m.meta||{}).maschine, name));
+    const f=frueher.find(x=>nameGleich(x.name, name));
+    const st=z.status||{};
+    return {name, id:z.maschinen_id||"", typ:z.maschinentyp||"", heute,
+            datum:(f&&f.datum)||"", stand:z.stand||"",
+            band:BAND[st.band]||"", maengel:st.maengel||0, maengelGefahr:st.maengelGefahr||0};
+  }).sort((a,b)=>a.name.localeCompare(b.name,"de",{numeric:true}));
+
+  return new Promise(res=>{
+    const pk=document.createElement("div"); pk.className="mpicker";
+    pk.innerHTML=`<div class="pcard"><h3>Anlage aus dem Portal</h3>`
+      +`<input type="text" id="maSuch" placeholder="Suchen …" autocomplete="off">`
+      +`<div class="wahlliste" id="maListe" style="max-height:52vh;overflow-y:auto"></div>`
+      +`<button class="btn" id="maAbbr" type="button" style="width:100%;justify-content:center">Abbrechen</button></div>`;
+    document.body.appendChild(pk);
+    const fin=v=>{ pk.remove(); res(v||null); };
+    schichtFuer(pk, ()=>fin(null));
+    const box=pk.querySelector("#maListe"), such=pk.querySelector("#maSuch");
+    const zeichne=()=>{
+      const q=(such.value||"").toLowerCase().trim();
+      const treffer=zeilen.filter(z=>!q || (z.name+" "+z.id).toLowerCase().indexOf(q)>=0);
+      box.innerHTML = treffer.length ? treffer.map(z=>{
+        const teile=[z.id, z.band, z.maengel?mehrzahl(z.maengel,"Mangel","Mängel")+" offen":"",
+          z.heute ? "heute schon erfasst" : (z.stand?"Stand "+datumKurz(z.stand):"")].filter(Boolean);
+        return `<button class="btn big wahl${z.heute?" fertig":""}" data-i="${zeilen.indexOf(z)}" type="button"><span>`
+          +esc(z.name)+`<i class="wahlsub">${esc(teile.join(" · "))}</i></span></button>`;
+      }).join("")
+        : `<div class="messsub">Kein Treffer. Der Name lässt sich auch frei eintippen.</div>`;
+      box.querySelectorAll("[data-i]").forEach(b=>b.addEventListener("click",()=>fin(zeilen[+b.dataset.i])));
+    };
+    such.addEventListener("input", zeichne);
+    zeichne();
+    pk.querySelector("#maAbbr").addEventListener("click",()=>fin(null));
+  });
+}
+async function maschineUebernehmen(){
+  const z=await maschineWaehlen();
+  if(!z) return;
+  if(z.heute){
+    const w=await frageWahl("Schon erfasst",
+      "<b>"+esc(z.name)+"</b> liegt bereits in dieser Begehung auf dem Gerät.",
+      [{label:"Trotzdem neu erfassen", sub:"z. B. zweiter Durchgang", wert:"neu"}],
+      "Abbrechen");
+    if(w!=="neu") return;
+  }
+  /* Nachbegehung: Die Anlage ist bereits dokumentiert. Mit der maschinen_id trifft die neue
+     Begehung beim Auswerten auf die BESTEHENDE Beurteilung - sonst entstuende ein Duplikat
+     mit neuer Nummer (Vorgabe Nikolai 14.08.2026: "Maschinen aus dem Portal nachbearbeiten"). */
+  state.meta.maschine=z.name;
+  state.meta.portal_name=z.name;          // Merker: wurde der Name spaeter von Hand geaendert?
+  state.meta.maschinen_id=z.id||"";
+  state.meta.maschinentyp=z.typ||"";
+  state.meta.portal_stand=z.stand||"";
+  state.meta.portal_band=z.band||"";
+  state.meta.portal_maengel=z.maengel||0;
+  const feld=document.querySelector('#cardSchnell [data-meta="maschine"]');
+  if(feld) feld.value=z.name;
+  save(); renderKacheln();
+  toast(z.id ? "Nachbegehung: "+z.name+" ("+z.id+")" : "Anlage übernommen: "+z.name);
+}
 async function maschinenAusPortal(still){
   try{
     const liste=(await portalListe("anlagen")).filter(z=>z.maschine);
-    const kurz=liste.map(z=>({maschine:z.maschine, maschinen_id:z.maschinen_id, stand:z.stand}));
+    /* Mehr als nur den Namen merken (14.08.2026): Fuer eine Nachbegehung zaehlt, WAS beim
+       letzten Mal herauskam - Bewertung, offene Mängel, Stand. Die Kurzfassung ist klein
+       genug fuer localStorage und steht damit auch im Funkloch zur Verfuegung. */
+    const kurz=liste.map(z=>({maschine:z.maschine, maschinen_id:z.maschinen_id, stand:z.stand,
+      maschinentyp:z.maschinentyp||"", status:z.status||null}));
     localStorage.setItem(PORTALMASCHKEY, JSON.stringify(kurz));
     maschinenlisteZeichnen(kurz);
     if(!still) toast(kurz.length+" Maschinen aus dem Portal übernommen");
