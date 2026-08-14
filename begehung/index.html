@@ -241,8 +241,8 @@
     position:relative;-webkit-overflow-scrolling:touch}
   #mark .svgwrap svg{width:100%;height:auto;display:block}
   #mark .svgwrap .pin{position:absolute;transform:translate(-50%,-50%);border-radius:999px;
-    width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:#fff;
-    font:700 12px/1 system-ui,sans-serif;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+    width:18px;height:18px;display:flex;align-items:center;justify-content:center;color:#fff;
+    font:700 10px/1 system-ui,sans-serif;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35)}
   #mark .svgwrap .pin.notiz{background:#e88a3c} #mark .svgwrap .pin.hier{background:#c62828}
   #mark .svgwrap .pin.frueher{background:rgba(120,130,125,.85)}
   #mark .svgwrap .pinlbl{position:absolute;transform:translate(-50%,4px);background:rgba(255,255,255,.92);
@@ -402,7 +402,13 @@
          Der Sammel-Upload hiess ausserdem "Alles teilen" - das klang nach Teilen-Dialog,
          nicht nach "eine Datei mit allem nach Drive". -->
 
+    <!-- Zwei gleichrangige Wege: Foto ODER reine Sprachnotiz. Bis 14.08.2026 ging es NUR über ein
+         Foto - für eine Bemerkung ohne Bildbezug musste eines erfunden werden (13.08.: Bodenfoto
+         zur Tool-Kritik). "Allgemeiner Befund finde ich auch komisch. Wieso kann ich da nicht
+         einfach eine Sprachnotiz eingeben?" -->
     <button class="btn big" data-addfoto="mangel">📷 Foto vom Befund</button>
+    <button class="btn big rec" id="allgAudioBtn">🎙 Nur Sprachnotiz</button>
+    <div id="allgAudioBox"></div>
     <div class="thumbs allgThumbs"></div>
   </section>
 
@@ -447,11 +453,23 @@
          Bewertungsgrenze in GBU und Protokoll automatisch (§ 3 BetrSichV, §§ 5/6 ArbSchG). -->
     <div class="feld">
       <label>Zustand bei der Begehung</label>
+      <!-- Nur läuft/steht (Vorgabe Nikolai 13.08.2026): "Ich kann bei einer Maschine nicht wissen,
+           warum sie steht. Ob wegen keinem Auftrag, Wartung, Werkzeugwechsel – ich weiß es nicht.
+           Also weg damit." Der Grund wurde vor Ort geraten und stand hinterher als Feststellung
+           im Protokoll. Alte Exporte mit steht_wartung/steht_kein_auftrag bleiben lesbar. -->
       <div class="chips" data-single="zustand_begehung" id="zustandChips">
-        <span class="chip" data-val="laeuft">▶ läuft (Produktion)</span>
-        <span class="chip" data-val="steht_kein_auftrag">⏸ steht – kein Auftrag</span>
-        <span class="chip" data-val="steht_wartung">🔧 steht – Wartung</span>
-        <span class="chip" data-val="ruesten">🔄 Rüsten/Werkzeugwechsel</span>
+        <span class="chip" data-val="laeuft">▶ läuft</span>
+        <span class="chip" data-val="steht">⏸ steht</span>
+      </div>
+    </div>
+    <!-- Linearroboter: eine Frage, ein Tipp (Vorgabe Nikolai 13.08.2026). Ohne diese Angabe muss
+         am Schreibtisch geraten werden, ob die Gefährdung "Linearroboter/Entnahmegerät" in die GBU
+         gehört - und eine nicht vorhandene Gefährdung darf dort nicht stehen. -->
+    <div class="feld">
+      <label>Linearroboter / Entnahmegerät</label>
+      <div class="chips" data-single="linearroboter" id="roboterChips">
+        <span class="chip" data-val="ja">🤖 vorhanden</span>
+        <span class="chip" data-val="nein">— nicht vorhanden</span>
       </div>
     </div>
     <div class="thumbs allgThumbs"></div>
@@ -992,21 +1010,9 @@ function merkeFortschritt(m){
    filterte `m._upload && …` und uebersprang genau die. Anzeige sagte "nicht bestaetigt", das
    Senden tat nichts - das war der Kern von "Upload unzuverlaessig" (gefunden 06.08.2026). */
 function istOffen(m){ return !m || m._upload!=="gesendet"; }
-/* Alle noch nicht bestaetigten Maschinen erneut senden. */
-async function sendeAusstehende(){
-  const offen=collection.filter(istOffen);
-  if(!offen.length){ toast("Nichts ausstehend."); return; }
-  let ok=0;
-  for(const m of offen){
-    toast("Sende "+(((m.meta||{}).maschine)||"Maschine")+" …");
-    if(await driveUpload(m)==="ok"){ m._upload="gesendet"; ok++; }
-  }
-  await persistAll();
-  toast(ok+" von "+offen.length+" bestätigt.");
-  if(document.getElementById("ovl")) zeigeUebersicht();
-}
+
 window.addEventListener("online", ()=>{
-  if(collection.some(istOffen)) toast("Netz wieder da – in 📋 mit ⤴ erneut senden.");
+  if(collection.some(istOffen)) toast("Netz wieder da – Begehung mit ⬆ hochladen.");
 });
 /* Einzelne Maschine als eigene Datei teilen (→ Drive eingang) bzw. herunterladen */
 async function teileEinzel(m, typ){
@@ -1035,7 +1041,7 @@ function fehlendePflicht(){
   if(!(m.maschine||"").trim())            f.push({feld:"maschine", txt:"Name der Maschine"});
   /* Der Betriebszustand ist Pflicht (Vorgabe Nikolai 06.08.2026): Ohne ihn steht spaeter nicht
      fest, ob die Schutzeinrichtungen ueberhaupt im Betrieb geprueft werden konnten. */
-  if(!(m.zustand_begehung||"").trim())    f.push({feld:"zustand",  txt:"Zustand der Anlage (läuft / steht / Rüsten)"});
+  if(!(m.zustand_begehung||"").trim())    f.push({feld:"zustand",  txt:"Zustand der Anlage (läuft / steht)"});
   if(!fotoByKat("gesamt"))                f.push({feld:"foto",     txt:"Foto der Gesamtansicht"});
   if(!m.notiz_entfaellt && !((state.audios||[]).length))
                                           f.push({feld:"audio",    txt:"Mindestens eine Sprachnotiz (sie trägt Hersteller, Typ und die Befunde)"});
@@ -1107,22 +1113,14 @@ async function saveAndNeu(){
     /* Ohne Datum hiesse die Datei "…_.json" und ueberschriebe die vom Vortag. */
     if(!(state.meta.datum||"").trim()) state.meta.datum=new Date().toISOString().slice(0,10);
     if(!await persistAll()){ rescueExport(); alert("Speicher voll – lokal NICHT gesichert. Ein Rettungs-Export wurde heruntergeladen."); return; }
-    const hatUploadA=!!(localStorage.getItem(UPLOADKEY)||"").trim();
-    if(!hatUploadA){
-      await teileEinzel(state, "OAK-Begehung-Allgemein");
-      toast("Allgemeine Befunde gesichert & als Datei geteilt (→ Drive).");
-      return;
-    }
+    /* EIN Upload für die ganze Begehung (Vorgabe Nikolai 14.08.2026): Bis hierher lud dieser Knopf
+       NUR die allgemeinen Befunde als eigene Datei hoch – Maschinen und Plan gingen getrennte Wege.
+       Jetzt geht alles zusammen als eine Sammlung nach Drive. */
     if(navigator.onLine===false){
-      toast("Allgemeine Befunde gesichert · offline – zum Senden später nochmal ✓ Speichern drücken.");
+      toast("Gesichert · offline – die Begehung später mit ⬆ hochladen.");
       return;
     }
-    if(btn){ btn.disabled=true; btn.textContent="Lade hoch…"; }
-    const ergA=await driveUpload(state, "OAK-Begehung-Allgemein");
-    if(btn){ btn.disabled=false; btn.textContent="⬆ Begehung hochladen"; }
-    toast(ergA==="ok" ? "✓ Allgemeine Befunde → in Drive bestätigt"
-      : ergA==="verboten" ? "Allgemeine Befunde gesichert · Drive lehnt ab – Token prüfen (📋 → ⚙ Drive)"
-      : "Allgemeine Befunde gesichert · Upload NICHT bestätigt – nochmal ✓ Speichern drücken");
+    await teileAlles(btn);
     return;
   }
   const leer = !(state.meta.maschine||"").trim() && !((state.audios||[]).length)
@@ -1155,8 +1153,10 @@ async function saveAndNeu(){
   state.meta.nicht_pruefbar = /^steht/.test(state.meta.zustand_begehung||"");
   const editIdx=(typeof state._editIdx==="number")?state._editIdx:null;
   const rec=JSON.parse(JSON.stringify(state)); delete rec._editIdx; delete rec._ts;
-  // 1) Ohne Auto-Upload: Datei-Share ZUERST (solange die Nutzer-Geste aktiv ist – vor den IDB-Awaits)
-  if(!hatUpload) await teileEinzel(rec);
+  /* Einzel-Upload je Maschine ist raus (Vorgabe Nikolai 14.08.2026): Es gibt genau EINEN
+     Upload-Knopf für die ganze Begehung. Speichern heißt hier nur noch "sicher auf dem Gerät";
+     hochgeladen wird am Ende einmal als Paket (teileAlles). Das spart pro Maschine einen
+     Netz-Zugriff samt Wartezeit im Funkloch. */
   // 2) lokal in die Sammlung übernehmen (an alter Position beim Nachschärfen, sonst anhängen)
   if(btn){ btn.disabled=true; btn.textContent="Sichere…"; }
   if(editIdx!=null) collection.splice(Math.min(editIdx,collection.length),0,rec);
@@ -1168,15 +1168,7 @@ async function saveAndNeu(){
     alert("Speicher voll – lokal NICHT gesichert. Ein Rettungs-Export wurde heruntergeladen – nichts ist verloren.");
     return;
   }
-  // 3) Auto-Upload nach Drive (nach dem sicheren lokalen Speichern, vor dem Reload)
-  if(hatUpload){
-    if(navigator.onLine===false){ rec._upload="pending"; }   // Funkloch: nicht „gesendet" behaupten
-    else {
-      if(btn) btn.textContent="Lade hoch…";
-      const erg=await driveUpload(rec);
-      rec._upload = (erg==="ok") ? "gesendet" : (erg==="verboten" ? "verboten" : "pending");
-    }
-  }
+  // 3) (kein Einzel-Upload mehr – die ganze Begehung geht am Ende in einem Zug nach Drive)
   // 4) für die nächste Maschine: KOMPLETT leeren.
   //    Früher wurde hier nur „Spezifisches" gelöscht und das Bewertungsmuster absichtlich behalten –
   //    hersteller, typ, items, pruefung und maengel wanderten also stillschweigend in die nächste
@@ -1186,12 +1178,8 @@ async function saveAndNeu(){
   merkeFortschritt(rec);          // ueberlebt "Neue Begehung" - siehe FORTSCHRITTKEY
   state=blankState();
   await persistAll();
-  const suffix = !hatUpload ? " & geteilt"
-    : (rec._upload==="gesendet" ? " → in Drive bestätigt"
-    : rec._upload==="verboten" ? " · Drive lehnt ab – Token prüfen (📋 → ⚙ Drive)"
-    : " · Upload NICHT bestätigt – in 📋 mit ⤴ erneut senden");
   neuZeichnen();
-  toast("✓ „"+name+"“ gesichert"+suffix);
+  toast("✓ „"+name+"“ gesichert ("+collection.length+" auf dem Gerät) – Upload am Ende der Begehung");
 }
 function ladePrefs(){ try{ return JSON.parse(localStorage.getItem(PREFSKEY))||{}; }catch(e){ return {}; } }
 /* Bogen der Begehungs-Ebene – gleiche Struktur, nur ohne Maschinenbezug. */
@@ -1223,7 +1211,7 @@ function blankState(){
     standort:"",bereich:p.bereich||"",datum:p.datum||"",begeher:p.begeher||"",ce:"",anleitung:"",lebensphasen:[],
     allg_notiz:"", ma_hinweise:"", modus:"schnell", arbeitssystem:p.arbeitssystem||"", teilschritt:"",
     typenschild_fehlt:false, plan_pos:null, laerm:null, lux:null,
-    zustand_begehung:"", nicht_pruefbar:false },
+    zustand_begehung:"", nicht_pruefbar:false, linearroboter:"" },
     items:{}, pruefung:{}, maengel:[], fotosAllg:[], markierungen:[], audio:null, audios:[] };
 }
 /* Synchroner Sofort-Stand aus localStorage (i. d. R. das Skelett ohne Fotos).
@@ -2510,10 +2498,12 @@ function openPlanSVG(){
     wrap.querySelectorAll(".pin,.pinlbl").forEach(n=>n.remove());
     const setz=(rx,ry,cls,txt,lbl)=>{
       const d=document.createElement("div");
-      d.className="pin "+cls; d.style.left=(rx*100)+"%"; d.style.top=(ry*100)+"%";
+      d.className="pin "+cls;
+      d.style.left=(rx*wrap.scrollWidth)+"px"; d.style.top=(ry*wrap.scrollHeight)+"px";
       d.textContent=txt||""; wrap.appendChild(d);
       if(lbl){ const l=document.createElement("div"); l.className="pinlbl";
-        l.style.left=(rx*100)+"%"; l.style.top=(ry*100)+"%"; l.textContent=lbl; wrap.appendChild(l); }
+        l.style.left=(rx*wrap.scrollWidth)+"px"; l.style.top=(ry*wrap.scrollHeight)+"px";
+        l.textContent=lbl; wrap.appendChild(l); }
     };
     const laufend=new Set(collection.map(m=>((m.meta||{}).maschine||"").toLowerCase()));
     fortschrittKunde().forEach(f=>{
@@ -2548,18 +2538,21 @@ function openPlanSVG(){
     const g=e.target.closest && e.target.closest("g.m");
     if(g){
       const t=g.querySelector("text");
-      const name=t?t.textContent.trim():"";
+      const name=(g.getAttribute("data-name")||(t?t.textContent:"")||"").trim();
       const b=g.getBoundingClientRect();
       pos={rx:(b.left+b.width/2-r.left+wrap.scrollLeft)/wrap.scrollWidth,
            ry:(b.top+b.height/2-r.top+wrap.scrollTop)/wrap.scrollHeight};
       if(name && !(state.meta.maschine||"").trim()){
-        const el=document.getElementById("f_maschine");
+        /* Das Eingabefeld hat keine id, sondern data-meta="maschine" - mit getElementById
+           blieb es leer, obwohl der Name uebernommen war (gefunden 14.08.2026). */
+        const el=document.querySelector('[data-meta="maschine"]');
         state.meta.maschine=name; if(el) el.value=name; save();
         ov.querySelector("#plHint").innerHTML=`„${esc(name)}" übernommen und verortet`;
       }
       marker(); return;
     }
     pos={rx,ry}; marker();
+    ov.querySelector("#plHint").innerHTML=`Frei verortet – mit <b>✓ Übernehmen</b> bestätigen`;
   });
 
   ov.querySelector("#plNotiz").addEventListener("click",e=>{
@@ -2612,7 +2605,7 @@ async function openPlanFoto(){
     const ctx=cv.getContext("2d"); ctx.drawImage(img,0,0);
     const W=cv.width, H=cv.height;
     /* Radius gedeckelt: er skalierte mit der Bitmap, nicht mit der Anzeige. */
-    const rr=Math.max(9,Math.min(26,Math.round(Math.min(W,H)*0.011)));
+    const rr=Math.max(7,Math.min(16,Math.round(Math.min(W,H)*0.008)));
     /* Grau: frühere Begehungen (aus dem Fortschritt, überlebt "Neue Begehung") - so sieht man
        auf dem Plan sofort, wo man aufgehört hat. Namen dazu, sonst sagen die Punkte nichts. */
     const laufend=new Set(collection.map(m=>((m.meta||{}).maschine||"").toLowerCase()));
@@ -3239,8 +3232,17 @@ function audioMime(){
     if(MediaRecorder.isTypeSupported(m)) return m;
   return null;
 }
+/* Die Sprachnotiz gibt es auf BEIDEN Ebenen: an der Maschine und als allgemeiner Befund
+   (seit 14.08.2026 auch ganz ohne Foto). Aufnahme-Knopf und Ausgabe richten sich deshalb nach
+   der gerade sichtbaren Ebene - eine zweite Aufnahmelogik waere nur eine Fehlerquelle mehr. */
+function audioKnopf(){
+  return document.getElementById(imAllgModus() ? "allgAudioBtn" : "audioRecBtn");
+}
+function audioKasten(){
+  return document.getElementById(imAllgModus() ? "allgAudioBox" : "audioBox");
+}
 async function toggleAudioRec(){
-  const btn=document.getElementById("audioRecBtn");
+  const btn=audioKnopf(); if(!btn) return;
   if(aRec){ aRec.stop(); return; }
   /* Mehrere KURZE Notizen statt einer langen: jede Aufnahme wird ANGEHÄNGT (kein Ersetzen).
      Kurze Notizen je Befund sind in der Halle robuster und beim Transkribieren klar zuzuordnen. */
@@ -3258,7 +3260,8 @@ async function toggleAudioRec(){
     const dauer=Math.round((Date.now()-aStart)/1000);
     const blob=new Blob(aChunks,{type:mime});
     aStream.getTracks().forEach(t=>t.stop()); aStream=null; aRec=null;
-    btn.classList.remove("active"); btn.textContent="🎙 Notiz aufnehmen";
+    btn.classList.remove("active");
+    btn.textContent=(btn.id==="allgAudioBtn") ? "🎙 Nur Sprachnotiz" : "🎙 Notiz aufnehmen";
     const r=new FileReader();
     r.onload=()=>{
       state.audios=state.audios||[];
@@ -3278,7 +3281,7 @@ async function toggleAudioRec(){
   },500);
 }
 function renderAudio(){
-  const box=document.getElementById("audioBox"); if(!box) return;
+  const box=audioKasten(); if(!box) return;
   box.innerHTML="";
   const list=state.audios||[];
   list.forEach((a,i)=>{
@@ -3308,6 +3311,8 @@ function renderAudio(){
   });
 }
 document.getElementById("audioRecBtn").addEventListener("click",toggleAudioRec);
+const _allgRec=document.getElementById("allgAudioBtn");
+if(_allgRec) _allgRec.addEventListener("click",toggleAudioRec);
 
 /* ===== Export ===== */
 function slug(s){ return (s||"begehung").toLowerCase().replace(/[äöüß]/g,m=>({"ä":"ae","ö":"oe","ü":"ue","ß":"ss"}[m]))
@@ -3369,7 +3374,15 @@ async function teileAlles(btn){
     }
     if(hatBridge){
       const erg=await driveUploadPaket(paket, name);
-      if(erg==="ok"){ toast("✓ Ganze Begehung in Drive/eingang ("+paket.anzahl+" Masch. + Allgemeines, "+mb+" MB)"); return; }
+      if(erg==="ok"){
+        /* Das Paket ENTHAELT alle Maschinen - also sind sie bestaetigt. Ohne diese Zeile blieb
+           jede Maschine ewig "nicht bestaetigt", und "Neue Begehung" liess sich nie ausloesen
+           (Feldbefund 13.08.2026: "drei Buttons, keiner funktioniert"). */
+        collection.forEach(m=>{ m._upload="gesendet"; });
+        await persistAll();
+        toast("✓ Ganze Begehung in Drive/eingang ("+paket.anzahl+" Masch. + Allgemeines, "+mb+" MB)");
+        return "ok";
+      }
       if(erg==="verboten"){ alert("Drive lehnt den Upload ab – Token prüfen (📋 → ⚙ Drive).\nIch nutze stattdessen Teilen/Download (nichts geht verloren)."); }
       else { toast("Bridge nicht bestätigt – Rückfall auf Teilen/Download."); }
       // -> faellt bewusst auf den bisherigen Weg durch (Share/Download)
@@ -3441,21 +3454,15 @@ function zeigeUebersicht(){
     body+=`<div class="ovgroup">Arbeitssystem: <b>${esc(sys)}</b> · ${groups[sys].length} Maschine(n)</div>`;
     groups[sys].forEach(i=>{
       const m=collection[i], c=coverage(m), teil=((m.meta||{}).teilschritt||"").trim();
-      /* Status und Knoepfe folgen derselben Definition wie sendeAusstehende() - siehe istOffen(). */
-      const up = m._upload==="gesendet" ? ' · <b style="color:var(--gruen)">✓ in Drive</b>'
-        : (m._upload==="verboten" ? ' · <b style="color:#b5462f">✗ abgelehnt – Token prüfen</b>'
-        : (hatUp ? ' · <b style="color:#b5462f">⤴ offen</b>' : ""));
-      /* 📤 Teilen ist der Notausgang, nicht der Normalweg: nur zeigen, wenn keine Drive-Bridge
-         eingerichtet ist oder diese Maschine dort nicht angekommen ist. Sonst standen drei
-         Sendewege nebeneinander und keiner war erkennbar der richtige. */
-      const zeigeTeilen = !hatUp || istOffen(m);
+      /* Es gibt genau EINEN Upload für die ganze Begehung (Vorgabe Nikolai 14.08.2026) – hier
+         steht deshalb nur noch der Stand, keine Sendeknöpfe je Maschine. */
+      const up = m._upload==="gesendet" ? ' · <b style="color:var(--gruen)">✓ hochgeladen</b>'
+        : ' · <b style="color:#b5462f">noch auf dem Gerät</b>';
       body+=`<div class="ovrow"><div class="ovname"><b>${esc((m.meta||{}).maschine||"?")}</b>`
         +(teil?` <span style="color:var(--muted)">· ${esc(teil)}</span>`:"")
         +`<span>${coverageText(c)}${up}</span></div>`
         +`<div class="ovacts">`
         +`<button class="mdel" data-ovedit="${i}" title="Nachschärfen">✎</button>`
-        +(hatUp?`<button class="mdel" data-ovup="${i}" title="Nach Drive hochladen">⤴</button>`:"")
-        +(zeigeTeilen?`<button class="mdel" data-ovshare="${i}" title="Als Datei teilen (Notausgang)">📤</button>`:"")
         +`<button class="mdel" data-ovdel="${i}" title="Löschen">×</button></div></div>`;
     });
   });
@@ -3463,7 +3470,7 @@ function zeigeUebersicht(){
   ov.innerHTML=`<div class="ovcard"><h2>Gesicherte Maschinen (${collection.length})</h2>`
     +`<div class="ovlist">${body}</div>`
     +`<div class="toolrow" style="margin-top:12px">`
-    +`<button class="btn primary" id="ovAllesTeilen">📦 Ganze Begehung senden</button>`
+    +`<button class="btn primary" id="ovAllesTeilen">⬆ Begehung hochladen</button>`
     +`<button class="btn" id="ovNeueBegehung">🆕 Neue Begehung</button>`
     +`<button class="btn" id="ovUpload">⚙ Drive</button>`
     +`<button class="btn" id="ovDriveTest">🔌 Drive testen</button>`
@@ -3493,25 +3500,14 @@ function zeigeUebersicht(){
   });
   ov.querySelector("#ovDriveTest").addEventListener("click", driveTesten);
   ov.querySelectorAll("[data-ovedit]").forEach(b=>b.addEventListener("click",()=>bearbeiteMaschine(+b.dataset.ovedit)));
-  ov.querySelectorAll("[data-ovup]").forEach(b=>b.addEventListener("click",()=>uploadEinzeln(+b.dataset.ovup)));
-  ov.querySelectorAll("[data-ovshare]").forEach(b=>b.addEventListener("click",()=>teileEinzel(collection[+b.dataset.ovshare])));
+  /* Keine Einzel-Sendewege mehr: die Begehung geht in einem Zug hoch (14.08.2026). */
   ov.querySelectorAll("[data-ovdel]").forEach(b=>b.addEventListener("click",async()=>{
     const i=+b.dataset.ovdel;
     if(!confirm("„"+(((collection[i]||{}).meta||{}).maschine||"?")+"“ endgültig löschen?")) return;
     collection.splice(i,1); await persistAll(); renderSysList(); zeigeUebersicht();
   }));
 }
-/* Ausstehende Maschine (nachträglich) nach Drive hochladen – z. B. nach dem Funkloch */
-async function uploadEinzeln(i){
-  const m=collection[i]; if(!m) return;
-  if(!(localStorage.getItem(UPLOADKEY)||"").trim()){ toast("Erst ⚙ Drive einrichten."); return; }
-  if(navigator.onLine===false){ toast("Kein Netz – später erneut versuchen."); return; }
-  toast("Lade „"+((m.meta||{}).maschine||"?")+"“ hoch…");
-  const erg=await driveUpload(m);
-  m._upload = (erg==="ok") ? "gesendet" : (erg==="verboten" ? "verboten" : "pending");
-  toast(erg==="ok" ? "✓ in Drive bestätigt" : erg==="verboten" ? "Abgelehnt – Token prüfen" : "Nicht bestätigt – erneut versuchen");
-  await persistAll(); zeigeUebersicht();
-}
+
 /* Nachschärfen: gespeicherte Maschine in den aktuellen Bogen laden (Detail-Modus), Re-Save ersetzt sie */
 async function bearbeiteMaschine(i){
   const m=collection[i]; if(!m) return;
@@ -3552,15 +3548,27 @@ document.getElementById("importInput").addEventListener("change",async e=>{
    Bewusst mit Sicherung davor - am 22.07. waren vier Maschinen fast verloren, weil die App
    Upload-Erfolg behauptet hat. Ohne bestaetigten Upload oder Export wird hier NICHT geleert. */
 async function neueBegehung(){
-  const offen=collection.filter(m=>m._upload!=="gesendet");
-  if(collection.length && offen.length){
-    const w=confirm("Achtung: "+offen.length+" von "+collection.length+" Maschinen sind NICHT bestätigt "
-      +"hochgeladen.\n\nOK = jetzt „Alles teilen“ (Sicherung), danach erneut auf „Neue Begehung“.\n"
-      +"Abbrechen = nichts tun.");
-    if(w){ const b=document.getElementById("ovAllesTeilen"); await teileAlles(b); }
-    return;                                   // in beiden Faellen NICHT loeschen
+  /* Frueher (bis 14.08.2026) endete diese Funktion IMMER mit return, sobald eine Maschine nicht
+     bestaetigt war - auch nach erfolgreichem Upload. Man musste ein zweites Mal druecken; schlug
+     der Upload fehl, kam man nie heraus. Genau das war "es gibt drei Buttons, keiner funktioniert".
+     Jetzt: hochladen UND weitermachen, und es gibt immer einen Ausweg. */
+  let gefragt=false;
+  if(collection.length && collection.some(istOffen)){
+    const offen=collection.filter(istOffen).length;
+    if(!confirm("Achtung: "+offen+" von "+collection.length+" Maschinen sind NICHT bestätigt hochgeladen.\n\n"
+      +"OK = jetzt hochladen und danach neu beginnen.\nAbbrechen = nichts tun.")) return;
+    gefragt=true;
+    await teileAlles(null);
+    if(collection.some(istOffen)){
+      if(!confirm("Der Upload ist nicht bestätigt – "+collection.filter(istOffen).length+" Maschinen sind offen.\n\n"
+        +"OK = Begehung als Datei sichern und trotzdem neu beginnen.\n"
+        +"Abbrechen = nichts löschen (erst Drive prüfen: 📋 → ⚙ Drive testen).")) return;
+      const paket=exportPaket();
+      if(paket) download("Begehung_"+slug(paket.kunde||"begehung")+(paket.datum?"_"+paket.datum:"")
+                         +"_Sicherung.json", JSON.stringify(paket), "application/json");
+    }
   }
-  if(collection.length && !confirm("Neue Begehung starten?\n\n"+collection.length
+  if(!gefragt && collection.length && !confirm("Neue Begehung starten?\n\n"+collection.length
       +" gesicherte Maschinen werden aus dem Gerät entfernt (sie liegen bestätigt in Drive).\n"
       +"Der Standortplan bleibt erhalten.")) return;
   collection=[]; allgemeinGeparkt=null; state=blankState();
