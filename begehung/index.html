@@ -348,6 +348,12 @@
   .kachel .kok{position:absolute;top:9px;right:10px;width:21px;height:21px;border-radius:50%;
     display:grid;place-items:center;border:1.5px solid #dbe5df;background:none}
   .kachel.fertig .kok{background:var(--hell);border-color:var(--hell);color:#fff}
+  /* Vorschau des Vektorplans im Plan-Panel: hoehenbegrenzt, damit die Halle nicht die
+     ganze Seite fuellt - angetippt wird er ohnehin gross geoeffnet. */
+  .planvorschau{max-height:38vh;overflow:hidden;border:1px solid var(--line);border-radius:10px;
+    background:#fff;padding:4px;cursor:pointer}
+  .planvorschau svg{width:100%;height:auto;display:block;pointer-events:none}
+
   .standzeile{font-size:12px;color:var(--muted);text-align:center;margin-top:12px}
   .standzeile b{color:var(--dunkel)}
 
@@ -489,9 +495,16 @@
 <div class="panel" id="pnlPlan" hidden>
   <div class="pnlkopf"><h2>Standortplan</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
   <div class="pnlbody"><section class="card">
-    <button class="btn big" id="btnPlanUpload" data-ico="plan">Plan aufnehmen oder wählen</button>
+    <!-- Der aktuelle Hallenplan kommt aus dem Kundenportal (Vektor, Maschinen antippbar).
+         Foto/Skizze bleibt der Notweg, wenn es noch keinen gezeichneten Plan gibt. -->
+    <button class="btn big" id="btnPlanPortal" data-ico="wolke">Aktuellen Hallenplan aus dem Portal holen</button>
     <button class="btn big nur-maschine" data-plan data-ico="pin">Diese Maschine verorten</button>
     <div id="planBox"></div>
+    <div class="toolrow" style="margin-top:10px">
+      <button class="btn" id="btnPlanUpload" data-ico="bild">Foto/Skizze als Plan</button>
+      <button class="btn" id="btnPlanSvgDatei" data-ico="plan">Vektorplan aus Datei</button>
+      <button class="btn rec" id="btnPlanFotoWeg" data-ico="papierkorb">Planfoto entfernen</button>
+    </div>
   </section></div>
 </div>
 
@@ -1522,8 +1535,10 @@ function renderKacheln(){
       stammOk ? (m.kunde||"").slice(0,20)+" · "+datumKurz(m.datum) : "Kunde und Datum fehlen",
       stammOk, "pnlStamm"));
     bg.appendChild(kachel("plan","Standortplan",
-      planBild ? verortet+" von "+collection.length+" verortet" : "noch kein Plan hinterlegt",
-      !!planBild, "pnlPlan"));
+      (planSVG&&planSVG.svg) ? "Vektorplan · "+verortet+" von "+collection.length+" verortet"
+        : (planBild ? "Planfoto · "+verortet+" von "+collection.length+" verortet"
+                    : "noch kein Plan hinterlegt"),
+      !!(planSVG&&planSVG.svg) || !!planBild, "pnlPlan"));
     bg.appendChild(kachel("kamera","Allg. Befunde",
       (nFoto+nAudio) ? mehrzahl(nFoto,"Foto","Fotos")+" · "+mehrzahl(nAudio,"Notiz","Notizen")
                      : "was keiner Maschine gehört",
@@ -1557,7 +1572,7 @@ function renderKacheln(){
     [zust,rob].filter(Boolean).join(" · ") || "läuft oder steht?",
     !!zust && !!rob, "pnlZustand"));
   mg.appendChild(kachel("pin","Plan-Position",
-    m.plan_pos ? "verortet" : (planBild ? "noch nicht verortet" : "kein Plan hinterlegt"),
+    m.plan_pos ? "verortet" : ((planSVG&&planSVG.svg)||planBild ? "noch nicht verortet" : "kein Plan hinterlegt"),
     !!m.plan_pos, "pnlPlan"));
   mg.appendChild(kachel("mess","Lärm & Licht", mess || "orientierende Messung", !!(m.laerm||m.lux), "pnlMess"));
   mg.appendChild(kachel("rundgang","Rundgang","wo finde ich was?", null, "pnlRundgang"));
@@ -1704,7 +1719,24 @@ function init(){
   renderMaschListe();
   const pu=document.getElementById("btnPlanUpload");
   if(pu) pu.addEventListener("click",()=>{
-    dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ toast("Standortplan gesetzt."); renderPlanBox(); }); });
+    dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ toast("Planfoto gesetzt."); renderPlanBox(); renderKacheln(); }); });
+  });
+  const pp=document.getElementById("btnPlanPortal");
+  if(pp) pp.addEventListener("click", planAusPortal);
+  const psd=document.getElementById("btnPlanSvgDatei");
+  if(psd) psd.addEventListener("click", planSvgWaehlen);
+  /* Ohne diesen Weg blieb ein altes Planfoto ewig auf dem Geraet und verdeckte den
+     aktuellen Vektorplan (Nikolai 14.08.2026). */
+  const pfw=document.getElementById("btnPlanFotoWeg");
+  if(pfw) pfw.addEventListener("click", async()=>{
+    if(!planBild){ toast("Es liegt kein Planfoto auf dem Gerät."); return; }
+    const w=await frageWahl("Planfoto entfernen",
+      "Das hinterlegte <b>Foto</b> des Hallenplans wird vom Gerät gelöscht."
+      +((planSVG&&planSVG.svg)?" Der Vektorplan bleibt.":" Danach ist gar kein Plan mehr hinterlegt."),
+      [{label:"Ja, Planfoto löschen", wert:"weg", art:"warn"}], "Abbrechen");
+    if(w!=="weg") return;
+    planBild=null; await idbDel(PLANKEY);
+    renderPlanBox(); renderKacheln(); toast("Planfoto entfernt.");
   });
   const mn=document.getElementById("btnMaschNeu");
   if(mn) mn.addEventListener("click",()=>wechsleEbene(false));
@@ -2864,13 +2896,33 @@ async function planAusPortal(){
     }
     toast("Plan wird geladen …");
     const liste=await portalListe("hallenplan");
-    const svgZeile=liste.find(z=>(z.doc_typ||"").toLowerCase()==="svg")
-                 || liste.find(z=>/\.svg$/i.test(z.storage_path||""));
-    if(!svgZeile){ toast("Im Portal liegt kein Vektorplan."); return; }
-    const txt=await portalDatei(svgZeile.storage_path);
-    const m=txt.match(/<svg[\s\S]*?<\/svg>/i);
-    if(!m){ toast("Datei enthält kein SVG."); return; }
-    await setzePlanSVG({name:svgZeile.titel||"Hallenplan", svg:m[0],
+    /* Reihenfolge: echte SVG-Datei zuerst, sonst eine HTML-Seite mit eingebettetem <svg>.
+       Bis 14.08.2026 wurde NUR nach doc_typ="svg" gesucht - im Portal lag aber nur die
+       HTML-Fassung. Ergebnis: "Im Portal liegt kein Vektorplan", das Handy behielt das alte
+       Planfoto. Findet sich gar nichts, sagen wir jetzt, WAS dort liegt. */
+    const kandidaten=liste.filter(z=>(z.doc_typ||"").toLowerCase()==="svg" || /\.svg$/i.test(z.storage_path||""))
+      .concat(liste.filter(z=>/\.html?$/i.test(z.storage_path||"") || (z.doc_typ||"").toLowerCase()==="html"));
+    if(!kandidaten.length){
+      await hinweis("Kein Vektorplan im Portal",
+        liste.length ? "Unter <b>Hallenplan</b> liegt nur: "+esc(liste.map(z=>z.titel||z.storage_path).join(", "))
+                     : "Unter <b>Hallenplan</b> liegt im Portal nichts.");
+      return;
+    }
+    let svgZeile=null, svgText=null;
+    for(const z of kandidaten){
+      const txt=await portalDatei(z.storage_path);
+      const m=String(txt||"").match(/<svg[\s\S]*?<\/svg>/i);
+      /* Die Portal-HTML baut ihr SVG erst per Skript auf - ein leeres <svg id="plan"></svg>
+         waere ein Plan ohne Inhalt. Deshalb nur nehmen, was auch Zeichnung enthaelt. */
+      if(m && /<(rect|path|g|polygon|circle)\b/i.test(m[0])){ svgZeile=z; svgText=m[0]; break; }
+    }
+    if(!svgText){
+      await hinweis("Plan nicht verwendbar",
+        "Die Datei im Portal enthält keinen fertigen Vektorplan (die Portal-Seite baut ihn erst im "
+        +"Browser auf).<br>Bitte <b>hallenplan.svg</b> ins Portal laden – dann klappt es mit einem Tipp.");
+      return;
+    }
+    await setzePlanSVG({name:svgZeile.titel||"Hallenplan", svg:svgText,
                         stand:svgZeile.stand||"", quelle:"portal"});
     toast("Hallenplan aus dem Portal geladen"+(svgZeile.stand?" (Stand "+svgZeile.stand+")":""));
     maschinenAusPortal(true);            // Maschinenliste gleich mitnehmen
@@ -3130,14 +3182,30 @@ function fortschrittZeile(){
     +(f.length>1?`<br><span style="color:var(--muted)">zuletzt: ${namen}</span>`:"")
     +`</div>`;
 }
+/* Der Vektorplan hat Vorrang - er ist der aktuelle Plan aus dem Kundenportal (Maschinen
+   antippbar, Risikofarben). Bis 14.08.2026 zeigte diese Vorschau NUR das Planfoto; ein
+   geladener Vektorplan war unsichtbar ("im Standortplan haengt immer noch das alte Foto")
+   und ohne Foto behauptete sie sogar "noch kein Plan". */
 function renderPlanBox(){
   const box=document.getElementById("planBox"); if(!box) return;
-  if(!planBild){
-    box.innerHTML=`<div class="messsub">Noch kein Plan – Foto, Screenshot oder Skizze genügt.</div>`+fortschrittZeile();
+  const verortet=collection.filter(m=>(m.meta||{}).plan_pos).length;
+  if(!planSVG && !planBild){
+    box.innerHTML=`<div class="messsub">Noch kein Plan – <b>Aus Portal laden</b> holt den aktuellen
+      Hallenplan; ein Foto oder eine Skizze geht auch.</div>`+fortschrittZeile();
     return;
   }
-  const verortet=collection.filter(m=>(m.meta||{}).plan_pos).length;
-  box.innerHTML=`<div class="thumbs"></div><div class="messsub">${verortet} von ${collection.length} Maschinen verortet · Plan antippen zum Ansehen</div>`+fortschrittZeile();
+  if(planSVG && planSVG.svg){
+    box.innerHTML=`<div class="planvorschau" id="planVor">${planSVG.svg}</div>`
+      +`<div class="messsub"><b>Vektorplan:</b> ${esc(planSVG.name||"Hallenplan")}`
+      +(planSVG.stand?" · Stand "+esc(planSVG.stand):"")
+      +` · ${verortet} von ${collection.length} Maschinen verortet · antippen zum Verorten`
+      +(planBild?`<br><span style="color:var(--muted)">Ein älteres Planfoto liegt noch auf dem Gerät
+        – im Plan über „Foto-Plan“ erreichbar.</span>`:"")+`</div>`+fortschrittZeile();
+    const v=box.querySelector("#planVor");
+    if(v) v.addEventListener("click", openPlan);
+    return;
+  }
+  box.innerHTML=`<div class="thumbs"></div><div class="messsub"><b>Planfoto</b> · ${verortet} von ${collection.length} Maschinen verortet · Plan antippen zum Ansehen</div>`+fortschrittZeile();
   const t=document.createElement("div"); t.className="thumb";
   const im=document.createElement("img"); im.src=planBild.data; im.addEventListener("click",openPlan);
   t.appendChild(im);
@@ -3826,7 +3894,12 @@ function rescueExport(){
    die Ebene „🏢 Begehung", die sonst gar keinen Ausgang aus dem Geraet hat.
    Anders als teileEinzel() wird hier KEIN Fehler verschluckt: bei grossen Paketen bricht
    navigator.share auf Mobilgeraeten gern stumm ab – dann muss der Download-Fallback greifen. */
-async function teileAlles(btn){
+/* opt.nurDrive = NUR der Drive-Weg, kein stiller Rueckfall auf Teilen/Download.
+   Grund (Nikolai 14.08.2026): "er will immer eine Datei herunterladen" - wer "Hochladen"
+   drueckt, will hochladen. Scheitert das, gehoert die Entscheidung wieder ihm, statt dass
+   ungefragt ein Download startet. Rueckgabe dann der Grund-Code des Upload-Versuchs. */
+async function teileAlles(btn, opt){
+  opt=opt||{};
   const paket=exportPaket();
   if(!paket){ toast("Noch nichts erfasst – es gibt nichts zu teilen."); return; }
   const name="Begehung_"+slug(paket.kunde||state.meta.maschine||"begehung")
@@ -3843,6 +3916,7 @@ async function teileAlles(btn){
     if(!hatBridge){
       /* Frueher fiel das Tool hier wortlos auf Downloads zurueck - deshalb "landet immer in
          Downloads". Jetzt sagen wir, WAS fehlt, und bieten das Einrichten direkt an. */
+      if(opt.nurDrive) return "keine-url";           // die aufrufende Karte entscheidet weiter
       const w=await frageWahl("Keine Drive-Verbindung",
         "Auf diesem Gerät ist der Drive-Eingang nicht eingerichtet – die Begehung ginge nur "
         +"in den <b>Downloads-Ordner</b>.",
@@ -3853,6 +3927,7 @@ async function teileAlles(btn){
       if(w==="setup"){ driveEinstellungen(); return; }
     }
     if(hatBridge){
+      if(navigator.onLine===false && opt.nurDrive) return "offline";
       const erg=await driveUploadPaket(paket, name);
       if(erg==="ok"){
         /* Das Paket ENTHAELT alle Maschinen - also sind sie bestaetigt. Ohne diese Zeile blieb
@@ -3862,6 +3937,10 @@ async function teileAlles(btn){
         toast("Ganze Begehung in Drive/eingang ("+paket.anzahl+" Masch. + Allgemeines, "+mb+" MB)");
         return "ok";
       }
+      /* Wer "Hochladen" gewaehlt hat, will hochladen - kein ungefragter Download hinterher
+         (Nikolai 14.08.2026: "er will immer eine Datei herunterladen"). Der Grund geht zurueck
+         an die Karte, die ihn im Klartext zeigt und die naechsten Wege anbietet. */
+      if(opt.nurDrive) return erg;
       if(erg==="verboten"){
         await hinweis("Drive lehnt den Upload ab",
           "Das Token stimmt nicht mit dem Apps-Script überein (<b>Mehr → Drive einrichten</b>).<br>"
@@ -4011,21 +4090,47 @@ async function neueBegehung(){
   }
 
   /* Es gibt ungesicherte Maschinen. Wir bieten so lange Wege an, bis einer greift oder
-     Nikolai bewusst abbricht - ohne Sicherung wird nichts geloescht (Lehre vom 22.07.2026). */
+     Nikolai bewusst abbricht. Ohne Sicherung wird nur geloescht, wenn er es ausdruecklich
+     zweimal sagt (Lehre vom 22.07.2026 - aber keine Sperre mehr, es ist sein Geraet). */
+  const GRUND={
+    "keine-url":  "Auf diesem Gerät ist <b>keine Drive-Verbindung</b> eingerichtet (Mehr → Drive einrichten).",
+    "offline":    "Das Gerät ist gerade <b>offline</b> – ohne Netz kann nichts hochgeladen werden.",
+    "verboten":   "Drive lehnt ab (403): Das <b>Token</b> stimmt nicht mit dem Apps-Script überein.",
+    "abbruch":    "<b>Zeitüberschreitung</b> – das Netz ist zu langsam oder die Web-App antwortet nicht.",
+    "unbestaetigt":"Der Server hat <b>nicht bestätigt</b> – URL prüfen (endet sie auf <i>/exec</i>?) und Freigabe „Jeder, auch anonym“."
+  };
   let text="<b>"+collection.filter(istOffen).length+"</b> von "+collection.length+" Maschinen sind noch "
     +"<b>nicht gesichert</b>. Erst sichern, dann wird das Gerät geleert.";
-  for(let runde=0; runde<4; runde++){
+  for(let runde=0; runde<6; runde++){
     const w=await frageWahl("Neue Begehung", text, [
       {label:"Hochladen und neu beginnen", sub:"in den Drive-Eingang", wert:"upload", art:"primaer"},
-      {label:"Als Datei sichern und neu beginnen", sub:"Datei landet im Downloads-Ordner", wert:"datei"}
+      {label:"Als Datei sichern und neu beginnen", sub:"Datei landet im Downloads-Ordner", wert:"datei"},
+      {label:"Drive prüfen", sub:"Verbindung testen, nichts senden", wert:"test"},
+      {label:"Ohne Sicherung neu beginnen", sub:"alles auf dem Gerät wird gelöscht", wert:"weg", art:"warn"}
     ], "Abbrechen – nichts löschen");
     if(w===null){ toast("Nichts gelöscht – die Maschinen bleiben auf dem Gerät."); return; }
+    if(w==="test"){
+      const erg=await driveTesten();          // zeigt das Ergebnis selbst als Karte
+      text=(GRUND[erg]||"Drive-Test: "+esc(String(erg)))+"<br>Wie soll es weitergehen?";
+      continue;
+    }
+    if(w==="weg"){
+      /* Bewusster Datenverlust - deshalb ein zweites, benanntes Ja. Kein Zwang zur Sicherung
+         mehr (Nikolai 14.08.2026: er will einfach neu anfangen koennen). */
+      const sicher=await frageWahl("Wirklich ohne Sicherung?",
+        "<b>"+collection.filter(istOffen).length+"</b> nicht gesicherte Maschine(n) mit Fotos und "
+        +"Sprachnotizen werden <b>gelöscht</b>. Das lässt sich nicht rückgängig machen.",
+        [{label:"Ja, löschen und neu beginnen", wert:"ja", art:"warn"}], "Doch lieber sichern");
+      if(sicher!=="ja"){ text="Nichts gelöscht. Wie soll gesichert werden?"; continue; }
+      await starteNeueBegehung(); return;
+    }
     if(w==="upload"){
-      const erg=await teileAlles(null);
-      if(erg==="ok" || erg==="datei" || !collection.some(istOffen)){ await starteNeueBegehung(); return; }
-      text="Der Upload wurde <b>nicht bestätigt</b> – "+collection.filter(istOffen).length
-        +" Maschinen sind weiter offen (kein Netz, oder Drive antwortet nicht).<br>"
-        +"Sicher ist jetzt der Weg über die <b>Datei</b>.";
+      /* nurDrive: kein stiller Rueckfall auf Teilen/Download - sonst startet ungefragt ein
+         Download, obwohl "Hochladen" gedrueckt wurde. */
+      const erg=await teileAlles(null, {nurDrive:true});
+      if(erg==="ok" || !collection.some(istOffen)){ await starteNeueBegehung(); return; }
+      text=(GRUND[erg]||"Der Upload wurde <b>nicht bestätigt</b>.")
+        +"<br>Die Begehung ist weiter auf dem Gerät. Sicher ist jetzt der Weg über die <b>Datei</b>.";
       continue;
     }
     // Datei-Weg: schreibt eine vollstaendige Sicherung und markiert die Maschinen als gesichert.
