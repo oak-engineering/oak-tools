@@ -253,8 +253,13 @@
   #lupe{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:92;display:flex;flex-direction:column;
     padding:calc(8px + env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom))}
   #lupe img{flex:1;min-height:0;object-fit:contain;max-width:100%;margin:auto}
-  .lupebar{display:flex;align-items:center;gap:8px;padding:10px 4px 0;flex-wrap:wrap}
-  .lupebar .btn{background:#fff}
+  /* Hochformat: drei kleine Knoepfe in einer Zeile, die Hauptaktion darunter ueber die
+     ganze Breite - vorher brach die Zeile unschoen um. */
+  .lupebar{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px 4px 0}
+  .lupebar .btn{background:#fff;justify-content:center;white-space:nowrap;padding:12px 4px;font-size:13.5px;gap:5px}
+  .lupebar .btn.primary{grid-column:1/-1;background:var(--gruen);color:#fff;border-color:var(--gruen);
+    padding:15px;font-size:16px;font-weight:600}
+  .lupebar .btn .ic{width:18px;height:18px}
 
   /* ---- Foto-Markierung (Mängel auf jedem Foto) ---- */
   #mark{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:90;display:flex;flex-direction:column;
@@ -279,9 +284,17 @@
     white-space:nowrap;pointer-events:none}
   .markchips{display:flex;gap:6px;overflow-x:auto;padding-top:8px;flex:0 0 auto}
   .markchips .chip{background:#fff;white-space:nowrap}
-  .markbar{display:flex;gap:8px;padding-top:10px;flex:0 0 auto}
-  .markbar .btn{background:#fff}
-  .markbar .btn.primary{background:var(--gruen);color:#fff}
+  /* Hochformat: nie mehr Knoepfe nebeneinander, als in eine Zeile passen. Feste Spalten statt
+     Umbruch - sonst rutschte im Plan die Haelfte aus dem Bild (Nikolai 14.08.2026). */
+  .markbar{display:grid;gap:7px;padding-top:8px;flex:0 0 auto;
+    grid-auto-flow:column;grid-auto-columns:1fr}
+  .markbar.werkzeuge{grid-auto-flow:row;grid-template-columns:repeat(3,1fr)}
+  .markbar.haupt{grid-auto-flow:row;grid-template-columns:1fr 1.3fr;padding-bottom:2px}
+  .markbar .btn{background:#fff;justify-content:center;white-space:nowrap;
+    padding:12px 4px;font-size:13.5px;gap:5px;min-width:0}
+  .markbar.haupt .btn{padding:15px 6px;font-size:16px;font-weight:600}
+  .markbar .btn .ic{width:18px;height:18px}
+  .markbar .btn.primary{background:var(--gruen);color:#fff;border-color:var(--gruen)}
 
   /* ---- Bestätigungs-Toast ---- */
   #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;background:var(--dunkel);
@@ -868,6 +881,7 @@ function zeigeDguv(typId){
     +`<div class="toolrow" style="margin-top:12px"><button class="btn primary" id="dgOk"
        style="margin-left:auto">Schließen</button></div></div>`;
   document.body.appendChild(pk);
+  schichtFuer(pk);
   const zu=()=>pk.remove();
   pk.querySelector("#dgOk").addEventListener("click",zu);
   pk.addEventListener("click",e=>{ if(e.target===pk) zu(); });
@@ -1301,6 +1315,7 @@ function pflichtDialog(fehlt){
       +`</div></div>`;
     document.body.appendChild(pk);
     const fin=v=>{ pk.remove(); res(v); };
+    schichtFuer(pk, ()=>fin(false));
     pk.querySelector("#pfBack").addEventListener("click",()=>fin(false));
     pk.addEventListener("click",e=>{ if(e.target===pk) fin(false); });
     if(hakenMoeglich){
@@ -1590,9 +1605,50 @@ function renderKacheln(){
       : fehlt.map(x=>x.txt.split(" (")[0]).join(" und "))+"</b>";
   }
 }
+/* ===== Zurueck-Taste =====
+   Auf dem Handy soll "Zurueck" die OBERSTE Schicht schliessen - Karte, Plan, Lupe, Panel -
+   und nicht die App verlassen (Nikolai 14.08.2026: "bringt mich immer auf die Browser-
+   Startseite"). Bis hierher meldete sich nur das Panel an; alles andere (Plan-Overlay,
+   Foto-Lupe, Auswahlkarten) lag daneben, und ein Zurueck sprang aus der App.
+   Jede Schicht meldet sich beim Oeffnen an und wird beim Schliessen wieder abgemeldet -
+   egal ob per Knopf oder per Zurueck-Taste. */
+const SCHICHTEN=[];
+function schichtAn(schliessen){
+  SCHICHTEN.push(schliessen);
+  try{ history.pushState({oakSchicht:SCHICHTEN.length},""); }catch(e){}
+}
+let selbstZurueck=0;    // von uns ausgeloestes history.back() - darf keine Schicht schliessen
+function schichtAb(schliessen){
+  const i=SCHICHTEN.lastIndexOf(schliessen);
+  if(i>=0) SCHICHTEN.splice(i,1);
+  if(schliessen.__ausPop){ schliessen.__ausPop=false; return; }   // History hat sich schon bewegt
+  /* Ohne den Zaehler riss das Schliessen per Knopf die Ebene DARUNTER mit: history.back()
+     loest popstate aus, und der Handler haette die naechste Schicht geschlossen. */
+  try{ if(history.state && history.state.oakSchicht){ selbstZurueck++; history.back(); } }catch(e){}
+}
+/* Ein Overlay-Element als Schicht fuehren: das Abmelden passiert automatisch, sobald es aus
+   dem DOM verschwindet - so muss nicht jeder einzelne remove()-Aufruf angefasst werden. */
+function schichtFuer(el, schliessen){
+  const zu = schliessen || (()=>{ if(el && el.isConnected) el.remove(); });
+  schichtAn(zu);
+  const beob=new MutationObserver(()=>{
+    if(el && !el.isConnected){ beob.disconnect(); schichtAb(zu); }
+  });
+  beob.observe(document.body,{childList:true});
+  return zu;
+}
+window.addEventListener("popstate",()=>{
+  if(selbstZurueck>0){ selbstZurueck--; return; }   // wir haben selbst zurueckgeblaettert
+  const fn=SCHICHTEN.pop();
+  if(!fn) return;                      // nichts offen: normale Navigation, App darf zu
+  fn.__ausPop=true;
+  try{ fn(); }catch(e){}
+});
+
 /* Vollbild-Panel: enthaelt den vorhandenen Markup-Block unveraendert, wird nur ein- und
    ausgeblendet. Kein Neuaufbau - ids und Listener bleiben gueltig. */
 let panelOffen=null;
+let panelSchicht=null;
 function oeffnePanel(id){
   const p=document.getElementById(id); if(!p) return;
   const warOffen=!!panelOffen;
@@ -1601,22 +1657,23 @@ function oeffnePanel(id){
   if(id==="pnlListe") renderMaschListe();
   if(id==="pnlMehr") renderMehrInfo();
   const b=p.querySelector(".pnlbody"); if(b) b.scrollTop=0;
-  /* Android-Zurueck soll das Panel schliessen, nicht die App verlassen. */
-  if(!warOffen){ try{ history.pushState({oakPanel:1},""); }catch(e){} }
+  if(!warOffen){
+    panelSchicht=()=>panelZu();
+    schichtAn(panelSchicht);
+  }
+}
+function panelZu(){                    // schliesst nur die Anzeige, ohne History-Spielereien
+  if(!panelOffen) return;
+  const p=document.getElementById(panelOffen); if(p) p.hidden=true;
+  panelOffen=null;
+  renderKacheln();                     // im Panel Erfasstes muss sofort an der Kachel stehen
 }
 function schliessePanel(){
   if(!panelOffen) return;
-  const p=document.getElementById(panelOffen); if(p) p.hidden=true;
-  panelOffen=null;
-  renderKacheln();          // im Panel Erfasstes muss sofort an der Kachel stehen
-  try{ if(history.state && history.state.oakPanel) history.back(); }catch(e){}
+  const fn=panelSchicht; panelSchicht=null;
+  panelZu();
+  if(fn) schichtAb(fn);
 }
-window.addEventListener("popstate",()=>{
-  if(!panelOffen) return;
-  const p=document.getElementById(panelOffen); if(p) p.hidden=true;
-  panelOffen=null;
-  renderKacheln();
-});
 function renderMehrInfo(){
   const el=document.getElementById("mehrInfo"); if(!el) return;
   const url=(localStorage.getItem(UPLOADKEY)||"").trim();
@@ -2078,6 +2135,7 @@ function gfDirektPicker(){
       +`</div></details>`).join("")
     +`<div class="toolrow" style="margin-top:10px"><button class="btn primary" id="gfOk" style="margin-left:auto">Fertig</button></div></div>`;
   document.body.appendChild(pk);
+  schichtFuer(pk);
   const zu=()=>{ pk.remove(); renderGfKurz(); renderHazards(); save(); };
   pk.querySelector("#gfOk").addEventListener("click",zu);
   pk.addEventListener("click",e=>{ if(e.target===pk) zu(); });
@@ -2315,6 +2373,7 @@ function openLupe(f){
     +`<button class="btn primary" id="luMark" style="margin-left:auto">${ico("ziel")}Mangel markieren</button>`
     +`</div>`;
   document.body.appendChild(ov);
+  schichtFuer(ov);
   const im=ov.querySelector("img"); im.src=f.data;
   const zu=()=>ov.remove();
   ov.querySelector("#luZu").addEventListener("click",zu);
@@ -2434,6 +2493,7 @@ function markPicker(onPick){
     +`<button class="btn primary" id="mpFreeOk">＋ übernehmen</button></div>`
     +`<div class="toolrow" style="margin-top:8px"><button class="btn" id="mpAbbr" style="margin-left:auto">Abbrechen</button></div></div>`;
   document.body.appendChild(pk);
+  schichtFuer(pk);
   const beschr=()=>(pk.querySelector("#mpBeschr").value||"").trim();
   const fin=v=>{ pk.remove(); onPick(v); };
   pk.addEventListener("click",e=>{ if(e.target===pk) fin(null); });
@@ -2473,6 +2533,7 @@ function openMarker(foto){
     +`<button class="btn" id="markAbbr">${ico("kreuz")}Abbrechen</button>`
     +`<button class="btn primary" id="markOk" style="margin-left:auto">${ico("haken")}Speichern</button></div>`;
   document.body.appendChild(ov);
+  schichtFuer(ov);
   markCanvas=ov.querySelector("canvas");
   markImg=new Image();
   markImg.onload=()=>{ markCanvas.width=markImg.naturalWidth; markCanvas.height=markImg.naturalHeight; zeichneMarker(); };
@@ -2523,6 +2584,7 @@ function mangelDialog(foto){
       +`<button class="btn primary" id="mdOk" type="button" style="margin-left:auto">Weiter</button>`
       +`</div></div>`;
     document.body.appendChild(pk);
+    schichtFuer(pk, ()=>{ pk.remove(); fertig(null); });
     const txt=pk.querySelector("#mdText"), btnRec=pk.querySelector("#mdRec"), info=pk.querySelector("#mdInfo");
 
     const stoppen=()=>{ try{ if(rec && rec.state!=="inactive") rec.stop(); }catch(e){} };
@@ -2599,6 +2661,7 @@ function fotoNotizDialog(foto){
     +`<button class="btn primary" id="fnOk" type="button" style="margin-left:auto">Speichern</button>`
     +`</div></div>`;
   document.body.appendChild(pk);
+  schichtFuer(pk);
   const txt=pk.querySelector("#fnText"), btnRec=pk.querySelector("#fnRec"), info=pk.querySelector("#fnInfo");
   const stoppen=()=>{ try{ if(rec && rec.state!=="inactive") rec.stop(); }catch(e){} };
   btnRec.addEventListener("click",async()=>{
@@ -2661,6 +2724,7 @@ function frageZwei(titel, text, jaText, neinText){
       +`</div></div>`;
     document.body.appendChild(pk);
     const weg=v=>{ pk.remove(); res(v); };
+    schichtFuer(pk, ()=>weg(false));
     pk.querySelector("#z2Ja").addEventListener("click",()=>weg(true));
     pk.querySelector("#z2Nein").addEventListener("click",()=>weg(false));
   });
@@ -2687,6 +2751,7 @@ function frageWahl(titel, text, optionen, abbruchText){
       +`</div>`;
     document.body.appendChild(pk);
     const weg=v=>{ pk.remove(); res(v); };
+    schichtFuer(pk, ()=>weg(null));
     pk.querySelectorAll("[data-w]").forEach(b=>b.addEventListener("click",()=>weg(optionen[+b.dataset.w].wert)));
     pk.querySelector("#wAbbruch").addEventListener("click",()=>weg(null));
   });
@@ -2705,6 +2770,7 @@ function frageText(titel, label, vorgabe, platzhalter){
     document.body.appendChild(pk);
     const feld=pk.querySelector("#ftIn");
     const weg=v=>{ pk.remove(); res(v); };
+    schichtFuer(pk, ()=>weg(null));
     pk.querySelector("#ftOk").addEventListener("click",()=>weg(feld.value));
     pk.querySelector("#ftAb").addEventListener("click",()=>weg(null));
     feld.addEventListener("keydown",e=>{ if(e.key==="Enter") weg(feld.value); });
@@ -2719,6 +2785,7 @@ function hinweis(titel, text, knopf){
       +`<button class="btn primary" id="hwOk" type="button" style="width:100%;justify-content:center;margin-top:12px">`
       +`${knopf||ico("haken")+"Verstanden"}</button></div>`;
     document.body.appendChild(pk);
+    schichtFuer(pk, ()=>{ pk.remove(); res(true); });
     pk.querySelector("#hwOk").addEventListener("click",()=>{ pk.remove(); res(true); });
   });
 }
@@ -2742,6 +2809,7 @@ async function pinPrompt(mFoto, zielKat){
     +`<div class="markhint">${ico("pin","klein")} Wo ist Befund <b>${n}</b>? Auf der Gesamtansicht antippen.</div>`
     +`<div class="markbar"><button class="btn" id="pinSkip" style="margin-left:auto">${ico("kreuz")}Überspringen</button></div>`;
   document.body.appendChild(ov);
+  schichtFuer(ov);
   const cv=ov.querySelector("canvas");
   const img=new Image();
   const zeichnePins=()=>{ const ctx=cv.getContext("2d"); ctx.drawImage(img,0,0);
@@ -2966,22 +3034,52 @@ function planPunkt(ctx,x,y,rr,farbe,txt){
 }
 /* Interaktiver Vektorplan: Maschine antippen = verorten (und Bezeichnung uebernehmen),
    Notiz-Modus = freier Pin mit Text. Ersetzt das Planfoto, sobald ein SVG hinterlegt ist. */
+/* Alles, was den Plan AUSTAUSCHT, steckt hinter einem Knopf - im Hochformat ist neben
+   Verorten kein Platz fuer fuenf weitere Wege (Nikolai 14.08.2026). */
+async function planWechseln(ov){
+  const wege=[{label:ico("wolke")+"Aktuellen Plan aus dem Portal", sub:"Vektorplan mit allen Maschinen", wert:"portal", art:"primaer"},
+              {label:ico("plan")+"Vektorplan aus Datei", wert:"datei"}];
+  if(planSVG && planSVG.svg && planBild) wege.push({label:ico("bild")+"Zum Planfoto wechseln", wert:"foto"});
+  if(!planSVG || !planSVG.svg) wege.push({label:ico("bild")+"Foto/Skizze als Plan", wert:"neuFoto"});
+  if(planBild) wege.push({label:ico("papierkorb")+"Planfoto entfernen", wert:"fotoWeg", art:"warn"});
+  const w=await frageWahl("Plan wechseln",
+    (planSVG&&planSVG.svg) ? "Aktuell: <b>"+esc(planSVG.name||"Vektorplan")+"</b>"
+      +(planSVG.stand?" (Stand "+esc(planSVG.stand)+")":"") : "Aktuell: <b>Planfoto</b>",
+    wege, "Zurück zum Plan");
+  if(w===null) return;
+  if(ov) ov.remove();
+  if(w==="portal") return planAusPortal();
+  if(w==="datei")  return planSvgWaehlen();
+  if(w==="foto")   return openPlanFoto();
+  if(w==="neuFoto"){
+    dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ toast("Planfoto gesetzt."); renderPlanBox(); renderKacheln(); openPlan(); }); });
+    return;
+  }
+  if(w==="fotoWeg"){
+    planBild=null; await idbDel(PLANKEY);
+    renderPlanBox(); renderKacheln(); toast("Planfoto entfernt.");
+    if(planSVG && planSVG.svg) openPlan();
+  }
+}
 function openPlanSVG(){
   const alt=document.getElementById("mark"); if(alt) alt.remove();
   const ov=document.createElement("div"); ov.id="mark";
   const wer=(state.meta.maschine||"").trim()||"aktuelle Maschine";
-  ov.innerHTML=`<div class="markhint" id="plHint">Maschine antippen: „${esc(wer)}" hier verorten`
-    +` · <b style="color:#e88a3c">Notiz-Pin</b> für freie Hinweise</div>`
+  /* Im Hochformat passen keine sieben Knoepfe nebeneinander (Nikolai 14.08.2026: "die Buttons
+     werden im Plan nicht richtig dargestellt"). Deshalb: drei kleine Werkzeuge in einer Zeile,
+     darunter die zwei Entscheidungen. Alles Seltene (Plan wechseln/holen/entfernen) steckt
+     hinter "Plan …". */
+  ov.innerHTML=`<div class="markhint" id="plHint">Maschine antippen = „${esc(wer)}" hier verorten</div>`
     +`<div class="svgwrap" id="svgwrap"></div>`
-    +`<div class="markbar">`
-    +`<button class="btn" id="plNotiz">${ico("pin")}Notiz-Pin</button>`
-    +`<button class="btn" id="plPortal">${ico("wolke")}Aus Portal laden</button>`
-    +`<button class="btn" id="plNeu">${ico("plan")}Plan ersetzen</button>`
-    +`<button class="btn" id="plFoto">${ico("bild")}Foto-Plan</button>`
-    +`<button class="btn" id="plWeg">${ico("kreuz")}Punkt löschen</button>`
+    +`<div class="markbar werkzeuge">`
+    +`<button class="btn" id="plNotiz">${ico("pin")}Notiz</button>`
+    +`<button class="btn" id="plWeg">${ico("kreuz")}Punkt weg</button>`
+    +`<button class="btn" id="plMehr">${ico("plan")}Plan …</button></div>`
+    +`<div class="markbar haupt">`
     +`<button class="btn" id="plAbbr">Abbrechen</button>`
-    +`<button class="btn primary" id="plOk" style="margin-left:auto">${ico("haken")}Übernehmen</button></div>`;
+    +`<button class="btn primary" id="plOk">${ico("haken")}Übernehmen</button></div>`;
   document.body.appendChild(ov);
+  schichtFuer(ov);
   const wrap=ov.querySelector("#svgwrap");
   wrap.innerHTML=planSVG.svg;
   const svg=wrap.querySelector("svg");
@@ -3057,9 +3155,7 @@ function openPlanSVG(){
       ? `<b style="color:#e88a3c">Notiz-Modus:</b> auf den Plan tippen → Text · auf einen Pin tippen → ändern/löschen`
       : `Maschine antippen: „${esc(wer)}" hier verorten`;
   });
-  ov.querySelector("#plPortal").addEventListener("click", planAusPortal);
-  ov.querySelector("#plNeu").addEventListener("click", planSvgWaehlen);
-  ov.querySelector("#plFoto").addEventListener("click",()=>{ ov.remove(); openPlanFoto(); });
+  ov.querySelector("#plMehr").addEventListener("click",()=>planWechseln(ov));
   ov.querySelector("#plWeg").addEventListener("click",()=>{ pos=null; marker(); });
   ov.querySelector("#plAbbr").addEventListener("click",()=>ov.remove());
   ov.querySelector("#plOk").addEventListener("click",()=>{
@@ -3083,16 +3179,16 @@ async function openPlanFoto(){
   const ov=document.createElement("div"); ov.id="mark";
   const wer=(state.meta.maschine||"").trim()||"aktuelle Maschine";
   ov.innerHTML=`<canvas></canvas>`
-    +`<div class="markhint" id="plHint">Antippen: „${esc(wer)}" hier verorten · <b style="color:#6ee7a8">grün</b> = diese Begehung · <b style="color:#c8cfcb">grau</b> = frühere Begehungen</div>`
-    +`<div class="markbar">`
-    +`<button class="btn" id="plNotiz">${ico("pin")}Notiz-Pin</button>`
-    +`<button class="btn" id="plPortal2">${ico("wolke")}Aus Portal laden</button>`
-    +`<button class="btn" id="plSvg">${ico("plan")}Vektorplan laden</button>`
-    +`<button class="btn" id="plNeu">${ico("bild")}Plan ersetzen</button>`
-    +`<button class="btn" id="plWeg">${ico("kreuz")}Punkt löschen</button>`
+    +`<div class="markhint" id="plHint">Antippen = „${esc(wer)}" hier verorten · <b style="color:#6ee7a8">grün</b> heute · <b style="color:#c8cfcb">grau</b> früher</div>`
+    +`<div class="markbar werkzeuge">`
+    +`<button class="btn" id="plNotiz">${ico("pin")}Notiz</button>`
+    +`<button class="btn" id="plWeg">${ico("kreuz")}Punkt weg</button>`
+    +`<button class="btn" id="plMehr">${ico("plan")}Plan …</button></div>`
+    +`<div class="markbar haupt">`
     +`<button class="btn" id="plAbbr">Abbrechen</button>`
-    +`<button class="btn primary" id="plOk" style="margin-left:auto">${ico("haken")}Übernehmen</button></div>`;
+    +`<button class="btn primary" id="plOk">${ico("haken")}Übernehmen</button></div>`;
   document.body.appendChild(ov);
+  schichtFuer(ov);
   const cv=ov.querySelector("canvas"), img=new Image();
   let pos = state.meta.plan_pos ? {rx:state.meta.plan_pos.rx, ry:state.meta.plan_pos.ry} : null;
   const zeichne=()=>{
@@ -3153,11 +3249,7 @@ async function openPlanFoto(){
       ? `<b style="color:#e88a3c">Notiz-Modus:</b> auf den Plan tippen → Text eingeben · auf einen Pin tippen → ändern/löschen`
       : `Antippen: „${esc(wer)}" hier verorten · <b style="color:#6ee7a8">grün</b> = diese Begehung · <b style="color:#c8cfcb">grau</b> = frühere Begehungen`;
   });
-  ov.querySelector("#plPortal2").addEventListener("click", planAusPortal);
-  ov.querySelector("#plSvg").addEventListener("click", planSvgWaehlen);
-  ov.querySelector("#plNeu").addEventListener("click",()=>{
-    dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ ov.remove(); toast("Standortplan ersetzt."); openPlan(); }); });
-  });
+  ov.querySelector("#plMehr").addEventListener("click",()=>planWechseln(ov));
   ov.querySelector("#plWeg").addEventListener("click",()=>{ pos=null; zeichne(); });
   ov.querySelector("#plAbbr").addEventListener("click",()=>ov.remove());
   ov.querySelector("#plOk").addEventListener("click",()=>{
@@ -3616,6 +3708,7 @@ async function laermEinPunkt(){
     +`<div class="messbalken" style="margin-top:8px"><i id="rBal"></i></div>`
     +`<div class="messsub" id="lepStatus" style="margin-top:8px">misst …</div></div>`;
   document.body.appendChild(ov);
+  schichtFuer(ov);
   try{
     serie.length=0;                                   // genau ein Wert je Maschine
     await messeLaermZelle(4, "#rBal");
@@ -3655,6 +3748,7 @@ function bereichWaehlen(){
       +`<div class="toolrow"><button class="btn" id="bAbbr" style="margin-left:auto">Abbrechen</button></div></div>`;
     document.body.appendChild(pk);
     const fin=v=>{ pk.remove(); res(v); };
+    schichtFuer(pk, ()=>fin(null));
     pk.querySelectorAll("[data-b]").forEach(b=>b.addEventListener("click",async()=>{
       const i=+b.dataset.b;
       let name = i>=0 ? MESS_BEREICHE[i]
@@ -3702,6 +3796,7 @@ function zeigeRaster(art, soll){
     +`<div class="rasterWrap"></div>`
     +`<div class="toolrow" style="margin-top:12px"><button class="btn primary" id="rasterFertig" style="margin-left:auto">Fertig</button></div></div>`;
   document.body.appendChild(ov);
+  schichtFuer(ov);
   zeichne();
   const zu=()=>{ ov.remove(); renderMess(); };
   ov.querySelector("#rasterFertig").addEventListener("click",zu);
@@ -3723,6 +3818,7 @@ function sollWaehlen(){
       +`</div><div class="toolrow"><button class="btn" id="soAbbr" style="margin-left:auto">Abbrechen</button></div></div>`;
     document.body.appendChild(pk);
     const fin=v=>{ pk.remove(); res(v); };
+    schichtFuer(pk, ()=>fin(null));
     pk.addEventListener("click",e=>{ if(e.target===pk) fin(null); });
     pk.querySelector("#soAbbr").addEventListener("click",()=>fin(null));
     pk.querySelectorAll("[data-soll]").forEach(b=>b.addEventListener("click",()=>fin(LUX_SOLL[+b.dataset.soll])));
