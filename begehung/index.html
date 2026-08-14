@@ -55,7 +55,8 @@
 
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
   .chip{border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:13px;
-    background:#fcfdfc;cursor:pointer;user-select:none}
+    background:#fcfdfc;cursor:pointer;user-select:none;
+    display:inline-flex;align-items:center;gap:6px}
   .chip.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
 
   /* ---- Gefährdungsgruppen ---- */
@@ -89,6 +90,12 @@
   .item.on .idetail{display:block}
   .item.on{background:var(--akzent)}
   .item.on .idetail{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px}
+
+  /* ---- Linien-Symbole (statt Emoji) ---- */
+  .ic{width:22px;height:22px;flex:0 0 auto;display:inline-block;vertical-align:-5px;
+    fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .ic.gross{width:26px;height:26px}
+  .ic.klein{width:15px;height:15px;stroke-width:2;vertical-align:-3px}
 
   .toolrow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
   .btn{font-family:var(--body);font-size:15px;border:1px solid var(--gruen);background:#fff;
@@ -129,7 +136,7 @@
   .tab{flex:1;background:none;border:0;border-radius:10px;padding:7px 2px 6px;cursor:pointer;
     font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);
     display:flex;flex-direction:column;align-items:center;gap:2px;-webkit-tap-highlight-color:transparent}
-  .tab .tico{font-size:20px;line-height:1.1}
+  .tab .ic{width:23px;height:23px;vertical-align:0}
   .tab.on{color:var(--gruen);font-weight:600;background:var(--akzent)}
   .tab i{font-style:normal;background:var(--gruen);color:#fff;border-radius:999px;
     padding:0 6px;margin-left:3px;font-size:11px;font-weight:700}
@@ -202,6 +209,11 @@
     overflow-y:auto;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
   .mpicker h3{color:var(--gruen);font-size:17px;margin-bottom:8px}
   .mpicker h3.warn{color:#c62828}
+  /* Auswahl-Karte: benannte Wege statt "Annehmen/Abbrechen" */
+  .wahlliste{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+  .wahlliste .btn.wahl{margin:0;text-align:left;justify-content:flex-start;padding:14px 15px}
+  .wahlliste .btn.wahl span{display:flex;flex-direction:column;gap:2px;align-items:flex-start}
+  .wahlsub{font-style:normal;font-size:12px;font-weight:400;opacity:.85}
   .fehlliste{margin:2px 0 10px;padding-left:20px}
   .fehlliste li{font-size:14.5px;color:#c62828;font-weight:600;margin:3px 0}
   label.chk{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;line-height:1.35;
@@ -329,14 +341,13 @@
     padding:11px 12px 10px;box-shadow:var(--shadow);min-height:92px;
     display:flex;flex-direction:column;gap:1px}
   .kachel:active{transform:scale(.98)}
-  .kachel .kico{font-size:21px;line-height:1.2}
+  .kachel .kico{line-height:1;color:var(--gruen);margin-bottom:3px}
   .kachel .knam{font-size:15px;font-weight:600;color:var(--dunkel);line-height:1.2}
   .kachel .ksub{font-size:11.5px;color:var(--muted);line-height:1.3;margin-top:1px}
   .kachel.fertig{border-color:var(--hell);background:#f6fbf8}
   .kachel .kok{position:absolute;top:9px;right:10px;width:21px;height:21px;border-radius:50%;
-    display:grid;place-items:center;font-size:12px;font-weight:700;
-    background:#e7efe9;color:#9db0a6}
-  .kachel.fertig .kok{background:var(--hell);color:#fff}
+    display:grid;place-items:center;border:1.5px solid #dbe5df;background:none}
+  .kachel.fertig .kok{background:var(--hell);border-color:var(--hell);color:#fff}
   .standzeile{font-size:12px;color:var(--muted);text-align:center;margin-top:12px}
   .standzeile b{color:var(--dunkel)}
 
@@ -432,7 +443,7 @@
        Eine Seite, ein Raster: was fehlt, sieht man an der grauen Kachel, ohne zu lesen. -->
   <section class="screen nur-allgemein" id="screenBegehung">
     <div class="screenkopf">
-      <h2>🏢 Begehung</h2>
+      <h2>Begehung</h2>
       <div class="screensub" id="begehungSub">Gilt für den ganzen Tag und alle Maschinen.</div>
     </div>
     <div class="kacheln" id="kachelnBegehung"></div>
@@ -463,7 +474,7 @@
      unverändert weiterlaufen. -->
 
 <div class="panel" id="pnlStamm" hidden>
-  <div class="pnlkopf"><h2>Stammdaten</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlkopf"><h2>Stammdaten</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
   <div class="pnlbody"><section class="card">
     <div class="desc">Zuerst ausfüllen – gilt für den ganzen Tag und alle Maschinen.</div>
     <div class="grid2">
@@ -476,16 +487,16 @@
 </div>
 
 <div class="panel" id="pnlPlan" hidden>
-  <div class="pnlkopf"><h2>Standortplan</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlkopf"><h2>Standortplan</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
   <div class="pnlbody"><section class="card">
-    <button class="btn big" id="btnPlanUpload">🗺 Plan aufnehmen oder wählen</button>
-    <button class="btn big nur-maschine" data-plan>📍 Diese Maschine verorten</button>
+    <button class="btn big" id="btnPlanUpload" data-ico="plan">Plan aufnehmen oder wählen</button>
+    <button class="btn big nur-maschine" data-plan data-ico="pin">Diese Maschine verorten</button>
     <div id="planBox"></div>
   </section></div>
 </div>
 
 <div class="panel" id="pnlAllg" hidden>
-  <div class="pnlkopf"><h2>Allgemeine Befunde</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlkopf"><h2>Allgemeine Befunde</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
   <div class="pnlbody"><section class="card">
     <div class="allgbox">Alles, was <b>keiner Maschine</b> gehört: ungeprüfte Leitern im ganzen Betrieb,
       Fußbodenmarkierung, herumstehende Gebinde, abgelaufene Filter … Kommt ins
@@ -494,21 +505,21 @@
          Foto - für eine Bemerkung ohne Bildbezug musste eines erfunden werden (13.08.: Bodenfoto
          zur Tool-Kritik). "Allgemeiner Befund finde ich auch komisch. Wieso kann ich da nicht
          einfach eine Sprachnotiz eingeben?" -->
-    <button class="btn big" data-addfoto="mangel">📷 Foto vom Befund</button>
-    <button class="btn big rec" id="allgAudioBtn">🎙 Nur Sprachnotiz</button>
+    <button class="btn big" data-addfoto="mangel" data-ico="kamera">Foto vom Befund</button>
+    <button class="btn big rec" id="allgAudioBtn" data-ico="mikro">Nur Sprachnotiz</button>
     <div id="allgAudioBox"></div>
     <div class="thumbs allgThumbs"></div>
   </section></div>
 </div>
 
 <div class="panel" id="pnlFotos" hidden>
-  <div class="pnlkopf"><h2>Fotos</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlkopf"><h2>Fotos</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
   <div class="pnlbody"><section class="card">
     <div class="toolrow">
-      <button class="btn" data-addfoto="gesamt">📷 Gesamtansicht</button>
-      <button class="btn" data-addfoto="gesamt_rueck">📷 Rückseite</button>
-      <button class="btn" data-addfoto="typenschild">📷 Typenschild</button>
-      <button class="btn" data-addfoto="mangel">📷 Mangel-Foto</button>
+      <button class="btn" data-addfoto="gesamt" data-ico="kamera">Gesamtansicht</button>
+      <button class="btn" data-addfoto="gesamt_rueck" data-ico="kamera">Rückseite</button>
+      <button class="btn" data-addfoto="typenschild" data-ico="kamera">Typenschild</button>
+      <button class="btn" data-addfoto="mangel" data-ico="kamera">Mangel-Foto</button>
     </div>
     <!-- Kurzvideo entfernt (Vorgabe Nikolai 06.08.2026): wanderte als base64 in jeden Upload,
          wurde aber von keiner Auswertung gelesen. Alte Datensaetze mit kat:"video" bleiben
@@ -520,7 +531,7 @@
 </div>
 
 <div class="panel" id="pnlZustand" hidden>
-  <div class="pnlkopf"><h2>Zustand</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlkopf"><h2>Zustand</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
   <div class="pnlbody"><section class="card">
     <!-- Zustand der Anlage WAEHREND der Begehung. Pflicht, weil er entscheidet, was ueberhaupt
          beurteilt werden konnte: Am 30.07.2026 standen alle fuenf Anlagen still, das musste
@@ -532,8 +543,8 @@
            warum sie steht. Ob wegen keinem Auftrag, Wartung, Werkzeugwechsel – ich weiß es nicht.
            Also weg damit." Alte Exporte mit steht_wartung/steht_kein_auftrag bleiben lesbar. -->
       <div class="chips" data-single="zustand_begehung" id="zustandChips">
-        <span class="chip" data-val="laeuft">▶ läuft</span>
-        <span class="chip" data-val="steht">⏸ steht</span>
+        <span class="chip" data-val="laeuft" data-ico="play">läuft</span>
+        <span class="chip" data-val="steht" data-ico="pause">steht</span>
       </div>
     </div>
     <!-- Linearroboter: eine Frage, ein Tipp (Vorgabe Nikolai 13.08.2026). Ohne diese Angabe muss
@@ -542,15 +553,15 @@
     <div class="feld" style="margin-top:14px">
       <label class="f">Linearroboter / Entnahmegerät</label>
       <div class="chips" data-single="linearroboter" id="roboterChips">
-        <span class="chip" data-val="ja">🤖 vorhanden</span>
-        <span class="chip" data-val="nein">— nicht vorhanden</span>
+        <span class="chip" data-val="ja" data-ico="roboter">vorhanden</span>
+        <span class="chip" data-val="nein" data-ico="kreuz">nicht vorhanden</span>
       </div>
     </div>
   </section></div>
 </div>
 
 <div class="panel" id="pnlAudio" hidden>
-  <div class="pnlkopf"><h2>Sprachnotiz</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlkopf"><h2>Sprachnotiz</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
   <div class="pnlbody"><section class="card">
     <!-- Gefährdungsfaktoren stehen hier NICHT mehr: Sie sind das Ergebnis der Auswertung, nicht
          der Erfassung. Vor Ort tippt Nikolai „Ordnung & Sauberkeit" auf dem Foto an – 8.4 und 8.5
@@ -558,7 +569,7 @@
          Sprachnotiz und kommt beim Erstellen der GBU dazu. -->
     <div class="hint">Was gesprochen wird, trägt die Auswertung: Hersteller, Typ, Baujahr vom
       Typenschild, dann die Befunde in der Reihenfolge der Fotos.</div>
-    <button class="btn rec big" id="audioRecBtn">🎙 Notiz aufnehmen</button>
+    <button class="btn rec big" id="audioRecBtn" data-ico="mikro">Notiz aufnehmen</button>
     <div id="audioBox"></div>
     <!-- Tippfeld raus: Vor Ort wird gesprochen, nicht getippt. Das Feld meta.allg_notiz bleibt
          im Datensatz, damit die Alt-Exporte 07/2026 unverändert lesbar sind. -->
@@ -566,27 +577,27 @@
 </div>
 
 <div class="panel" id="pnlMess" hidden>
-  <div class="pnlkopf"><h2>Lärm &amp; Licht</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlkopf"><h2>Lärm &amp; Licht</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
   <div class="pnlbody"><section class="card">
     <!-- Lärm & Licht: gehören hierher, weil sie NUR vor Ort erfassbar sind – aus Foto oder
          Sprachnotiz lässt sich kein Pegel ableiten. Der Befund („belastbare Messung
          veranlassen") entsteht im Hintergrund und steht ausformuliert in der GBU. -->
     <div class="toolrow">
-      <button class="btn" id="btnLaerm">🔊 Lärm</button>
-      <button class="btn" id="btnLux">💡 Licht</button>
+      <button class="btn" id="btnLaerm" data-ico="laerm">Lärm</button>
+      <button class="btn" id="btnLux" data-ico="licht">Licht</button>
     </div>
     <div id="messBox"></div>
   </section></div>
 </div>
 
 <div class="panel" id="pnlRundgang" hidden>
-  <div class="pnlkopf"><h2>Rundgang</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlkopf"><h2>Rundgang</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
   <!-- Gedankenstütze, kein Eingabefeld. -->
   <div class="pnlbody"><section class="card"><div class="rundgangbox" id="rundgangBox"></div></section></div>
 </div>
 
 <div class="panel" id="pnlListe" hidden>
-  <div class="pnlkopf"><h2>Maschinen</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlkopf"><h2>Maschinen</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
   <div class="pnlbody"><section class="card">
     <!-- EINE Liste (Vorgabe Nikolai 14.08.2026). Bis hierher gab es sie zweimal: auf der
          Begehungs-Seite und im 📋-Overlay, mit zwei verschiedenen Öffnen-Funktionen. -->
@@ -595,16 +606,16 @@
 </div>
 
 <div class="panel" id="pnlMehr" hidden>
-  <div class="pnlkopf"><h2>Mehr</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlkopf"><h2>Mehr</h2><button class="btn pnlzu" data-pnlzu data-ico="kreuz">Fertig</button></div>
   <div class="pnlbody"><section class="card">
     <!-- Alles, was NICHT zur Erfassung gehört. Vorher lag es im 📋-Overlay zwischen den
          Maschinen und war dort nicht zu finden. -->
-    <button class="btn big" id="btnNeueBegehung2">🆕 Neue Begehung beginnen</button>
-    <button class="btn big nur-maschine" id="btnReset">✕ Aktuellen Bogen verwerfen</button>
-    <button class="btn big" id="btnImport">⬆︎ Begehung aus Datei laden</button>
-    <button class="btn big" id="btnDrive">⚙ Drive einrichten</button>
-    <button class="btn big" id="btnDriveTest">🔌 Drive testen</button>
-    <button class="btn big rec" id="btnAlleLoeschen">🗑 Alles auf dem Gerät löschen</button>
+    <button class="btn big" id="btnNeueBegehung2" data-ico="neu">Neue Begehung beginnen</button>
+    <button class="btn big nur-maschine" id="btnReset" data-ico="kreuz">Aktuellen Bogen verwerfen</button>
+    <button class="btn big" id="btnImport" data-ico="laden">Begehung aus Datei laden</button>
+    <button class="btn big" id="btnDrive" data-ico="wolke">Drive einrichten</button>
+    <button class="btn big" id="btnDriveTest" data-ico="stecker">Drive testen</button>
+    <button class="btn big rec" id="btnAlleLoeschen" data-ico="papierkorb">Alles auf dem Gerät löschen</button>
     <div class="messsub" id="mehrInfo"></div>
   </section></div>
 </div>
@@ -612,14 +623,14 @@
 <!-- ===== Fußleiste: eine Hauptaktion, vier feste Reiter ===== -->
 <div class="fussblock"><div class="fussblock-inner">
   <div class="hauptzeile">
-    <button class="btn primary nur-maschine" id="btnSave">✓ Maschine sichern</button>
-    <button class="btn primary nur-allgemein" id="btnSaveAllg">⬆ Begehung hochladen</button>
+    <button class="btn primary nur-maschine" id="btnSave" data-ico="haken">Maschine sichern</button>
+    <button class="btn primary nur-allgemein" id="btnSaveAllg" data-ico="hoch">Begehung hochladen</button>
   </div>
   <nav class="tabbar">
-    <button class="tab" id="tabAllg"><span class="tico">🏢</span>Begehung</button>
-    <button class="tab" id="tabMasch"><span class="tico">🔧</span>Maschine</button>
-    <button class="tab" id="btnList"><span class="tico">📋</span>Liste <i id="machCount">0</i></button>
-    <button class="tab" id="tabMehr"><span class="tico">⚙</span>Mehr</button>
+    <button class="tab" id="tabAllg" data-ico="begehung">Begehung</button>
+    <button class="tab" id="tabMasch" data-ico="maschine">Maschine</button>
+    <button class="tab" id="btnList" data-ico="liste">Liste <i id="machCount">0</i></button>
+    <button class="tab" id="tabMehr" data-ico="mehr">Mehr</button>
   </nav>
 </div></div>
 
@@ -636,6 +647,81 @@ function parseKosten(s){
 /* Nutzereingaben vor Einbau in innerHTML/Attribute entschärfen */
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 /* Promise mit Notausgang – ein hängender IndexedDB-Zugriff darf die App nie blockieren */
+/* ===== Symbole =====
+   Keine Emoji mehr (Vorgabe Nikolai 14.08.2026): eine Strichstaerke, eine Farbe, eine Groesse -
+   ein Werkzeug, kein Chat. Inline-SVG, damit die App eine einzige Datei bleibt und offline laeuft.
+   `stroke:currentColor` heisst: das Symbol nimmt die Farbe seines Knopfes an (auch weiss auf
+   gruenem Grund). Statische Knoepfe tragen nur data-ico="name", init() setzt das SVG davor. */
+const ICONS={
+  begehung:'<path d="M3 21h18M5 21V9l5 3V9l5 3V6l4 2v13"/>',
+  /* Schraubenschluessel statt Zahnrad: das Zahnrad las sich bei 23 px wie eine Sonne
+     und war vom Ein/Aus-Zeichen der Kachel "Zustand" kaum zu unterscheiden. */
+  maschine:'<path d="M15.6 3.4a5 5 0 0 0-6.2 6.3L3.8 15.3a2.2 2.2 0 0 0 3.1 3.1l5.6-5.6a5 5 0 0 0 6.3-6.2l-2.9 2.9-2.5-.6-.6-2.5 2.8-3z"/>',
+  liste:'<path d="M9 6h12M9 12h12M9 18h12M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>',
+  mehr:'<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+  stammdaten:'<rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M7.5 9h9M7.5 13h9M7.5 17h5"/>',
+  plan:'<path d="M9 4 3.5 6.5v13L9 17l6 2.5 5.5-2.5v-13L15 6.5 9 4z"/><path d="M9 4v13M15 6.5v13"/>',
+  kamera:'<path d="M3.5 8.5h3.2L8.2 6h7.6l1.5 2.5h3.2A1.5 1.5 0 0 1 22 10v8a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 18v-8a1.5 1.5 0 0 1 1.5-1.5z"/><circle cx="12" cy="14" r="3.4"/>',
+  mikro:'<rect x="9" y="2.8" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.2M8.5 21.2h7"/>',
+  zustand:'<path d="M12 3.5v8"/><path d="M7.2 6.6a7.5 7.5 0 1 0 9.6 0"/>',
+  mess:'<path d="M3.5 18a8.5 8.5 0 0 1 17 0"/><path d="M12 18l4.4-4.9"/>',
+  rundgang:'<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2.2 5.3-5.3 2.2 2.2-5.3 5.3-2.2z"/>',
+  neu:'<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>',
+  laden:'<path d="M12 3.5v10.5M8 10.2l4 4 4-4"/><path d="M4.5 16.5v2A2.5 2.5 0 0 0 7 21h10a2.5 2.5 0 0 0 2.5-2.5v-2"/>',
+  hoch:'<path d="M12 20.5V6.5M7.5 11l4.5-4.5L16.5 11"/><path d="M4.5 4h15"/>',
+  wolke:'<path d="M7.2 18.5h9.6a3.7 3.7 0 0 0 .5-7.4 5.3 5.3 0 0 0-10.2-1.3 3.9 3.9 0 0 0 .1 8.7z"/>',
+  stecker:'<path d="M9 3v5M15 3v5M6.5 8h11v2.8a5.5 5.5 0 0 1-11 0V8zM12 16.3V21"/>',
+  papierkorb:'<path d="M4 6.5h16M9.5 6.5V4.2h5v2.3M6.8 6.5l.9 13.3h8.6l.9-13.3M10 10v6.5M14 10v6.5"/>',
+  haken:'<path d="m4.5 12.5 5 5 10-11"/>',
+  kreuz:'<path d="M6 6l12 12M18 6 6 18"/>',
+  stift:'<path d="M4 20h4L18.6 9.4a2.1 2.1 0 0 0-3-3L5 17v3z"/>',
+  warnung:'<path d="M12 3.5 2.5 20h19L12 3.5z"/><path d="M12 9.5v5M12 17.3v.1"/>',
+  pin:'<path d="M12 21s6.8-6.2 6.8-11a6.8 6.8 0 1 0-13.6 0C5.2 14.8 12 21 12 21z"/><circle cx="12" cy="10" r="2.5"/>',
+  roboter:'<rect x="4" y="8" width="16" height="11" rx="2.5"/><path d="M12 4.6V8M9.5 13h.01M14.5 13h.01M9.5 16h5"/><circle cx="12" cy="3.4" r="1.2"/>',
+  licht:'<path d="M9.2 17.5h5.6M10.2 20.8h3.6"/><path d="M12 2.8a6 6 0 0 0-3.5 10.9v1.3h7v-1.3A6 6 0 0 0 12 2.8z"/>',
+  laerm:'<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4v-5z"/><path d="M15.4 9.2a4.2 4.2 0 0 1 0 5.6M18 6.6a7.7 7.7 0 0 1 0 10.8"/>',
+  play:'<path d="M8 5.5 18 12 8 18.5v-13z"/>',
+  pause:'<path d="M9.5 5v14M14.5 5v14"/>',
+  stop:'<rect x="5.5" y="5.5" width="13" height="13" rx="2"/>',
+  zurueck:'<path d="M9.5 5 4 10.5 9.5 16"/><path d="M4 10.5h9.5a6.5 6.5 0 0 1 0 13H10"/>',
+  buch:'<path d="M4 4.5h5.5a3 3 0 0 1 2.5 1.4V20a2.6 2.6 0 0 0-2.5-1.6H4v-14zM20 4.5h-5.5A3 3 0 0 0 12 5.9V20a2.6 2.6 0 0 1 2.5-1.6H20v-14z"/>',
+  ziel:'<circle cx="12" cy="12" r="7"/><path d="M12 2.5v4.2M12 17.3v4.2M2.5 12h4.2M17.3 12h4.2"/>',
+  drehenL:'<path d="M4.5 10.5A8 8 0 1 1 4 14.5"/><path d="M4 5.5v5h5"/>',
+  drehenR:'<path d="M19.5 10.5A8 8 0 1 0 20 14.5"/><path d="M20 5.5v5h-5"/>',
+  bild:'<rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="m3.5 16.5 5-5 4.5 4.5 3-3 4.5 4.5"/><circle cx="8.5" cy="9.6" r="1.3"/>',
+  uhr:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 2"/>',
+  blitz:'<path d="M13.5 2.5 5 13.5h5.5L9.5 21.5 19 10h-5.8l.3-7.5z"/>'
+};
+function ico(n, klasse){
+  const d=ICONS[n]; if(!d) return "";
+  return '<svg class="ic'+(klasse?" "+klasse:"")+'" viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg>';
+}
+/* Beschriftung aendern, OHNE das Symbol zu verlieren: textContent wuerde das SVG mitloeschen. */
+function knopfText(btn, txt){
+  if(!btn) return;
+  const s=btn.querySelector(".btxt");
+  if(s) s.textContent=txt; else btn.textContent=txt;
+}
+function knopfTextLesen(btn){
+  if(!btn) return "";
+  const s=btn.querySelector(".btxt");
+  return s ? s.textContent : btn.textContent;
+}
+/* Symbole in alle [data-ico] setzen; die vorhandene Beschriftung wandert in ein .btxt-Feld,
+   damit sie spaeter austauschbar bleibt. */
+function symboleSetzen(wurzel){
+  (wurzel||document).querySelectorAll("[data-ico]").forEach(el=>{
+    if(el.dataset.icoGesetzt) return;
+    el.dataset.icoGesetzt="1";
+    const svg=ico(el.dataset.ico);
+    if(!svg) return;
+    if(!el.querySelector("*") && el.textContent.trim()){
+      el.innerHTML=svg+'<span class="btxt">'+esc(el.textContent.trim())+'</span>';
+    } else {
+      el.insertAdjacentHTML("afterbegin", svg);
+    }
+  });
+}
 function mitTimeout(p, ms, fallback){
   return Promise.race([p, new Promise(res=>setTimeout(()=>res(fallback), ms))]);
 }
@@ -994,10 +1080,12 @@ async function persistAll(){
   updateMachineCount();
   const ok=idbState&&idbColl;
   const hint=document.getElementById("savehint");
-  if(hint) hint.textContent = ok ? "gespeichert ✓" : (lsState ? "NUR TEXT GESICHERT – Fotos gefährdet!" : "Speichern hakt – nicht schließen!");
+  if(hint) hint.textContent = ok ? "gespeichert" : (lsState ? "NUR TEXT GESICHERT – Fotos gefährdet!" : "Speichern hakt – nicht schließen!");
   if(!ok && !quotaGewarnt){
     quotaGewarnt=true;
-    alert("Fotos und Sprachnotiz können NICHT gespeichert werden (IndexedDB nicht verfügbar)!\nJETZT '📤 Teilen' drücken (sichert alles als JSON), danach aufräumen.");
+    hinweis("Speichern klappt nicht",
+      "Fotos und Sprachnotiz können auf diesem Gerät <b>nicht</b> gespeichert werden (IndexedDB nicht verfügbar).<br>"
+      +"<b>Jetzt</b> die Begehung hochladen – das sichert alles als Datei –, danach aufräumen.");
   }
   return ok;
 }
@@ -1044,19 +1132,20 @@ async function driveUpload(m, typ){
    Frueher merkte man erst beim Hochladen, dass nichts eingerichtet war. */
 async function driveTesten(){
   const url=(localStorage.getItem(UPLOADKEY)||"").trim();
-  if(!url){ alert("Keine Drive-Verbindung hinterlegt.\n\n📋 → ⚙ Drive → Web-App-URL und Token eintragen."); return "keine-url"; }
+  if(!url){ await hinweis("Keine Drive-Verbindung",
+    "Unter <b>Mehr → Drive einrichten</b> Web-App-URL und Token eintragen."); return "keine-url"; }
   toast("Drive wird geprüft …");
   const erg=await driveUploadPaket(
     {_typ:"OAK-Verbindungstest", _exportiert:new Date().toISOString(), kunde:"verbindungstest", anzahl:0},
     "_Verbindungstest_"+new Date().toISOString().slice(0,10)+".json");
   const text={
-    "ok":         "✓ Drive-Verbindung steht – die Begehung landet direkt im eingang.",
-    "keine-url":  "Keine Web-App-URL hinterlegt (📋 → ⚙ Drive).",
+    "ok":         "Drive-Verbindung steht – die Begehung landet direkt im eingang.",
+    "keine-url":  "Keine Web-App-URL hinterlegt (Mehr → Drive einrichten).",
     "verboten":   "Drive lehnt ab (403): Das Token stimmt nicht mit dem Apps-Script überein.",
     "abbruch":    "Zeitüberschreitung – Netz zu langsam oder Web-App antwortet nicht.",
     "unbestaetigt":"Server hat nicht bestätigt – URL prüfen (endet sie auf /exec?) und Skript-Freigabe („Jeder, auch anonym“)."
   }[erg] || ("Unerwartete Antwort: "+erg);
-  alert(text);
+  await hinweis("Drive-Verbindung", text);
   return erg;
 }
 
@@ -1123,10 +1212,19 @@ function merkeFortschritt(m){
    Uebersicht zaehlte `m._upload!=="gesendet"` (also auch Maschinen ganz ohne Feld), das Senden
    filterte `m._upload && …` und uebersprang genau die. Anzeige sagte "nicht bestaetigt", das
    Senden tat nichts - das war der Kern von "Upload unzuverlaessig" (gefunden 06.08.2026). */
-function istOffen(m){ return !m || m._upload!=="gesendet"; }
+/* Gesichert ist eine Maschine auf ZWEI Wegen: bestaetigt in Drive ODER als Datei aus der App
+   heraus (geteilt/heruntergeladen). Bis 14.08.2026 zaehlte nur Drive - wer im Funkloch die
+   Datei sicherte, blieb trotzdem ewig "nicht bestaetigt" und kam aus der Rueckfrage nie heraus. */
+function istGesichert(m){ return !!m && (m._upload==="gesendet" || m._upload==="datei"); }
+function istOffen(m){ return !istGesichert(m); }
+async function markiereGesichert(art){
+  collection.forEach(m=>{ if(!istGesichert(m)) m._upload=art; });
+  await persistAll();
+  renderMaschListe(); renderKacheln();
+}
 
 window.addEventListener("online", ()=>{
-  if(collection.some(istOffen)) toast("Netz wieder da – Begehung mit ⬆ hochladen.");
+  if(collection.some(istOffen)) toast("Netz wieder da – Begehung jetzt hochladen.");
 });
 /* Einzelne Maschine als eigene Datei teilen (→ Drive eingang) bzw. herunterladen */
 async function teileEinzel(m, typ){
@@ -1173,7 +1271,7 @@ function pflichtDialog(fehlt){
     const hart=fehlt.some(x=>x.feld==="maschine"||x.feld==="foto");
     const hakenMoeglich=(hSchild||hNotiz) && !hart;
     const pk=document.createElement("div"); pk.className="mpicker";
-    pk.innerHTML=`<div class="pcard"><h3 class="warn">⚠ Speichern nicht möglich</h3>`
+    pk.innerHTML=`<div class="pcard"><h3 class="warn">${ico("warnung")}Speichern nicht möglich</h3>`
       +`<p class="hint">Diese Angaben fehlen – ohne sie lässt sich die Maschine später nicht dokumentieren.</p>`
       +`<ul class="fehlliste">${fehlt.map(x=>`<li>${esc(x.txt)}</li>`).join("")}</ul>`
       +(hSchild&&!hart
@@ -1226,12 +1324,15 @@ async function saveAndNeu(){
     if(leerA){ toast("Noch nichts erfasst – erst Foto, Mangel oder Sprachnotiz aufnehmen."); return; }
     /* Ohne Datum hiesse die Datei "…_.json" und ueberschriebe die vom Vortag. */
     if(!(state.meta.datum||"").trim()) state.meta.datum=new Date().toISOString().slice(0,10);
-    if(!await persistAll()){ rescueExport(); alert("Speicher voll – lokal NICHT gesichert. Ein Rettungs-Export wurde heruntergeladen."); return; }
+    if(!await persistAll()){ rescueExport();
+      await hinweis("Speicher voll",
+        "Der Bogen konnte <b>nicht</b> auf dem Gerät gesichert werden. Ein Rettungs-Export wurde "
+        +"heruntergeladen – nichts ist verloren."); return; }
     /* EIN Upload für die ganze Begehung (Vorgabe Nikolai 14.08.2026): Bis hierher lud dieser Knopf
        NUR die allgemeinen Befunde als eigene Datei hoch – Maschinen und Plan gingen getrennte Wege.
        Jetzt geht alles zusammen als eine Sammlung nach Drive. */
     if(navigator.onLine===false){
-      toast("Gesichert · offline – die Begehung später mit ⬆ hochladen.");
+      toast("Gesichert · offline – die Begehung später hochladen.");
       return;
     }
     await teileAlles(btn);
@@ -1253,7 +1354,7 @@ async function saveAndNeu(){
      Verortung ist Komfort fuer die Auswertung, kein Pflichtfeld. */
   if(planBild && !state.meta.plan_pos){
     const jetzt=await frageZwei('Noch nicht auf dem Plan',
-      name + ' ist noch nicht auf dem Standortplan verortet.', '🗺 Jetzt orten', 'Ohne Plan speichern');
+      name + ' ist noch nicht auf dem Standortplan verortet.', ico('plan')+'Jetzt orten', 'Ohne Plan speichern');
     if(jetzt){ openPlan(); return; }   // nach dem Verorten erneut ✓ Speichern druecken
   }
   /* Baujahr/Serien-Nr. werden nicht mehr geprüft – sie stehen auf dem Typenschild-Foto und
@@ -1272,14 +1373,16 @@ async function saveAndNeu(){
      hochgeladen wird am Ende einmal als Paket (teileAlles). Das spart pro Maschine einen
      Netz-Zugriff samt Wartezeit im Funkloch. */
   // 2) lokal in die Sammlung übernehmen (an alter Position beim Nachschärfen, sonst anhängen)
-  if(btn){ btn.disabled=true; btn.textContent="Sichere…"; }
+  if(btn){ btn.disabled=true; knopfText(btn,"Sichere…"); }
   if(editIdx!=null) collection.splice(Math.min(editIdx,collection.length),0,rec);
   else collection.push(rec);
   if(!await persistAll()){
     collection.splice(editIdx!=null?Math.min(editIdx,collection.length-1):collection.length-1,1);
     rescueExport();
-    if(btn){ btn.disabled=false; btn.textContent="✓ Maschine sichern"; }
-    alert("Speicher voll – lokal NICHT gesichert. Ein Rettungs-Export wurde heruntergeladen – nichts ist verloren.");
+    if(btn){ btn.disabled=false; knopfText(btn,"Maschine sichern"); }
+    await hinweis("Speicher voll",
+      "Die Maschine konnte <b>nicht</b> auf dem Gerät gesichert werden. Ein Rettungs-Export wurde "
+      +"heruntergeladen – nichts ist verloren.");
     return;
   }
   // 3) (kein Einzel-Upload mehr – die ganze Begehung geht am Ende in einem Zug nach Drive)
@@ -1293,7 +1396,7 @@ async function saveAndNeu(){
   state=blankState();
   await persistAll();
   neuZeichnen();
-  toast("✓ „"+name+"“ gesichert ("+collection.length+" auf dem Gerät) – Upload am Ende der Begehung");
+  toast("„"+name+"“ gesichert ("+collection.length+" auf dem Gerät) – Upload am Ende der Begehung");
 }
 function ladePrefs(){ try{ return JSON.parse(localStorage.getItem(PREFSKEY))||{}; }catch(e){ return {}; } }
 /* Bogen der Begehungs-Ebene – gleiche Struktur, nur ohne Maschinenbezug. */
@@ -1377,8 +1480,8 @@ function neuZeichnen(){
      Neuladen der App speichern (saveAndNeu setzt disabled=true und stellte es nur im
      Fehlerfall zurueck). Das gehoert zu "drei Buttons, keiner funktioniert". */
   const bS=document.getElementById("btnSave"), bA=document.getElementById("btnSaveAllg");
-  if(bS){ bS.disabled=false; bS.textContent="✓ Maschine sichern"; }
-  if(bA){ bA.disabled=false; bA.textContent="⬆ Begehung hochladen"; }
+  if(bS){ bS.disabled=false; knopfText(bS,"Maschine sichern"); }
+  if(bA){ bA.disabled=false; knopfText(bA,"Begehung hochladen"); }
   schliessePanel();                                  // ein abgeschlossener Schritt schliesst sein Panel
   const ov=document.getElementById("ovl"); if(ov) ov.remove();
   window.scrollTo(0,0);
@@ -1390,8 +1493,8 @@ function neuZeichnen(){
 function kachel(icon, name, sub, fertig, ziel){
   const b=document.createElement("button"); b.type="button";
   b.className="kachel"+(fertig===true?" fertig":"");
-  b.innerHTML=(fertig===null?"":`<span class="kok">${fertig?"✓":"·"}</span>`)
-    +`<span class="kico">${icon}</span><span class="knam">${esc(name)}</span>`
+  b.innerHTML=(fertig===null?"":`<span class="kok">${fertig?ico("haken","klein"):""}</span>`)
+    +`<span class="kico">${ico(icon,"gross")}</span><span class="knam">${esc(name)}</span>`
     +`<span class="ksub">${esc(sub)}</span>`;
   b.addEventListener("click",()=>oeffnePanel(ziel));
   return b;
@@ -1415,23 +1518,23 @@ function renderKacheln(){
     const stammOk=!!(m.kunde||"").trim() && !!(m.datum||"").trim();
     const verortet=collection.filter(x=>(x.meta||{}).plan_pos).length;
     bg.innerHTML="";
-    bg.appendChild(kachel("🏢","Stammdaten",
+    bg.appendChild(kachel("stammdaten","Stammdaten",
       stammOk ? (m.kunde||"").slice(0,20)+" · "+datumKurz(m.datum) : "Kunde und Datum fehlen",
       stammOk, "pnlStamm"));
-    bg.appendChild(kachel("🗺","Standortplan",
+    bg.appendChild(kachel("plan","Standortplan",
       planBild ? verortet+" von "+collection.length+" verortet" : "noch kein Plan hinterlegt",
       !!planBild, "pnlPlan"));
-    bg.appendChild(kachel("📷","Allg. Befunde",
+    bg.appendChild(kachel("kamera","Allg. Befunde",
       (nFoto+nAudio) ? mehrzahl(nFoto,"Foto","Fotos")+" · "+mehrzahl(nAudio,"Notiz","Notizen")
                      : "was keiner Maschine gehört",
       (nFoto+nAudio)>0, "pnlAllg"));
-    bg.appendChild(kachel("📋","Maschinen",
+    bg.appendChild(kachel("liste","Maschinen",
       collection.length ? collection.length+" auf dem Gerät" : "noch keine erfasst",
       collection.length>0, "pnlListe"));
     const sz=document.getElementById("standzeile");
     if(sz){
       const offen=collection.filter(istOffen).length;
-      sz.innerHTML = !collection.length ? "Reiter <b>🔧 Maschine</b> – dort die erste Anlage erfassen."
+      sz.innerHTML = !collection.length ? "Reiter <b>Maschine</b> – dort die erste Anlage erfassen."
         : (offen ? "<b>"+offen+"</b> von "+collection.length+" Maschinen noch nicht hochgeladen."
                  : "Alle "+collection.length+" Maschinen sind bestätigt in Drive.");
     }
@@ -1442,29 +1545,29 @@ function renderKacheln(){
   const schild=!!fotoByKat("typenschild") || !!m.typenschild_fehlt;
   const zust=m.zustand_begehung==="laeuft" ? "läuft" : (/^steht/.test(m.zustand_begehung||"") ? "steht" : "");
   const rob=m.linearroboter==="ja" ? "mit Roboter" : (m.linearroboter==="nein" ? "ohne Roboter" : "");
-  const mess=[m.laerm?"Lärm ✓":"", m.lux?"Licht ✓":""].filter(Boolean).join(" · ");
+  const mess=[m.laerm?"Lärm erfasst":"", m.lux?"Licht erfasst":""].filter(Boolean).join(" · ");
   mg.innerHTML="";
-  mg.appendChild(kachel("📷","Fotos",
+  mg.appendChild(kachel("kamera","Fotos",
     nFoto ? mehrzahl(nFoto,"Foto","Fotos")+(gesamt?"":" · Gesamtansicht fehlt") : "Gesamtansicht + Typenschild",
     gesamt&&schild, "pnlFotos"));
-  mg.appendChild(kachel("🎙","Sprachnotiz",
+  mg.appendChild(kachel("mikro","Sprachnotiz",
     nAudio ? mehrzahl(nAudio,"Aufnahme","Aufnahmen") : "trägt Typ, Baujahr und Befunde",
     nAudio>0 || !!m.notiz_entfaellt, "pnlAudio"));
-  mg.appendChild(kachel("⚙","Zustand",
+  mg.appendChild(kachel("zustand","Zustand",
     [zust,rob].filter(Boolean).join(" · ") || "läuft oder steht?",
     !!zust && !!rob, "pnlZustand"));
-  mg.appendChild(kachel("🗺","Plan-Position",
+  mg.appendChild(kachel("pin","Plan-Position",
     m.plan_pos ? "verortet" : (planBild ? "noch nicht verortet" : "kein Plan hinterlegt"),
     !!m.plan_pos, "pnlPlan"));
-  mg.appendChild(kachel("🔊","Lärm & Licht", mess || "orientierende Messung", !!(m.laerm||m.lux), "pnlMess"));
-  mg.appendChild(kachel("🧭","Rundgang","wo finde ich was?", null, "pnlRundgang"));
+  mg.appendChild(kachel("mess","Lärm & Licht", mess || "orientierende Messung", !!(m.laerm||m.lux), "pnlMess"));
+  mg.appendChild(kachel("rundgang","Rundgang","wo finde ich was?", null, "pnlRundgang"));
   /* Kurz halten: WAS fehlt, steht schon an den grauen Kacheln. Die Zeile sagt nur, ob
      gesichert werden kann - eine Aufzählung aller fünf Pflichtangaben las sich beim Start
      wie eine Fehlerliste. */
   const szM=document.getElementById("standzeileM");
   if(szM){
     const fehlt=fehlendePflicht();
-    if(!fehlt.length) szM.innerHTML="Vollständig – <b>✓ Maschine sichern</b>.";
+    if(!fehlt.length) szM.innerHTML="Vollständig – <b>Maschine sichern</b>.";
     else if(!(m.maschine||"").trim() && !nFoto && !nAudio)
       szM.innerHTML="Name eintragen, dann Fotos und Sprachnotiz.";
     else szM.innerHTML="Es fehlt noch: <b>"+esc(fehlt.length>2
@@ -1502,7 +1605,7 @@ window.addEventListener("popstate",()=>{
 function renderMehrInfo(){
   const el=document.getElementById("mehrInfo"); if(!el) return;
   const url=(localStorage.getItem(UPLOADKEY)||"").trim();
-  el.innerHTML=(url?"Drive-Verbindung eingerichtet ✓":"<b>Drive-Verbindung fehlt</b> – die Begehung ginge nur in den Downloads-Ordner.")
+  el.innerHTML=(url?"Drive-Verbindung eingerichtet":"<b>Drive-Verbindung fehlt</b> – die Begehung ginge nur in den Downloads-Ordner.")
     +"<br>"+collection.length+" Maschine(n) auf dem Gerät · "+collection.filter(istOffen).length+" noch nicht hochgeladen.";
 }
 function init(){
@@ -1554,6 +1657,16 @@ function init(){
   renderGfKurz();
   const gb=document.getElementById("btnGfPick");
   if(gb) gb.addEventListener("click", gfDirektPicker);
+  symboleSetzen();                 // Linien-Symbole in alle [data-ico] (statt Emoji)
+  /* "Nichts passiert" darf es nicht geben: ein Fehler im Feld muss sichtbar sein, sonst sucht
+     man vor Ort an der falschen Stelle (13./14.08.2026). */
+  let fehlerGemeldet=0;
+  const fehlerMelden=txt=>{
+    if(fehlerGemeldet++>2) return;      // nicht zuspammen
+    toast("Fehler im Tool: "+String(txt||"").slice(0,80)+" – bitte melden.");
+  };
+  window.addEventListener("error", e=>fehlerMelden(e && e.message));
+  window.addEventListener("unhandledrejection", e=>fehlerMelden(e && e.reason && e.reason.message));
   // Fußleiste: vier feste Reiter, immer an derselben Stelle (Vorgabe Nikolai 14.08.2026).
   document.body.classList.toggle("ebene-allg", imAllgModus());
   const tA=document.getElementById("tabAllg"), tM=document.getElementById("tabMasch"),
@@ -1719,7 +1832,7 @@ function renderRundgang(){
       .map(t=>`<details class="rundgang"><summary>${esc(t.label)}</summary>`
         +`<div style="padding:2px 0 6px">${t.rundgang.map(s=>"• "+esc(s)).join("<br>")}</div>`
         +`<button class="btn" type="button" data-dguv="${t.id}" style="margin:2px 0 8px">`
-        +`📖 DGUV: Worauf ist zu achten?</button></details>`).join("")
+        +`${ico("buch","klein")} DGUV: Worauf ist zu achten?</button></details>`).join("")
     +"</div>";
   /* Ein Klick statt Dauerkasten: die Kurzuebersicht kommt auf Abruf. */
   box.querySelectorAll("[data-dguv]").forEach(b=>
@@ -1795,7 +1908,7 @@ function coverageText(c){
     + t(c.maengel>0, c.maengel+" Mängel") + " · "
     + t(c.pruef>0, c.pruef+"/"+c.pruefN+" Prüf") + " · "
     + t(c.gef>0, c.gef+" Gefähr.") + " · "
-    + c.fotos+" 📷" + (c.audio?" · "+c.audio+"×🎙":"") + (c.maHin?" · MA-Hinweis":"");
+    + c.fotos+" Fotos" + (c.audio?" · "+c.audio+" Notizen":"") + (c.maHin?" · MA-Hinweis":"");
 }
 function updateHazSel(gnr){
   const g=HAZARDS.find(x=>x.nr===gnr); const el=document.getElementById("hsel-"+gnr);
@@ -1911,7 +2024,7 @@ function renderGfKurz(){
   const box=document.getElementById("gfKurz"); if(!box) return;
   const gesetzt=gfSortiert();
   if(!gesetzt.length){
-    box.innerHTML=`<div class="warnbox">⚠ Noch <b>kein Gefährdungsfaktor</b> gesetzt – ohne sie hat die GBU keinen Inhalt.
+    box.innerHTML=`<div class="warnbox">${ico("warnung","klein")} Noch <b>kein Gefährdungsfaktor</b> gesetzt – ohne sie hat die GBU keinen Inhalt.
       Maschinentyp wählen (setzt die typischen) und beim Rundgang ergänzen.</div>`;
     return;
   }
@@ -2110,7 +2223,7 @@ function renderAllgThumbs(){
       if(f.kat==="mangel"){ mi++; lab="M"+mi; }
       else lab = f.kat==="gesamt"?"G" : f.kat==="gesamt_rueck"?"R" : f.kat==="typenschild"?"T"
         : f.kat==="gesamt_markiert"?"⌖" : f.kat==="gesamt_rueck_markiert"?"⌖R"
-        : f.kat==="video"?"🎬" : "•";
+        : f.kat==="video"?"V" : "•";
       const t=thumb(f,()=>{
         state.fotosAllg.splice(i,1);
         /* Pins hängen an Foto-IDs: nach dem Löschen eines Mangel-Fotos rutschen die Nummern
@@ -2121,7 +2234,7 @@ function renderAllgThumbs(){
       if(f.kat==="mangel"){
         const pin=document.createElement("button"); pin.className="tpin"; pin.type="button";
         const hatPin=((fotoByKat("gesamt")||{}).markierungen||[]).some(m=>m.fotoId===f.id);
-        pin.textContent="📍"; pin.title=hatPin?"Pin versetzen":"Pin auf der Gesamtansicht setzen";
+        pin.innerHTML=ico("pin","klein"); pin.title=hatPin?"Pin versetzen":"Pin auf der Gesamtansicht setzen";
         pin.style.cssText="position:absolute;left:4px;bottom:4px;border:0;border-radius:8px;padding:2px 6px;"
           +"background:"+(hatPin?"rgba(27,67,50,.85)":"rgba(255,255,255,.85)")+";color:"+(hatPin?"#fff":"#1B4332")
           +";font-size:14px;cursor:pointer";
@@ -2134,7 +2247,7 @@ function renderAllgThumbs(){
       const hatNotiz=(state.audios||[]).some(a=>a.fotoId===f.id);
       const hatText=!!((f.beschreibung&&f.beschreibung.trim()) || (state.maengel||[]).some(m=>m.fotoId===f.id));
       const mic=document.createElement("button"); mic.type="button"; mic.className="tmic";
-      mic.textContent="🎙";
+      mic.innerHTML=ico("mikro","klein");
       mic.title=(hatNotiz||hatText)?"Notiz zu diesem Foto ansehen/ändern":"Kurze Sprachnotiz/Beschreibung zu diesem Foto";
       mic.style.cssText="position:absolute;right:4px;bottom:4px;border:0;border-radius:8px;padding:2px 6px;"
         +"background:"+((hatNotiz||hatText)?"rgba(27,67,50,.9)":"rgba(255,255,255,.85)")
@@ -2164,10 +2277,10 @@ function openLupe(f){
   const ov=document.createElement("div"); ov.id="lupe";
   ov.innerHTML=`<img alt="Foto in Großansicht">`
     +`<div class="lupebar">`
-    +`<button class="btn" id="luZu">✕ Schließen</button>`
-    +`<button class="btn" id="luL">↺ 90°</button>`
-    +`<button class="btn" id="luR">↻ 90°</button>`
-    +`<button class="btn primary" id="luMark" style="margin-left:auto">⌖ Mangel markieren</button>`
+    +`<button class="btn" id="luZu">${ico("kreuz")}Schließen</button>`
+    +`<button class="btn" id="luL">${ico("drehenL")}90°</button>`
+    +`<button class="btn" id="luR">${ico("drehenR")}90°</button>`
+    +`<button class="btn primary" id="luMark" style="margin-left:auto">${ico("ziel")}Mangel markieren</button>`
     +`</div>`;
   document.body.appendChild(ov);
   const im=ov.querySelector("img"); im.src=f.data;
@@ -2280,7 +2393,7 @@ function markPicker(onPick){
   pk.innerHTML=`<div class="pcard"><h3>Was ist hier zu sehen?</h3><div class="mpal">${cat}</div>`
     +`<label class="f">Beschreibung – was genau ist an dieser Stelle zu sehen?</label>`
     +`<input type="text" id="mpBeschr" class="kostin" style="width:100%" placeholder="z. B. Spalt unter dem Zaun, ca. 25 cm">`
-    +`<details class="grp" style="margin-top:12px"><summary>⚠ Gefährdungsfaktor direkt setzen (BGHM) <span class="chev">›</span></summary>`
+    +`<details class="grp" style="margin-top:12px"><summary>${ico("warnung","klein")} Gefährdungsfaktor direkt setzen (BGHM) <span class="chev">›</span></summary>`
     +`<p class="hint">Wenn kein Mangel passt, der Faktor aber in die GBU muss – z. B. 8.5 Bewegungsfläche,
        9.1 Heben/Tragen, 3.1 Hautkontakt. Wird als Marker gesetzt und in 2.5 aktiviert.</p>`
     +gfBlock+`</details>`
@@ -2316,7 +2429,7 @@ function markPicker(onPick){
    so lässt sich jeder Befund direkt auf SEINEM Mangelfoto kennzeichnen und beschreiben. */
 function openMarker(foto){
   const f=foto||fotoByKat("gesamt");
-  if(!f){ toast("Erst ein Foto aufnehmen (📷 Gesamtansicht)."); return; }
+  if(!f){ toast("Erst ein Foto aufnehmen (Gesamtansicht)."); return; }
   markFoto=f;
   markMk=JSON.parse(JSON.stringify(f.markierungen||[]));
   const ov=document.createElement("div"); ov.id="mark";
@@ -2324,9 +2437,9 @@ function openMarker(foto){
   ov.innerHTML=`<canvas></canvas>`
     +`<div class="markhint">${was}: Punkt antippen → Mangel wählen + beschreiben</div>`
     +`<div class="markbar">`
-    +`<button class="btn" id="markUndo">↩ Rückgängig</button>`
-    +`<button class="btn" id="markAbbr">✕ Abbrechen</button>`
-    +`<button class="btn primary" id="markOk" style="margin-left:auto">✓ Speichern</button></div>`;
+    +`<button class="btn" id="markUndo">${ico("zurueck")}Rückgängig</button>`
+    +`<button class="btn" id="markAbbr">${ico("kreuz")}Abbrechen</button>`
+    +`<button class="btn primary" id="markOk" style="margin-left:auto">${ico("haken")}Speichern</button></div>`;
   document.body.appendChild(ov);
   markCanvas=ov.querySelector("canvas");
   markImg=new Image();
@@ -2371,7 +2484,7 @@ function mangelDialog(foto){
       +`<input type="text" id="mdText" placeholder="z. B. Schutzzaun untergreifbar" autocomplete="off"`
       +` style="width:100%;box-sizing:border-box;padding:10px;font-size:16px;border:1px solid var(--rand,#cfd8d3);border-radius:9px">`
       +`<div class="toolrow" style="margin-top:10px;align-items:center">`
-      +`<button class="btn" id="mdRec" type="button">🎙 Diktieren</button>`
+      +`<button class="btn" id="mdRec" type="button">${ico("mikro")}Diktieren</button>`
       +`<span class="messsub" id="mdInfo" style="margin-left:8px"></span></div>`
       +`<div class="toolrow" style="margin-top:14px">`
       +`<button class="btn" id="mdSkip" type="button">Überspringen</button>`
@@ -2396,16 +2509,16 @@ function mangelDialog(foto){
         const blob=new Blob(chunks,{type:mime});
         try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
         stream=null; rec=null;
-        btnRec.classList.remove("active"); btnRec.textContent="🎙 Erneut aufnehmen";
+        btnRec.classList.remove("active"); btnRec.innerHTML=ico("mikro")+"Erneut aufnehmen";
         const r=new FileReader();
         r.onload=()=>{ aufnahme={mime, dauer, data:r.result};
-          info.textContent="Notiz "+Math.floor(dauer/60)+":"+String(dauer%60).padStart(2,"0")+" aufgenommen ✓"; };
+          info.textContent="Notiz "+Math.floor(dauer/60)+":"+String(dauer%60).padStart(2,"0")+" aufgenommen"; };
         r.readAsDataURL(blob);
       };
       start=Date.now(); rec.start(); btnRec.classList.add("active");
       timer=setInterval(()=>{
         const sk=Math.round((Date.now()-start)/1000);
-        btnRec.textContent="⏹ Stop ("+Math.floor(sk/60)+":"+String(sk%60).padStart(2,"0")+")";
+        btnRec.innerHTML=ico("stop")+"Stop ("+Math.floor(sk/60)+":"+String(sk%60).padStart(2,"0")+")";
         if(sk>=AUDIO_MAX_S) stoppen();
       },500);
     });
@@ -2447,7 +2560,7 @@ function fotoNotizDialog(foto){
     +`<input type="text" id="fnText" placeholder="z. B. Positiv: LOTO korrekt gesichert" autocomplete="off" value="${(foto.beschreibung||'').replace(/"/g,'&quot;')}"`
     +` style="width:100%;box-sizing:border-box;padding:10px;font-size:16px;border:1px solid var(--rand,#cfd8d3);border-radius:9px">`
     +`<div class="toolrow" style="margin-top:10px;align-items:center">`
-    +`<button class="btn" id="fnRec" type="button">🎙 ${alt?'Neu aufnehmen':'Diktieren'}</button>`
+    +`<button class="btn" id="fnRec" type="button">${ico("mikro")}${alt?'Neu aufnehmen':'Diktieren'}</button>`
     +`<span class="messsub" id="fnInfo" style="margin-left:8px">${alt?('Notiz '+Math.floor(alt.dauer/60)+':'+String(alt.dauer%60).padStart(2,'0')+' vorhanden'):''}</span></div>`
     +`<div class="toolrow" style="margin-top:14px">`
     +`<button class="btn" id="fnCancel" type="button">Abbrechen</button>`
@@ -2470,16 +2583,16 @@ function fotoNotizDialog(foto){
       const blob=new Blob(chunks,{type:mime});
       try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
       stream=null; rec=null;
-      btnRec.classList.remove("active"); btnRec.textContent="🎙 Erneut aufnehmen";
+      btnRec.classList.remove("active"); btnRec.innerHTML=ico("mikro")+"Erneut aufnehmen";
       const r=new FileReader();
       r.onload=()=>{ aufnahme={mime, dauer, data:r.result};
-        info.textContent="Notiz "+Math.floor(dauer/60)+":"+String(dauer%60).padStart(2,"0")+" aufgenommen ✓"; };
+        info.textContent="Notiz "+Math.floor(dauer/60)+":"+String(dauer%60).padStart(2,"0")+" aufgenommen"; };
       r.readAsDataURL(blob);
     };
     start=Date.now(); rec.start(); btnRec.classList.add("active");
     timer=setInterval(()=>{
       const sk=Math.round((Date.now()-start)/1000);
-      btnRec.textContent="⏹ Stop ("+Math.floor(sk/60)+":"+String(sk%60).padStart(2,"0")+")";
+      btnRec.innerHTML=ico("stop")+"Stop ("+Math.floor(sk/60)+":"+String(sk%60).padStart(2,"0")+")";
       if(sk>=AUDIO_MAX_S) stoppen();
     },500);
   });
@@ -2510,13 +2623,71 @@ function frageZwei(titel, text, jaText, neinText){
     pk.innerHTML=`<div class="pcard"><h3>${esc(titel)}</h3>`
       +(text?`<p class="hint">${esc(text)}</p>`:"")
       +`<div class="toolrow" style="margin-top:14px">`
-      +`<button class="btn" id="z2Nein" type="button">${esc(neinText)}</button>`
-      +`<button class="btn primary" id="z2Ja" type="button" style="margin-left:auto">${esc(jaText)}</button>`
+      /* Beschriftungen bewusst NICHT escapen: sie kommen aus dem Code und tragen ein Symbol. */
+      +`<button class="btn" id="z2Nein" type="button">${neinText}</button>`
+      +`<button class="btn primary" id="z2Ja" type="button" style="margin-left:auto">${jaText}</button>`
       +`</div></div>`;
     document.body.appendChild(pk);
     const weg=v=>{ pk.remove(); res(v); };
     pk.querySelector("#z2Ja").addEventListener("click",()=>weg(true));
     pk.querySelector("#z2Nein").addEventListener("click",()=>weg(false));
+  });
+}
+/* ===== Dialoge gehoeren in die App, nicht in den Browser =====
+   Grund (Feldbefund 14.08.2026): "Neue Begehung" hing an drei nativen confirm(). Chrome bietet
+   auf dem Handy nach mehreren Dialogen "Diese Seite daran hindern, weitere Dialoge zu erzeugen" -
+   ist das einmal angetippt, liefert JEDES confirm()/prompt() der Seite sofort false/null. Die
+   Funktion endete dann still: keine Meldung, Maschinen blieben gelistet ("nichts passiert").
+   Deshalb: eigene Karten in der App-Optik, die immer sichtbar sind und immer antworten. */
+
+/* Mehrere benannte Wege. optionen = [{label, wert, art:"primaer"|"" , sub:"Zusatzzeile"}].
+   Liefert den `wert` der gewaehlten Option oder null bei Abbruch. */
+function frageWahl(titel, text, optionen, abbruchText){
+  return new Promise(res=>{
+    const pk=document.createElement("div"); pk.className="mpicker";
+    pk.innerHTML=`<div class="pcard"><h3>${esc(titel)}</h3>`
+      +(text?`<div class="hint">${text}</div>`:"")
+      +`<div class="wahlliste">`
+      +optionen.map((o,i)=>`<button class="btn big wahl${o.art==="primaer"?" primary":""}${o.art==="warn"?" rec":""}" data-w="${i}" type="button">`
+        +`<span>${o.label}${o.sub?`<i class="wahlsub">${esc(o.sub)}</i>`:""}</span></button>`).join("")
+      +`</div>`
+      +`<button class="btn" id="wAbbruch" type="button" style="width:100%;justify-content:center">${esc(abbruchText||"Abbrechen")}</button>`
+      +`</div>`;
+    document.body.appendChild(pk);
+    const weg=v=>{ pk.remove(); res(v); };
+    pk.querySelectorAll("[data-w]").forEach(b=>b.addEventListener("click",()=>weg(optionen[+b.dataset.w].wert)));
+    pk.querySelector("#wAbbruch").addEventListener("click",()=>weg(null));
+  });
+}
+/* Ersatz fuer prompt(). Liefert den Text oder null bei Abbruch. */
+function frageText(titel, label, vorgabe, platzhalter){
+  return new Promise(res=>{
+    const pk=document.createElement("div"); pk.className="mpicker";
+    pk.innerHTML=`<div class="pcard"><h3>${esc(titel)}</h3>`
+      +(label?`<label class="f">${esc(label)}</label>`:"")
+      +`<input type="text" id="ftIn" value="${esc(vorgabe||"")}" placeholder="${esc(platzhalter||"")}">`
+      +`<div class="toolrow" style="margin-top:14px">`
+      +`<button class="btn" id="ftAb" type="button">Abbrechen</button>`
+      +`<button class="btn primary" id="ftOk" type="button" style="margin-left:auto">Übernehmen</button>`
+      +`</div></div>`;
+    document.body.appendChild(pk);
+    const feld=pk.querySelector("#ftIn");
+    const weg=v=>{ pk.remove(); res(v); };
+    pk.querySelector("#ftOk").addEventListener("click",()=>weg(feld.value));
+    pk.querySelector("#ftAb").addEventListener("click",()=>weg(null));
+    feld.addEventListener("keydown",e=>{ if(e.key==="Enter") weg(feld.value); });
+    setTimeout(()=>{ feld.focus(); feld.select(); },50);
+  });
+}
+/* Ersatz fuer alert(). Immer sichtbar, auch wenn der Browser keine Dialoge mehr zulaesst. */
+function hinweis(titel, text, knopf){
+  return new Promise(res=>{
+    const pk=document.createElement("div"); pk.className="mpicker";
+    pk.innerHTML=`<div class="pcard"><h3>${esc(titel)}</h3><div class="hint">${text}</div>`
+      +`<button class="btn primary" id="hwOk" type="button" style="width:100%;justify-content:center;margin-top:12px">`
+      +`${knopf||ico("haken")+"Verstanden"}</button></div>`;
+    document.body.appendChild(pk);
+    pk.querySelector("#hwOk").addEventListener("click",()=>{ pk.remove(); res(true); });
   });
 }
 async function pinPrompt(mFoto, zielKat){
@@ -2526,18 +2697,18 @@ async function pinPrompt(mFoto, zielKat){
      zwangslaeufig auf der Vorderansicht. */
   if(!zielKat && rueck && fotoByKat("gesamt")){
     const vorne=await frageZwei("Wo ist der Befund?",
-      "Auf welcher Ansicht soll der Pin gesetzt werden?", "📷 Vorderansicht", "📷 Rückseite");
+      "Auf welcher Ansicht soll der Pin gesetzt werden?", ico("kamera")+"Vorderansicht", ico("kamera")+"Rückseite");
     zielKat = vorne ? "gesamt" : "gesamt_rueck";
   }
   const g=fotoByKat(zielKat||"gesamt") || fotoByKat("gesamt") || rueck;
   const n=mangelNummer(mFoto.id);
   if(n==null) return;
-  if(!g){ toast("📍 Pin für Befund "+n+" folgt: erst 📷 Gesamtansicht aufnehmen, dann 📍 am Foto antippen."); return; }
+  if(!g){ toast("Pin für Befund "+n+" folgt: erst die Gesamtansicht aufnehmen, dann am Thumbnail antippen."); return; }
   const alt=document.getElementById("mark"); if(alt) alt.remove();
   const ov=document.createElement("div"); ov.id="mark";
   ov.innerHTML=`<canvas></canvas>`
-    +`<div class="markhint">📍 Wo ist Befund <b>${n}</b>? Auf der Gesamtansicht antippen.</div>`
-    +`<div class="markbar"><button class="btn" id="pinSkip" style="margin-left:auto">✕ Überspringen</button></div>`;
+    +`<div class="markhint">${ico("pin","klein")} Wo ist Befund <b>${n}</b>? Auf der Gesamtansicht antippen.</div>`
+    +`<div class="markbar"><button class="btn" id="pinSkip" style="margin-left:auto">${ico("kreuz")}Überspringen</button></div>`;
   document.body.appendChild(ov);
   const cv=ov.querySelector("canvas");
   const img=new Image();
@@ -2555,7 +2726,7 @@ async function pinPrompt(mFoto, zielKat){
     ov.remove();
     aktualisiereMarkiertesGesamt(g);   // brennt gesamt_markiert neu ein + speichert
     renderAllgThumbs(); save();
-    toast("📍 Pin "+n+" gesetzt.");
+    toast("Pin "+n+" gesetzt.");
   });
   ov.querySelector("#pinSkip").addEventListener("click",()=>ov.remove());
 }
@@ -2684,9 +2855,9 @@ async function planAusPortal(){
   try{
     let s=portalSession();
     if(!s || !s.access_token || (s.expires_at||0) < Date.now()){
-      const mail=prompt("Portal-Anmeldung – E-Mail:", (s&&s.email)||"");
+      const mail=await frageText("Portal-Anmeldung","E-Mail",(s&&s.email)||"","name@oak-engineering.de");
       if(!mail) return;
-      const pw=prompt("Passwort:");
+      const pw=await frageText("Portal-Anmeldung","Passwort","","");
       if(!pw) return;
       toast("Anmelden …");
       await portalAnmelden(mail.trim(), pw);
@@ -2748,16 +2919,16 @@ function openPlanSVG(){
   const ov=document.createElement("div"); ov.id="mark";
   const wer=(state.meta.maschine||"").trim()||"aktuelle Maschine";
   ov.innerHTML=`<div class="markhint" id="plHint">Maschine antippen: „${esc(wer)}" hier verorten`
-    +` · <b style="color:#e88a3c">📍 Notiz</b> für freie Hinweise</div>`
+    +` · <b style="color:#e88a3c">Notiz-Pin</b> für freie Hinweise</div>`
     +`<div class="svgwrap" id="svgwrap"></div>`
     +`<div class="markbar">`
-    +`<button class="btn" id="plNotiz">📍 Notiz-Pin</button>`
-    +`<button class="btn" id="plPortal">☁ Aus Portal laden</button>`
-    +`<button class="btn" id="plNeu">🗺 Plan ersetzen</button>`
-    +`<button class="btn" id="plFoto">🖼 Foto-Plan</button>`
-    +`<button class="btn" id="plWeg">✕ Punkt löschen</button>`
+    +`<button class="btn" id="plNotiz">${ico("pin")}Notiz-Pin</button>`
+    +`<button class="btn" id="plPortal">${ico("wolke")}Aus Portal laden</button>`
+    +`<button class="btn" id="plNeu">${ico("plan")}Plan ersetzen</button>`
+    +`<button class="btn" id="plFoto">${ico("bild")}Foto-Plan</button>`
+    +`<button class="btn" id="plWeg">${ico("kreuz")}Punkt löschen</button>`
     +`<button class="btn" id="plAbbr">Abbrechen</button>`
-    +`<button class="btn primary" id="plOk" style="margin-left:auto">✓ Übernehmen</button></div>`;
+    +`<button class="btn primary" id="plOk" style="margin-left:auto">${ico("haken")}Übernehmen</button></div>`;
   document.body.appendChild(ov);
   const wrap=ov.querySelector("#svgwrap");
   wrap.innerHTML=planSVG.svg;
@@ -2787,7 +2958,7 @@ function openPlanSVG(){
   };
   marker();
 
-  wrap.addEventListener("click",e=>{
+  wrap.addEventListener("click",async e=>{
     const r=wrap.getBoundingClientRect();
     const rx=(e.clientX-r.left+wrap.scrollLeft)/wrap.scrollWidth;
     const ry=(e.clientY-r.top+wrap.scrollTop)/wrap.scrollHeight;
@@ -2795,11 +2966,12 @@ function openPlanSVG(){
       const liste=planPins();
       const nah=liste.findIndex(p=>Math.hypot(p.rx-rx,p.ry-ry)<0.015);
       if(nah>=0){
-        const neu=prompt("Notiz ändern (leer = löschen):", liste[nah].text||"");
+        const neu=await frageText("Notiz am Plan", "Leer lassen löscht die Notiz.", liste[nah].text||"");
         if(neu===null) return;
         if(!neu.trim()) liste.splice(nah,1); else liste[nah].text=neu.trim();
       }else{
-        const t=prompt("Notiz für diesen Punkt:",""); if(t===null||!t.trim()) return;
+        const t=await frageText("Notiz für diesen Punkt", "Was ist hier?", "", "z. B. Palette im Verkehrsweg");
+        if(t===null||!t.trim()) return;
         liste.push({id:"P"+Date.now().toString(36), rx, ry, text:t.trim(),
                     zeit:new Date().toISOString(), begehung:(state.meta.datum||"")});
       }
@@ -2823,7 +2995,7 @@ function openPlanSVG(){
       marker(); return;
     }
     pos={rx,ry}; marker();
-    ov.querySelector("#plHint").innerHTML=`Frei verortet – mit <b>✓ Übernehmen</b> bestätigen`;
+    ov.querySelector("#plHint").innerHTML=`Frei verortet – mit <b>Übernehmen</b> bestätigen`;
   });
 
   ov.querySelector("#plNotiz").addEventListener("click",e=>{
@@ -2851,7 +3023,7 @@ async function openPlanFoto(){
   if(!planBild){
     if(!await frageZwei("Kein Standortplan",
       "Foto, Screenshot oder Skizze genügt – gilt für diesen Kunden.",
-      "🗺 Plan aufnehmen", "Später")) return;
+      ico("plan")+"Plan aufnehmen", "Später")) return;
     dateiInput("__plan", obj=>{ setzePlan(obj).then(()=>{ toast("Standortplan gesetzt."); openPlan(); }); });
     return;
   }
@@ -2861,13 +3033,13 @@ async function openPlanFoto(){
   ov.innerHTML=`<canvas></canvas>`
     +`<div class="markhint" id="plHint">Antippen: „${esc(wer)}" hier verorten · <b style="color:#6ee7a8">grün</b> = diese Begehung · <b style="color:#c8cfcb">grau</b> = frühere Begehungen</div>`
     +`<div class="markbar">`
-    +`<button class="btn" id="plNotiz">📍 Notiz-Pin</button>`
-    +`<button class="btn" id="plPortal2">☁ Aus Portal laden</button>`
-    +`<button class="btn" id="plSvg">🗺 Vektorplan laden</button>`
-    +`<button class="btn" id="plNeu">🖼 Plan ersetzen</button>`
-    +`<button class="btn" id="plWeg">✕ Punkt löschen</button>`
+    +`<button class="btn" id="plNotiz">${ico("pin")}Notiz-Pin</button>`
+    +`<button class="btn" id="plPortal2">${ico("wolke")}Aus Portal laden</button>`
+    +`<button class="btn" id="plSvg">${ico("plan")}Vektorplan laden</button>`
+    +`<button class="btn" id="plNeu">${ico("bild")}Plan ersetzen</button>`
+    +`<button class="btn" id="plWeg">${ico("kreuz")}Punkt löschen</button>`
     +`<button class="btn" id="plAbbr">Abbrechen</button>`
-    +`<button class="btn primary" id="plOk" style="margin-left:auto">✓ Übernehmen</button></div>`;
+    +`<button class="btn primary" id="plOk" style="margin-left:auto">${ico("haken")}Übernehmen</button></div>`;
   document.body.appendChild(ov);
   const cv=ov.querySelector("canvas"), img=new Image();
   let pos = state.meta.plan_pos ? {rx:state.meta.plan_pos.rx, ry:state.meta.plan_pos.ry} : null;
@@ -2898,7 +3070,7 @@ async function openPlanFoto(){
   img.onload=()=>{ cv.width=img.naturalWidth; cv.height=img.naturalHeight; zeichne(); };
   img.src=planBild.data;
   let notizModus=false;
-  cv.addEventListener("click",e=>{
+  cv.addEventListener("click",async e=>{
     const r=cv.getBoundingClientRect(); if(!r.width||!r.height) return;
     const rx=(e.clientX-r.left)/r.width, ry=(e.clientY-r.top)/r.height;
     if(notizModus){
@@ -2906,11 +3078,11 @@ async function openPlanFoto(){
       /* auf einen vorhandenen Pin getippt -> bearbeiten oder loeschen */
       const nah=liste.findIndex(p=>Math.hypot(p.rx-rx,p.ry-ry)<0.02);
       if(nah>=0){
-        const neu=prompt("Notiz ändern (leer = löschen):", liste[nah].text||"");
+        const neu=await frageText("Notiz am Plan", "Leer lassen löscht die Notiz.", liste[nah].text||"");
         if(neu===null) return;
         if(!neu.trim()) liste.splice(nah,1); else liste[nah].text=neu.trim();
       }else{
-        const t=prompt("Notiz für diesen Punkt:","");
+        const t=await frageText("Notiz für diesen Punkt", "Was ist hier?", "", "z. B. Palette im Verkehrsweg");
         if(t===null||!t.trim()) return;
         liste.push({id:"P"+Date.now().toString(36), rx, ry, text:t.trim(),
                     zeit:new Date().toISOString(), begehung:(state.meta.datum||"")});
@@ -2978,7 +3150,7 @@ function renderMaschListe(){
   const box=document.getElementById("maschListe"); if(!box) return;
   if(!collection.length){
     box.innerHTML=`<div class="messsub">Noch keine Maschine gesichert. Über den Reiter
-      <b>🔧 Maschine</b> die erste erfassen – oder unter <b>⚙ Mehr</b> eine Begehung aus einer Datei laden.</div>`;
+      <b>Maschine</b> die erste erfassen – oder unter <b>Mehr</b> eine Begehung aus einer Datei laden.</div>`;
     return;
   }
   box.innerHTML="";
@@ -2998,18 +3170,23 @@ function renderMaschListe(){
          Typenschild-Foto und in der Sprachnotiz. "–" haette hier nach fehlenden Daten
          ausgesehen, obwohl alles erfasst ist. */
       +`<span class="mz-sub">${esc([me.hersteller,me.typ].filter(Boolean).join(" · ")
-          || "Typ aus Typenschild-Foto & Sprachnotiz")}</span>`
-      +`<span class="mz-zahl">${nFoto} 📷 · ${nAudio} 🎙${me.plan_pos?" · 🗺":""}</span>`
-      +`<span class="mz-up ${m._upload==="gesendet"?"ok":"offen"}">`
-      +(m._upload==="gesendet" ? "✓ hochgeladen" : "noch auf dem Gerät")
+          || "Angaben aus Foto und Sprachnotiz")}</span>`
+      +`<span class="mz-zahl">${nFoto} ${ico("kamera","klein")} · ${nAudio} ${ico("mikro","klein")}${me.plan_pos?" · "+ico("pin","klein"):""}</span>`
+      +`<span class="mz-up ${istGesichert(m)?"ok":"offen"}">`
+      +(m._upload==="gesendet" ? "in Drive" : (m._upload==="datei" ? "als Datei gesichert" : "nur auf dem Gerät"))
       +` · ${altbestand?"Mängel in der Sprachnotiz":nMgl+" Mängel"}</span>`;
     z.addEventListener("click",()=>maschineOeffnen(i));
     const del=document.createElement("button"); del.type="button"; del.className="mdel";
     del.textContent="×"; del.title="Löschen";
     del.addEventListener("click",async()=>{
-      if(!confirm("„"+(me.maschine||"?")+"“ endgültig löschen?")) return;
+      const w=await frageWahl("Maschine löschen",
+        "<b>"+esc(me.maschine||"?")+"</b> mit "+nFoto+" Fotos und "+nAudio+" Sprachnotizen"
+        +(istGesichert(m)?" (gesichert)":" – <b>nicht gesichert</b>")+".",
+        [{label:"Ja, löschen", wert:"weg", art:"warn"}], "Abbrechen");
+      if(w!=="weg") return;
       collection.splice(i,1); await persistAll(); renderSysList(); renderMaschListe();
       updateMachineCount(); renderKacheln();
+      toast("„"+(me.maschine||"Maschine")+"“ gelöscht.");
     });
     zeile.appendChild(z); zeile.appendChild(del);
     liste.appendChild(zeile);
@@ -3021,7 +3198,7 @@ async function maschineOeffnen(idx){
   const m=collection[idx]; if(!m) return;
   if(!await frageZwei("Zum Nachschärfen öffnen?",
     ((m.meta||{}).maschine||"Maschine")+" wird aus der Liste genommen und beim Speichern wieder eingefügt.",
-    "✎ Öffnen", "Abbrechen")) return;
+    ico("stift")+"Öffnen", "Abbrechen")) return;
   const rec=JSON.parse(JSON.stringify(m));
   collection.splice(idx,1);
   rec._editIdx=idx;
@@ -3232,7 +3409,7 @@ function luxSerie(){
 }
 function messRasterHtml(art, serie){
   /* 3×3-Miniraster (nur Anzeige) - Mitte (Zelle 4) = Arbeitsbereich. */
-  const pf=["↖","↑","↗","←","🎛","→","↙","↓","↘"];
+  const pf=["↖","↑","↗","←","●","→","↙","↓","↘"];
   let z=`<div class="rasterMini">`;
   for(let i=0;i<9;i++){
     const p=serie.find(q=>q.zelle===i), mitte=(i===4);
@@ -3249,8 +3426,8 @@ function renderMess(){
   const ls=laermSerie(), xs=luxSerie();
   if(!ls.length && !xs.length)
     teile.push(`<div class="messsub" style="margin-top:8px">Lärm &amp; Licht liefern sofort einen
-      groben Orientierungswert – kein Messgerät nötig. <b>🔊 Lärm</b> misst einen Wert am
-      Steuerpult, <b>💡 Licht</b> ein Raster.</div>`);
+      groben Orientierungswert – kein Messgerät nötig. <b>Lärm</b> misst einen Wert am
+      Steuerpult, <b>Licht</b> ein Raster.</div>`);
 
   if(ls.length){
     /* EIN Wert am Steuerpult (Vorgabe 06.08.2026). Gezeigt werden beide Groessen, die
@@ -3318,17 +3495,17 @@ function messMethodik(art){
      +`<div class="dguvliste">`
      +`<div class="dguvzeile"><b>§6</b><span>Auslösewerte L<sub>EX,8h</sub>: unterer <b>80 dB(A)</b>, oberer <b>85 dB(A)</b> (Spitze 135/137 dB(C)).</span><i>LärmVibrationsArbSchV § 6</i></div>`
      +`<div class="dguvzeile"><b>↦</b><span>Der am Platz gemessene L<sub>pAeq</sub> ist noch nicht der Tageswert. Umrechnung: L<sub>EX,8h</sub> = L<sub>pAeq</sub> + 10·lg(T<sub>e</sub>/8), T<sub>e</sub> = Expositionsdauer in h.</span><i>TRLV Lärm Teil 2, 5.6</i></div>`
-     +`<div class="dguvzeile"><b>🎙</b><span>Handy in Kopfhöhe (ca. 1,55 m stehend / 0,8 m über Sitzfläche), Mikrofon zum Arbeitsplatz; bei anwesender Person 0,1–0,4 m seitlich vom Ohr.</span><i>TRLV Lärm Teil 2, 5.3.3</i></div>`
-     +`<div class="dguvzeile"><b>⏱</b><span>Messdauer bei konstantem Geräusch ca. 15 s; bei Schwankungen mehrere Zyklen.</span><i>TRLV Lärm Teil 2, 5.5.1</i></div>`
+     +`<div class="dguvzeile"><b>${ico("mikro","klein")}</b><span>Handy in Kopfhöhe (ca. 1,55 m stehend / 0,8 m über Sitzfläche), Mikrofon zum Arbeitsplatz; bei anwesender Person 0,1–0,4 m seitlich vom Ohr.</span><i>TRLV Lärm Teil 2, 5.3.3</i></div>`
+     +`<div class="dguvzeile"><b>${ico("uhr","klein")}</b><span>Messdauer bei konstantem Geräusch ca. 15 s; bei Schwankungen mehrere Zyklen.</span><i>TRLV Lärm Teil 2, 5.5.1</i></div>`
      +`<div class="dguvzeile"><b>±</b><span>Genauigkeitsklasse 1/2/3 → Unsicherheit ΔL 0/3/6 dB. <b>Handy = Klasse 3 (6 dB)</b> → nur orientierend; für die Entscheidung über einen Auslösewert belastbar messen.</span><i>TRLV Lärm Teil 2</i></div>`
-     +`<div class="dguvzeile"><b>⚡</b><span>Die <b>Spitze</b> wird C-bewertet erfasst (L<sub>pC,peak</sub>), wie in § 6 gefordert. <b>Grenze:</b> Handy-Mikrofone übersteuern weit unter 135 dB(C) – ein echter Spitzenpegel ist so <b>nicht</b> messbar. Der Wert zeigt nur, ob Spitzen überhaupt auffallen; bei Übersteuerung wird das angezeigt.</span><i>IEC 61672 · Gerätegrenze</i></div>`
+     +`<div class="dguvzeile"><b>${ico("blitz","klein")}</b><span>Die <b>Spitze</b> wird C-bewertet erfasst (L<sub>pC,peak</sub>), wie in § 6 gefordert. <b>Grenze:</b> Handy-Mikrofone übersteuern weit unter 135 dB(C) – ein echter Spitzenpegel ist so <b>nicht</b> messbar. Der Wert zeigt nur, ob Spitzen überhaupt auffallen; bei Übersteuerung wird das angezeigt.</span><i>IEC 61672 · Gerätegrenze</i></div>`
      +`</div><p class="hint">Lässt sich die Einhaltung nicht sicher ermitteln, ist n. TRLV Lärm Teil 2 zu messen – sonst gilt der Auslösewert als überschritten (§ 6).</p>`;
   } else {
     h=`<h3>Licht – Methodik & Sollwerte</h3>`
      +`<div class="dguvliste">`
      +`<div class="dguvzeile"><b>lx</b><span>Mindest-Beleuchtungsstärken: Verkehrsweg 100 · Maschinenbeschickung 200 · Fertigung/Spritzguss 300 · Werkzeugraum/Prüfplatz 500 · Präzision/Kontrolle 750.</span><i>ASR A3.4 Anhang 1</i></div>`
      +`<div class="dguvzeile"><b>▦</b><span>Belastbar ist die orientierende Rastermessung: Messpunkte im Raster (Teilfläche 0,2 m · kleiner Raum ~0,6 m · mittlerer Raum ~1,0 m · große Halle ~3,0 m), Mittelwert & Gleichmäßigkeit bilden.</span><i>DGUV Information 215-210 §7.3, Tab. 1</i></div>`
-     +`<div class="dguvzeile"><b>📷</b><span>Die Handy-Messung ist eine Einpunkt-Schätzung aus der Bildhelligkeit – für einen groben Richtwert die Kamera auf eine weiße Fläche am Arbeitsplatz richten.</span><i>Orientierung</i></div>`
+     +`<div class="dguvzeile"><b>${ico("kamera","klein")}</b><span>Die Handy-Messung ist eine Einpunkt-Schätzung aus der Bildhelligkeit – für einen groben Richtwert die Kamera auf eine weiße Fläche am Arbeitsplatz richten.</span><i>Orientierung</i></div>`
      +`</div><p class="hint">Der Wert ersetzt keine Messung mit kalibriertem Luxmeter; er dient der groben Einordnung vor Ort.</p>`;
   }
   pk.innerHTML=`<div class="pcard">${h}<div class="toolrow" style="margin-top:12px">`
@@ -3362,10 +3539,10 @@ async function messeLaermZelle(zelle, balSel){
    halten, fertig. Die Serie traegt genau diesen einen Eintrag (Zelle 4 = Arbeitsbereich). */
 async function laermEinPunkt(){
   const serie=laermSerie();
-  if(serie.length && !await frageZwei("Neu messen?","Für diese Maschine liegt bereits ein Lärm-Richtwert vor.","🔊 Neu messen","Behalten")) return;
+  if(serie.length && !await frageZwei("Neu messen?","Für diese Maschine liegt bereits ein Lärm-Richtwert vor.",ico("laerm")+"Neu messen","Behalten")) return;
   state.meta.mess_bereich = state.meta.mess_bereich || "Steuerpult";
   const ov=document.createElement("div"); ov.className="mpicker";
-  ov.innerHTML=`<div class="pcard"><h3>🔊 Lärm am Steuerpult</h3>`
+  ov.innerHTML=`<div class="pcard"><h3>Lärm am Steuerpult</h3>`
     +`<p class="hint">Handy in Kopfhöhe (ca. 1,55 m) am Bedienplatz ruhig halten – 15 s.
        Orientierungswert, keine Messung nach DIN EN ISO 9612.</p>`
     +`<div class="messbalken" style="margin-top:8px"><i id="rBal"></i></div>`
@@ -3410,9 +3587,10 @@ function bereichWaehlen(){
       +`<div class="toolrow"><button class="btn" id="bAbbr" style="margin-left:auto">Abbrechen</button></div></div>`;
     document.body.appendChild(pk);
     const fin=v=>{ pk.remove(); res(v); };
-    pk.querySelectorAll("[data-b]").forEach(b=>b.addEventListener("click",()=>{
+    pk.querySelectorAll("[data-b]").forEach(b=>b.addEventListener("click",async()=>{
       const i=+b.dataset.b;
-      let name = i>=0 ? MESS_BEREICHE[i] : (prompt("Arbeitsbereich benennen:","")||"").trim();
+      let name = i>=0 ? MESS_BEREICHE[i]
+        : ((await frageText("Arbeitsbereich benennen","Wo wird gemessen?","","z. B. Steuerpult D200/2"))||"").trim();
       if(i<0 && !name){ return; }
       state.meta.mess_bereich=name; save(); fin(name);
     }));
@@ -3426,14 +3604,14 @@ function zeigeRaster(art, soll){
   const ov=document.createElement("div"); ov.className="mpicker"; ov.id="rasterOv";
   const kopf = (art==="laerm"?"Lärm":"Licht")+"-Raster – "+esc(bereich);
   const hinweis = art==="laerm"
-    ? `Mitte 🎛 = Arbeitsbereich. Zelle antippen → 15 s ruhig halten. Handy in Kopfhöhe (ca. 1,55 m). (TRLV Lärm Teil 2 §5.3.3)`
-    : `Mitte 🎛 = Arbeitsbereich. Zelle antippen → messen. Rastermessung nach DGUV 215-210 §7.3.`;
+    ? `Mitte ● = Arbeitsbereich. Zelle antippen → 15 s ruhig halten. Handy in Kopfhöhe (ca. 1,55 m). (TRLV Lärm Teil 2 §5.3.3)`
+    : `Mitte ● = Arbeitsbereich. Zelle antippen → messen. Rastermessung nach DGUV 215-210 §7.3.`;
   const zeichne=()=>{
     let g=`<div class="rasterBig">`;
     for(let i=0;i<9;i++){
       const p=serie.find(q=>q.zelle===i), mitte=(i===4);
       const wert=p?(art==="laerm"?p.dba.toFixed(0)+" dB(A)":Math.round(p.lux)+" lx"):(mitte?"tippen":RASTER_PFEIL[i]);
-      const kopfz=mitte?`🎛 ${esc(bereich)}`:`${RASTER_PFEIL[i]}`;
+      const kopfz=mitte?`● ${esc(bereich)}`:`${RASTER_PFEIL[i]}`;
       g+=`<button class="rbz${p?" voll":""}${mitte?" mitte":""}" data-zelle="${i}"><b>${kopfz}</b><span>${wert}</span></button>`;
     }
     ov.querySelector(".rasterWrap").innerHTML=g+`</div><div class="messbalken" style="margin-top:8px"><i id="rBal"></i></div>`;
@@ -3539,11 +3717,15 @@ async function toggleAudioRec(){
      Kurze Notizen je Befund sind in der Halle robuster und beim Transkribieren klar zuzuordnen. */
   const mime=audioMime();
   if(!mime || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    alert("Audio-Aufnahme wird von diesem Browser nicht unterstützt.\nAlternative: Sprachmemo-App des Handys nutzen und die Datei zuhause mit tools/transkribiere.py verarbeiten.");
+    await hinweis("Aufnahme nicht möglich",
+      "Dieser Browser unterstützt keine Audio-Aufnahme.<br>Alternative: Sprachmemo-App des Handys "
+      +"nutzen und die Datei zuhause mit <i>tools/transkribiere.py</i> verarbeiten.");
     return;
   }
   try{ aStream=await navigator.mediaDevices.getUserMedia({audio:true}); }
-  catch(e){ alert("Kein Mikrofon-Zugriff (Berechtigung verweigert?)."); return; }
+  catch(e){ await hinweis("Kein Mikrofon-Zugriff",
+    "Der Browser hat den Zugriff auf das Mikrofon verweigert. In den Browser-Einstellungen für diese "
+    +"Seite erlauben und erneut versuchen."); return; }
   aChunks=[]; aRec=new MediaRecorder(aStream,{mimeType:mime,audioBitsPerSecond:32000});
   aRec.ondataavailable=e=>{ if(e.data&&e.data.size) aChunks.push(e.data); };
   aRec.onstop=()=>{
@@ -3552,7 +3734,7 @@ async function toggleAudioRec(){
     const blob=new Blob(aChunks,{type:mime});
     aStream.getTracks().forEach(t=>t.stop()); aStream=null; aRec=null;
     btn.classList.remove("active");
-    btn.textContent=(btn.id==="allgAudioBtn") ? "🎙 Nur Sprachnotiz" : "🎙 Notiz aufnehmen";
+    knopfText(btn,(btn.id==="allgAudioBtn") ? "Nur Sprachnotiz" : "Notiz aufnehmen");
     const r=new FileReader();
     r.onload=()=>{
       state.audios=state.audios||[];
@@ -3567,7 +3749,7 @@ async function toggleAudioRec(){
   btn.classList.add("active");
   aTimer=setInterval(()=>{
     const s=Math.round((Date.now()-aStart)/1000);
-    btn.textContent="⏹ Stop ("+String(Math.floor(s/60))+":"+String(s%60).padStart(2,"0")+")";
+    knopfText(btn,"Stop ("+String(Math.floor(s/60))+":"+String(s%60).padStart(2,"0")+")");
     if(s>=AUDIO_MAX_S && aRec) aRec.stop();
   },500);
 }
@@ -3579,10 +3761,10 @@ function renderAudio(){
     const row=document.createElement("div"); row.className="toolrow"; row.style.alignItems="center";
     const nr=document.createElement("span");
     nr.style.cssText="font-weight:700;min-width:2.2em;color:var(--oak,#1B4332)";
-    nr.textContent="🎙"+(i+1);
+    nr.innerHTML=ico("mikro","klein")+(i+1);
     if(a.fotoId){
       const bez=mangelNummer(a.fotoId);
-      if(bez!=null) nr.textContent="🎙M"+bez;
+      if(bez!=null) nr.innerHTML=ico("mikro","klein")+"M"+bez;
       nr.title="gehört zu Mangelfoto "+(bez!=null?bez:"?");
     }
     const player=document.createElement("audio"); player.controls=true; player.src=a.data;
@@ -3593,7 +3775,7 @@ function renderAudio(){
     const del=document.createElement("button"); del.className="btn"; del.textContent="×";
     del.title="Notiz "+(i+1)+" löschen";
     del.addEventListener("click",async()=>{
-      if(await frageZwei("Notiz löschen?","Sprachnotiz "+(i+1)+" wird entfernt – das lässt sich nicht rückgängig machen.","🗑 Löschen","Behalten")){
+      if(await frageZwei("Notiz löschen?","Sprachnotiz "+(i+1)+" wird entfernt – das lässt sich nicht rückgängig machen.",ico("papierkorb")+"Löschen","Behalten")){
         state.audios.splice(i,1); save(); renderAudio();
       }
     });
@@ -3625,8 +3807,12 @@ function exportPaket(){
     || (allg.maengel||[]).length || (allg.meta&&(allg.meta.allg_notiz||"").trim())
     || Object.values(allg.items||{}).some(i=>i.ja));
   if(!machines.length && !allgHatInhalt) return null;
+  /* Kunde/Datum notfalls aus den Maschinen ziehen: sonst hiesse die Datei "Begehung_begehung_.json",
+     sobald der aktuelle Bogen leer ist (z. B. direkt nach dem Sichern der letzten Maschine). */
+  const ausMasch=k=>{ const t=machines.map(m=>((m.meta||{})[k]||"").trim()).filter(Boolean); return t[0]||""; };
   return { _typ:"OAK-Begehung-Sammlung", _version:3, _exportiert:new Date().toISOString(),
-    kunde:state.meta.kunde||"", datum:state.meta.datum||"", anzahl:machines.length,
+    kunde:(state.meta.kunde||"").trim()||ausMasch("kunde"),
+    datum:(state.meta.datum||"").trim()||ausMasch("datum"), anzahl:machines.length,
     plan:planBild||null, planvektor: planSVG?planSVG.name:null,
     planpins: planPins(),          // freie Notiz-Pins auf dem Plan (Claude traegt sie nach)
     allgemein: allgHatInhalt ? allg : null, maschinen:machines };
@@ -3647,9 +3833,9 @@ async function teileAlles(btn){
             +(paket.datum?"_"+paket.datum:"")+"_Sammlung.json";
   const inhalt=JSON.stringify(paket);
   const mb=(inhalt.length/1048576).toFixed(1);
-  const alt=btn?btn.textContent:null;
+  const alt=btn?knopfTextLesen(btn):null;
   const hatBridge=!!(localStorage.getItem(UPLOADKEY)||"").trim();
-  if(btn){ btn.disabled=true; btn.textContent=(hatBridge?"Lade ":"Teile ")+mb+" MB…"; }
+  if(btn){ btn.disabled=true; knopfText(btn,(hatBridge?"Lade ":"Teile ")+mb+" MB…"); }
   try{
     // 0) ZIELWEG: Drive-eingang über die Bridge. Von dort macht Claude die Dokumente und stellt
     //    NUR die fertigen Dokumente ins Kundenportal (Vorgabe Nikolai 13.08.2026).
@@ -3657,11 +3843,14 @@ async function teileAlles(btn){
     if(!hatBridge){
       /* Frueher fiel das Tool hier wortlos auf Downloads zurueck - deshalb "landet immer in
          Downloads". Jetzt sagen wir, WAS fehlt, und bieten das Einrichten direkt an. */
-      if(confirm("Drive-Verbindung ist auf diesem Gerät nicht eingerichtet –\n"
-                +"deshalb ginge die Begehung nur in den Downloads-Ordner.\n\n"
-                +"Jetzt einrichten? (Web-App-URL + Token)")){
-        driveEinstellungen(); return;
-      }
+      const w=await frageWahl("Keine Drive-Verbindung",
+        "Auf diesem Gerät ist der Drive-Eingang nicht eingerichtet – die Begehung ginge nur "
+        +"in den <b>Downloads-Ordner</b>.",
+        [{label:"Drive jetzt einrichten", sub:"Web-App-URL + Token", wert:"setup", art:"primaer"},
+         {label:"Trotzdem als Datei sichern", sub:"landet im Downloads-Ordner", wert:"datei"}],
+        "Abbrechen");
+      if(w===null) return;
+      if(w==="setup"){ driveEinstellungen(); return; }
     }
     if(hatBridge){
       const erg=await driveUploadPaket(paket, name);
@@ -3669,13 +3858,16 @@ async function teileAlles(btn){
         /* Das Paket ENTHAELT alle Maschinen - also sind sie bestaetigt. Ohne diese Zeile blieb
            jede Maschine ewig "nicht bestaetigt", und "Neue Begehung" liess sich nie ausloesen
            (Feldbefund 13.08.2026: "drei Buttons, keiner funktioniert"). */
-        collection.forEach(m=>{ m._upload="gesendet"; });
-        await persistAll();
-        toast("✓ Ganze Begehung in Drive/eingang ("+paket.anzahl+" Masch. + Allgemeines, "+mb+" MB)");
+        await markiereGesichert("gesendet");
+        toast("Ganze Begehung in Drive/eingang ("+paket.anzahl+" Masch. + Allgemeines, "+mb+" MB)");
         return "ok";
       }
-      if(erg==="verboten"){ alert("Drive lehnt den Upload ab – Token prüfen (📋 → ⚙ Drive).\nIch nutze stattdessen Teilen/Download (nichts geht verloren)."); }
-      else { toast("Bridge nicht bestätigt – Rückfall auf Teilen/Download."); }
+      if(erg==="verboten"){
+        await hinweis("Drive lehnt den Upload ab",
+          "Das Token stimmt nicht mit dem Apps-Script überein (<b>Mehr → Drive einrichten</b>).<br>"
+          +"Ich sichere die Begehung stattdessen als Datei – nichts geht verloren.");
+      }
+      else { toast("Drive nicht bestätigt – ich sichere die Begehung als Datei."); }
       // -> faellt bewusst auf den bisherigen Weg durch (Share/Download)
     }
     if(navigator.canShare){
@@ -3684,22 +3876,30 @@ async function teileAlles(btn){
         if(navigator.canShare({files:[file]})){
           try{
             await navigator.share({files:[file],title:name});
-            toast("Sammlung geteilt ("+paket.anzahl+" Maschinen, "+mb+" MB)");
-            return;
+            /* Geteilt ist gesichert: die Datei liegt jetzt ausserhalb der App. Bis 14.08.2026
+               zaehlte NUR der Drive-Weg - deshalb blieb jede Maschine "nicht bestaetigt", auch
+               wenn die Datei sicher war, und "Neue Begehung" fragte endlos nach. */
+            await markiereGesichert("datei");
+            toast("Begehung geteilt ("+paket.anzahl+" Maschinen, "+mb+" MB)");
+            return "datei";
           }catch(err){
-            if(err && err.name==="AbortError") return;          // Nutzer hat abgebrochen – still
+            if(err && err.name==="AbortError"){ toast("Teilen abgebrochen – nichts gesichert."); return; }
             download(name, inhalt, "application/json");          // echter Fehler -> Notausgang
-            alert("Teilen fehlgeschlagen ("+(err&&err.message?err.message:"unbekannt")+").\n"
-                 +"Die Datei wurde stattdessen heruntergeladen – nichts ist verloren.");
-            return;
+            await markiereGesichert("datei");
+            await hinweis("Teilen hat nicht geklappt",
+              "Grund: "+esc((err&&err.message)||"unbekannt")+".<br>Die Datei wurde stattdessen "
+              +"<b>heruntergeladen</b> – nichts ist verloren.");
+            return "datei";
           }
         }
       }
     }
     download(name, inhalt, "application/json");                  // Desktop / kein Share-API
-    toast("Sammlung gespeichert ("+paket.anzahl+" Maschinen, "+mb+" MB)");
+    await markiereGesichert("datei");
+    toast("Begehung als Datei gesichert ("+paket.anzahl+" Maschinen, "+mb+" MB)");
+    return "datei";
   } finally {
-    if(btn){ btn.disabled=false; btn.textContent=alt||"⬆ Begehung hochladen"; }
+    if(btn){ btn.disabled=false; knopfText(btn, alt||"Begehung hochladen"); }
   }
 }
 function download(name, content, type){
@@ -3726,7 +3926,11 @@ if(_nb) _nb.addEventListener("click", neueBegehung);
 
 /* Neu: nur den aktuellen Bogen verwerfen – gesicherte Maschinen bleiben erhalten */
 document.getElementById("btnReset").addEventListener("click",async()=>{
-  if(!confirm("Aktuellen Bogen verwerfen und neu beginnen?\n(Die gesicherten Maschinen bleiben erhalten.)")) return;
+  const w=await frageWahl("Aktuellen Bogen verwerfen",
+    "Nur die gerade erfasste, noch nicht gesicherte Maschine wird gelöscht.<br>"
+    +"Die <b>"+collection.length+"</b> bereits gesicherten Maschinen bleiben erhalten.",
+    [{label:"Ja, verwerfen", wert:"weg", art:"warn"}], "Abbrechen");
+  if(w!=="weg") return;
   state=blankState(); await persistAll(); neuZeichnen(); toast("Bogen verworfen.");
 });
 
@@ -3739,14 +3943,17 @@ function zeigeUebersicht(){ oeffnePanel("pnlListe"); }
 /* Drive-Bridge einrichten. Wurde bis 14.08.2026 in teileAlles() aufgerufen, war aber nie
    definiert - "Jetzt einrichten?" endete deshalb in einem ReferenceError, also sichtbar
    in gar nichts. Jetzt eine Funktion, aufgerufen aus ⚙ Mehr UND aus dem Upload-Weg. */
-function driveEinstellungen(){
+async function driveEinstellungen(){
   const curUrl=localStorage.getItem(UPLOADKEY)||"";
-  const url=prompt("Apps-Script Web-App-URL (/exec) für automatischen Upload nach Drive/eingang.\nLeer lassen = deaktivieren (dann Teilen/Download).", curUrl);
+  const url=await frageText("Drive einrichten (1 von 2)",
+    "Apps-Script Web-App-URL (/exec) – leer lassen schaltet den Drive-Upload ab.",
+    curUrl, "https://script.google.com/macros/s/…/exec");
   if(url===null) return;
   const u=url.trim();
   if(!u){ localStorage.removeItem(UPLOADKEY); localStorage.removeItem(UPLOADTOKENKEY); toast("Drive-Upload deaktiviert."); renderMehrInfo(); return; }
   const curTok=localStorage.getItem(UPLOADTOKENKEY)||"";
-  const tok=prompt("Geheim-Token – muss exakt mit dem TOKEN im Apps-Script übereinstimmen.\nOhne passendes Token weist der Server den Upload ab.", curTok);
+  const tok=await frageText("Drive einrichten (2 von 2)",
+    "Geheim-Token – muss exakt dem TOKEN im Apps-Script entsprechen.", curTok, "");
   if(tok===null) return;
   localStorage.setItem(UPLOADKEY,u);
   localStorage.setItem(UPLOADTOKENKEY,tok.trim());
@@ -3782,30 +3989,59 @@ document.getElementById("importInput").addEventListener("change",async e=>{
 /* Neuer Termin: Sammlung leeren und Stammdaten neu erfassen.
    Bewusst mit Sicherung davor - am 22.07. waren vier Maschinen fast verloren, weil die App
    Upload-Erfolg behauptet hat. Ohne bestaetigten Upload oder Export wird hier NICHT geleert. */
+/* Der Weg hing bis 14.08.2026 an drei nativen confirm(). Antwortete eines mit "Abbrechen" -
+   oder gab der Browser gar keinen Dialog aus (Chrome: "Diese Seite daran hindern, weitere
+   Dialoge zu erzeugen") - endete die Funktion STILL: keine Meldung, die Maschinen blieben
+   gelistet. Genau das war "nichts passiert, Maschinen sind immer noch gelistet".
+   Jetzt: EINE Karte in der App, benannte Wege, und jeder Ausgang ist sichtbar. */
 async function neueBegehung(){
-  /* Frueher (bis 14.08.2026) endete diese Funktion IMMER mit return, sobald eine Maschine nicht
-     bestaetigt war - auch nach erfolgreichem Upload. Man musste ein zweites Mal druecken; schlug
-     der Upload fehl, kam man nie heraus. Genau das war "es gibt drei Buttons, keiner funktioniert".
-     Jetzt: hochladen UND weitermachen, und es gibt immer einen Ausweg. */
-  let gefragt=false;
-  if(collection.length && collection.some(istOffen)){
-    const offen=collection.filter(istOffen).length;
-    if(!confirm("Achtung: "+offen+" von "+collection.length+" Maschinen sind NICHT bestätigt hochgeladen.\n\n"
-      +"OK = jetzt hochladen und danach neu beginnen.\nAbbrechen = nichts tun.")) return;
-    gefragt=true;
-    await teileAlles(null);
-    if(collection.some(istOffen)){
-      if(!confirm("Der Upload ist nicht bestätigt – "+collection.filter(istOffen).length+" Maschinen sind offen.\n\n"
-        +"OK = Begehung als Datei sichern und trotzdem neu beginnen.\n"
-        +"Abbrechen = nichts löschen (erst Drive prüfen: 📋 → ⚙ Drive testen).")) return;
-      const paket=exportPaket();
-      if(paket) download("Begehung_"+slug(paket.kunde||"begehung")+(paket.datum?"_"+paket.datum:"")
-                         +"_Sicherung.json", JSON.stringify(paket), "application/json");
-    }
+  if(!collection.length){ await starteNeueBegehung(); return; }
+  const inDrive=collection.filter(m=>m._upload==="gesendet").length;
+  const alsDatei=collection.filter(m=>m._upload==="datei").length;
+
+  if(!collection.some(istOffen)){
+    const w=await frageWahl("Neue Begehung",
+      "<b>"+collection.length+"</b> Maschine(n) sind gesichert"
+      +(inDrive?" – "+inDrive+" in Drive":"")+(alsDatei?(inDrive?", ":" – ")+alsDatei+" als Datei":"")+".<br>"
+      +"Der Standortplan bleibt erhalten; Kunde und Datum werden neu erfasst.",
+      [{label:"Neue Begehung starten", sub:"Gerät wird geleert", wert:"start", art:"primaer"}],
+      "Abbrechen");
+    if(w!=="start"){ toast("Nichts gelöscht."); return; }
+    await starteNeueBegehung(); return;
   }
-  if(!gefragt && collection.length && !confirm("Neue Begehung starten?\n\n"+collection.length
-      +" gesicherte Maschinen werden aus dem Gerät entfernt (sie liegen bestätigt in Drive).\n"
-      +"Der Standortplan bleibt erhalten.")) return;
+
+  /* Es gibt ungesicherte Maschinen. Wir bieten so lange Wege an, bis einer greift oder
+     Nikolai bewusst abbricht - ohne Sicherung wird nichts geloescht (Lehre vom 22.07.2026). */
+  let text="<b>"+collection.filter(istOffen).length+"</b> von "+collection.length+" Maschinen sind noch "
+    +"<b>nicht gesichert</b>. Erst sichern, dann wird das Gerät geleert.";
+  for(let runde=0; runde<4; runde++){
+    const w=await frageWahl("Neue Begehung", text, [
+      {label:"Hochladen und neu beginnen", sub:"in den Drive-Eingang", wert:"upload", art:"primaer"},
+      {label:"Als Datei sichern und neu beginnen", sub:"Datei landet im Downloads-Ordner", wert:"datei"}
+    ], "Abbrechen – nichts löschen");
+    if(w===null){ toast("Nichts gelöscht – die Maschinen bleiben auf dem Gerät."); return; }
+    if(w==="upload"){
+      const erg=await teileAlles(null);
+      if(erg==="ok" || erg==="datei" || !collection.some(istOffen)){ await starteNeueBegehung(); return; }
+      text="Der Upload wurde <b>nicht bestätigt</b> – "+collection.filter(istOffen).length
+        +" Maschinen sind weiter offen (kein Netz, oder Drive antwortet nicht).<br>"
+        +"Sicher ist jetzt der Weg über die <b>Datei</b>.";
+      continue;
+    }
+    // Datei-Weg: schreibt eine vollstaendige Sicherung und markiert die Maschinen als gesichert.
+    const paket=exportPaket();
+    if(!paket){ toast("Es gibt nichts zu sichern."); return; }
+    download("Begehung_"+slug(paket.kunde||"begehung")+(paket.datum?"_"+paket.datum:"")+"_Sicherung.json",
+             JSON.stringify(paket), "application/json");
+    await markiereGesichert("datei");
+    await hinweis("Als Datei gesichert",
+      "Die ganze Begehung liegt jetzt als JSON im <b>Downloads-Ordner</b> ("+paket.anzahl+" Maschinen "
+      +"plus allgemeine Befunde und Standortplan).<br>Bitte später in den Drive-<i>eingang</i> legen.");
+    await starteNeueBegehung(); return;
+  }
+}
+/* Der eigentliche Neustart - bewusst getrennt, damit jeder Weg oben dasselbe Ergebnis hat. */
+async function starteNeueBegehung(){
   collection=[]; allgemeinGeparkt=null; state=blankState();
   /* Stammdaten des alten Termins nicht mitschleppen - Kunde/Datum werden neu erfasst. */
   state.meta.kunde=""; state.meta.datum=new Date().toISOString().slice(0,10);
@@ -3815,11 +4051,17 @@ async function neueBegehung(){
   await persistAll();
   const o=document.getElementById("ovl"); if(o) o.remove();
   neuZeichnen();
-  toast("Neue Begehung – Kunde und Datum bitte oben eintragen.");
+  toast("Neue Begehung – Kunde und Datum bitte eintragen.");
 }
 async function alleLoeschen(){
-  if(!confirm("ALLE "+collection.length+" gesicherten Maschinen UND den aktuellen Bogen löschen?")) return;
-  if(!confirm("Wirklich sicher? Vorher gespeichert/geteilt?")) return;
+  const offen=collection.filter(istOffen).length;
+  const w=await frageWahl("Alles auf dem Gerät löschen",
+    "Betrifft <b>"+collection.length+"</b> gesicherte Maschine(n) und den aktuellen Bogen."
+    +(offen?"<br><b>Achtung:</b> "+offen+" davon sind nicht gesichert – die Daten wären weg.":"")
+    +"<br>Der Standortplan bleibt erhalten.",
+    [{label:"Ja, alles löschen", sub:"lässt sich nicht rückgängig machen", wert:"weg", art:"warn"}],
+    "Abbrechen");
+  if(w!=="weg"){ toast("Nichts gelöscht."); return; }
   state=blankState(); collection=[]; allgemeinGeparkt=null;
   localStorage.removeItem(LSKEY); localStorage.removeItem(COLLKEY);
   await idbDel(LSKEY); await idbDel(COLLKEY);
@@ -3876,7 +4118,7 @@ if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
   if(!state.meta.modus) state.meta.modus="schnell";
   migrateFotos(state);
   init();
-  if(setup) setTimeout(()=>toast("Drive-Upload eingerichtet ✓"),300);
+  if(setup) setTimeout(()=>toast("Drive-Upload eingerichtet"),300);
   try{ const t=localStorage.getItem("oak_begehung_toast");
     if(t){ localStorage.removeItem("oak_begehung_toast"); toast(t); } }catch(e){}
 })();
