@@ -22,7 +22,7 @@
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{margin:0;font-family:var(--body);background:var(--bg);color:var(--text);
-    font-size:16px;line-height:1.45;padding-bottom:96px}
+    font-size:16px;line-height:1.45;padding-bottom:150px}
   h1,h2,h3{font-family:var(--headline);margin:0;font-weight:600;letter-spacing:.2px}
 
   /* ---- Kopfleiste ---- */
@@ -111,12 +111,29 @@
   .thumb .tmk{position:absolute;right:2px;bottom:2px;background:rgba(198,40,40,.9);color:#fff;
     font-size:11px;font-weight:700;border-radius:6px;padding:1px 5px;pointer-events:none}
 
-  /* ---- Fußleiste ---- */
-  .actionbar{position:fixed;bottom:0;left:0;right:0;z-index:60;background:#fff;
+  /* ---- App-Huelle: EINE Hauptaktion + feste Fussleiste (Vorgabe Nikolai 14.08.2026) ----
+     Vorher standen hier zwei Leisten gleichzeitig: .ebenenbar oben (Begehung/Maschine) und
+     eine .actionbar unten, deren Knoepfe je Ebene erschienen und verschwanden. Vor Ort war
+     dadurch nichts an derselben Stelle - "viele Buttons doppeln sich und sind schwer zu
+     finden". Jetzt: unten klebt ein Block, immer gleich aufgebaut - Hauptaktion, darunter
+     vier feste Reiter. */
+  .fussblock{position:fixed;left:0;right:0;bottom:0;z-index:60;background:#fff;
     border-top:1px solid var(--line);box-shadow:0 -2px 12px rgba(27,67,50,.1);
-    padding:10px 12px calc(10px + env(safe-area-inset-bottom)) 12px;
-    display:flex;gap:8px;overflow-x:auto;max-width:760px;margin:0 auto}
-  .actionbar .btn{white-space:nowrap;flex:1 1 0;justify-content:center;padding:14px 6px}
+    padding-bottom:env(safe-area-inset-bottom);
+    transform:translateY(calc(-1 * var(--tastatur, 0px)));transition:transform .12s}
+  .fussblock-inner{max-width:760px;margin:0 auto}
+  .hauptzeile{display:flex;padding:8px 12px 2px}
+  .hauptzeile .btn{flex:1;justify-content:center;margin:0;padding:14px;font-size:17px;
+    font-weight:600;border-width:2px}
+  .tabbar{display:flex;padding:2px 6px 6px}
+  .tab{flex:1;background:none;border:0;border-radius:10px;padding:7px 2px 6px;cursor:pointer;
+    font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--muted);
+    display:flex;flex-direction:column;align-items:center;gap:2px;-webkit-tap-highlight-color:transparent}
+  .tab .tico{font-size:20px;line-height:1.1}
+  .tab.on{color:var(--gruen);font-weight:600;background:var(--akzent)}
+  .tab i{font-style:normal;background:var(--gruen);color:#fff;border-radius:999px;
+    padding:0 6px;margin-left:3px;font-size:11px;font-weight:700}
+  .tab:active{transform:scale(.96)}
 
   /* ---- Maschinen-Übersicht (Overlay) ---- */
   #ovl{position:fixed;inset:0;background:rgba(27,67,50,.45);z-index:80;display:flex;align-items:flex-end;justify-content:center}
@@ -299,22 +316,65 @@
   .mpal .btn.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
   .stufenrow{flex-basis:100%;display:flex;align-items:center;gap:7px;padding:1px 0 4px}
   .stufenlbl{font-size:12px;color:var(--muted)}
-  /* ---- Ebenen-Umschalter: Maschine vs. Begehung (mobil: gross, klebend) ---- */
-  .ebenenbar{position:sticky;top:0;z-index:58;display:flex;background:#fff;
-    padding:8px 12px;border-bottom:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.07)}
-  .ebenenbar .btn{flex:1;font-size:15.5px;font-weight:600;padding:15px 8px;border-radius:0;margin:0}
-  .ebenenbar .btn:first-child{border-radius:10px 0 0 10px}
-  .ebenenbar .btn:last-child{border-radius:0 10px 10px 0;border-left:none}
-  .ebenenbar .btn.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
+  /* ---- Screens: eine Seite je Aufgabe, ohne Scrollen ---- */
+  .screenkopf{margin-bottom:4px}
+  .screenkopf h2{color:var(--gruen);font-size:24px}
+  .screensub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .screenkopf input[type=text]{margin-top:2px;font-size:17px;font-weight:600}
+
+  /* ---- Kachelraster: was fehlt, sieht man ohne Lesen ---- */
+  .kacheln{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .kachel{position:relative;text-align:left;font-family:var(--body);cursor:pointer;
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:11px 12px 10px;box-shadow:var(--shadow);min-height:92px;
+    display:flex;flex-direction:column;gap:1px}
+  .kachel:active{transform:scale(.98)}
+  .kachel .kico{font-size:21px;line-height:1.2}
+  .kachel .knam{font-size:15px;font-weight:600;color:var(--dunkel);line-height:1.2}
+  .kachel .ksub{font-size:11.5px;color:var(--muted);line-height:1.3;margin-top:1px}
+  .kachel.fertig{border-color:var(--hell);background:#f6fbf8}
+  .kachel .kok{position:absolute;top:9px;right:10px;width:21px;height:21px;border-radius:50%;
+    display:grid;place-items:center;font-size:12px;font-weight:700;
+    background:#e7efe9;color:#9db0a6}
+  .kachel.fertig .kok{background:var(--hell);color:#fff}
+  .standzeile{font-size:12px;color:var(--muted);text-align:center;margin-top:12px}
+  .standzeile b{color:var(--dunkel)}
+
+  /* ---- Vollbild-Panel je Kachel ----
+     Bewusst KEIN neu gebautes Overlay: die Panels enthalten die vorhandenen Markup-Bloecke
+     (#audioBox, #messBox, .allgThumbs, Chips ...) unveraendert. Ids und Listener bleiben
+     gueltig, die Render-Funktionen laufen weiter wie bisher. Z-Index 70 - unter #mark (90),
+     #lupe (92) und .mpicker (95), damit Markieren und Dialoge darueber liegen. */
+  .panel{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;flex-direction:column}
+  .panel[hidden]{display:none}
+  .pnlkopf{display:flex;align-items:center;gap:10px;background:var(--dunkel);color:#fff;
+    padding:calc(10px + env(safe-area-inset-top)) 14px 10px;flex:0 0 auto}
+  .pnlkopf h2{flex:1;color:#fff;font-size:20px;min-width:0}
+  .pnlkopf .pnlzu{border:1px solid rgba(255,255,255,.5);background:none;color:#fff;
+    border-radius:10px;padding:9px 14px;font-family:var(--body);font-size:15px;font-weight:600;cursor:pointer}
+  .pnlbody{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    padding:14px 14px calc(20px + env(safe-area-inset-bottom));max-width:760px;width:100%;margin:0 auto}
+  .pnlbody > .card{margin-bottom:0}
   .allgbox{font-size:12.5px;line-height:1.45;color:#1B4332;background:var(--akzent);
     border-left:3px solid var(--gruen);border-radius:0 8px 8px 0;padding:10px 12px;margin:12px 0}
   .allghint{flex:1;font-size:13.5px;color:var(--gruen);font-weight:600;align-self:center}
   .maschliste{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
-  .maschzeile{display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;width:100%;
-    background:#fcfdfc;border:1px solid var(--line);border-radius:11px;padding:13px 14px;cursor:pointer}
+  /* Zeile = antippen zum Nachschaerfen, daneben nur noch Loeschen. Der fruehere ✎-Knopf war
+     eine zweite Tuer zur selben Aktion (Vorgabe Nikolai 14.08.2026: Doppelungen raus). */
+  .mzrow{display:flex;align-items:stretch;gap:8px}
+  .mzrow .mdel{align-self:center;width:34px;height:34px;font-size:18px}
+  /* Bereiche explizit setzen: mit reiner Auto-Platzierung rutschte der Maschinenname in die
+     rechte Spalte, sobald eine dritte Zeile (Upload-Stand) dazukam. */
+  .maschzeile{flex:1;min-width:0;display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;
+    grid-template-areas:"name zahl" "sub zahl" "up up";
+    background:#fcfdfc;border:1px solid var(--line);border-radius:11px;padding:13px 14px;cursor:pointer;
+    font-family:var(--body)}
   .maschzeile:active{background:var(--akzent)}
+  .mz-name{grid-area:name} .mz-sub{grid-area:sub}
+  .mz-up{grid-area:up;font-size:11.5px;font-weight:600;margin-top:3px}
+  .mz-up.offen{color:#b5462f} .mz-up.ok{color:var(--gruen)}
   .mz-name{font-size:16px;font-weight:600;color:var(--dunkel)}
-  .mz-zahl{grid-row:1/3;align-self:center;font-size:12px;color:var(--muted);white-space:nowrap}
+  .mz-zahl{grid-area:zahl;align-self:center;font-size:12px;color:var(--muted);white-space:nowrap}
   .mz-sub{font-size:12.5px;color:var(--muted)}
   body.ebene-allg .nur-maschine{display:none!important}
   body:not(.ebene-allg) .nur-allgemein{display:none!important}
@@ -341,7 +401,7 @@
   .pitem.mangel .pdetail{display:block}
   .pitem.mangel{background:#fbecea}
   @media print{
-    header,.actionbar,.toolrow,.btn,.savehint,.chev{display:none!important}
+    header,.fussblock,.panel,.toolrow,.btn,.savehint,.chev{display:none!important}
     body{background:#fff;padding:0}
     .item:not(.on){display:none}
     details.grp{break-inside:avoid}
@@ -355,25 +415,56 @@
     <div class="logo">OAK</div>
     <div>
       <h1>Begehungsbogen</h1>
-      <div class="sub">Gefährdungserfassung · Maschinen &amp; Anlagen</div>
+      <!-- Traegt den laufenden Kontext (Kunde · Datum · Anzahl), nicht eine feste Unterzeile:
+           vor Ort ist "welche Begehung bin ich gerade?" die einzige nuetzliche Information. -->
+      <div class="sub" id="kopfSub">Gefährdungserfassung · Maschinen &amp; Anlagen</div>
     </div>
     <div class="savehint" id="savehint">gespeichert</div>
   </div>
 </header>
 
-<!-- EBENE: gehört der Befund der Maschine oder der Begehung? Klebt oben, große Ziele. -->
-<div class="ebenenbar">
-  <button class="btn" id="ebAllg">🏢 Begehung</button>
-  <button class="btn" id="ebMasch">🔧 Maschine</button>
-</div>
-
 <main>
   <!-- Nativer Kamera-/Galerie-Input für ALLE Foto-Buttons (muss im DOM bleiben) -->
   <input type="file" accept="image/*" capture="environment" id="allgFotoInput" hidden>
+  <input type="file" accept="application/json,.json" id="importInput" multiple hidden>
 
-  <!-- ===== BEGEHUNGS-EBENE: hier fängt alles an ===== -->
-  <section class="card nur-allgemein">
-    <h2>🏢 Begehung</h2>
+  <!-- ===== SCREEN BEGEHUNG – hier fängt alles an =====
+       Eine Seite, ein Raster: was fehlt, sieht man an der grauen Kachel, ohne zu lesen. -->
+  <section class="screen nur-allgemein" id="screenBegehung">
+    <div class="screenkopf">
+      <h2>🏢 Begehung</h2>
+      <div class="screensub" id="begehungSub">Gilt für den ganzen Tag und alle Maschinen.</div>
+    </div>
+    <div class="kacheln" id="kachelnBegehung"></div>
+    <div class="standzeile" id="standzeile"></div>
+  </section>
+
+  <!-- ===== SCREEN MASCHINE: reine Erfassung =====
+       Getippt wird nur der Name – alles andere steckt im Typenschild-Foto und in der Sprachnotiz
+       („DEMAG D60-151, ältere Maschine, fehlende Abdeckung an den Heizbändern") und wird daraus
+       für GBU und BA abgeleitet. Hersteller, Typ, Baujahr, Serien-Nr., CE, Maschinentyp,
+       Betriebszustände und Gefährdungsfaktoren sind deshalb aus der Oberfläche verschwunden –
+       nicht aus den Daten: der Export trägt sie weiterhin. -->
+  <section class="screen mode-schnell nur-maschine" id="cardSchnell">
+    <div class="screenkopf">
+      <label class="f">Maschine / Anlage</label>
+      <input type="text" data-meta="maschine" placeholder="z. B. D150/3" list="portalMaschinen">
+      <!-- Vorschlaege aus dem Kundenportal: bereits dokumentierte Anlagen (Bezeichnung + ID). -->
+      <datalist id="portalMaschinen"></datalist>
+    </div>
+    <div class="kacheln" id="kachelnMaschine"></div>
+    <div class="standzeile" id="standzeileM"></div>
+  </section>
+</main>
+
+<!-- ===== PANELS =====
+     Inhalte 1:1 aus der bisherigen Oberfläche – nur verschoben, nicht neu geschrieben.
+     Alle ids bleiben, damit renderAudio/renderMess/renderAllgThumbs/renderPlanBox
+     unverändert weiterlaufen. -->
+
+<div class="panel" id="pnlStamm" hidden>
+  <div class="pnlkopf"><h2>Stammdaten</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlbody"><section class="card">
     <div class="desc">Zuerst ausfüllen – gilt für den ganzen Tag und alle Maschinen.</div>
     <div class="grid2">
       <div><label class="f">Kunde / Firma</label><input type="text" data-meta="kunde" placeholder="z. B. Wibo Kunststofftechnik GmbH"></div>
@@ -381,27 +472,24 @@
       <div><label class="f">Begeher</label><input type="text" data-meta="begeher" placeholder="N. Krawielitzki"></div>
       <div><label class="f">Bereich / Halle</label><input type="text" data-meta="bereich" placeholder="z. B. Halle 1"></div>
     </div>
-    <label class="f" style="margin-top:12px">Hallen- / Standortplan</label>
+  </section></div>
+</div>
+
+<div class="panel" id="pnlPlan" hidden>
+  <div class="pnlkopf"><h2>Standortplan</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlbody"><section class="card">
     <button class="btn big" id="btnPlanUpload">🗺 Plan aufnehmen oder wählen</button>
+    <button class="btn big nur-maschine" data-plan>📍 Diese Maschine verorten</button>
     <div id="planBox"></div>
-  </section>
+  </section></div>
+</div>
 
-  <section class="card nur-allgemein">
-    <h2>🔧 Maschinen &amp; Anlagen</h2>
-    <div id="maschListe"></div>
-  </section>
-
-  <section class="card nur-allgemein">
-    <h2>📋 Allgemeine Befunde</h2>
+<div class="panel" id="pnlAllg" hidden>
+  <div class="pnlkopf"><h2>Allgemeine Befunde</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlbody"><section class="card">
     <div class="allgbox">Alles, was <b>keiner Maschine</b> gehört: ungeprüfte Leitern im ganzen Betrieb,
       Fußbodenmarkierung, herumstehende Gebinde, abgelaufene Filter … Kommt ins
-      <b>Begehungsprotokoll</b> und in die allgemeinen GBU, nicht in eine Maschinen-GBU.
-      Wird laufend gesichert – mit <b>⬆ Begehung hochladen</b> geht die ganze Begehung nach Drive.</div>
-    <!-- Abschluss der Begehung. Beides lag bisher NUR in der Maschinenliste (📋) und war dort
-         nicht zu finden (Nikolai 06.08.2026: "es fehlt bereits ein Button Neue Begehung").
-         Der Sammel-Upload hiess ausserdem "Alles teilen" - das klang nach Teilen-Dialog,
-         nicht nach "eine Datei mit allem nach Drive". -->
-
+      <b>Begehungsprotokoll</b> und in die allgemeinen GBU, nicht in eine Maschinen-GBU.</div>
     <!-- Zwei gleichrangige Wege: Foto ODER reine Sprachnotiz. Bis 14.08.2026 ging es NUR über ein
          Foto - für eine Bemerkung ohne Bildbezug musste eines erfunden werden (13.08.: Bodenfoto
          zur Tool-Kritik). "Allgemeiner Befund finde ich auch komisch. Wieso kann ich da nicht
@@ -410,33 +498,12 @@
     <button class="btn big rec" id="allgAudioBtn">🎙 Nur Sprachnotiz</button>
     <div id="allgAudioBox"></div>
     <div class="thumbs allgThumbs"></div>
-  </section>
+  </section></div>
+</div>
 
-  <!-- ===== MASCHINEN-EBENE: reine Erfassung =====
-       Getippt wird nur der Name – alles andere steckt im Typenschild-Foto und in der Sprachnotiz
-       („DEMAG D60-151, ältere Maschine, fehlende Abdeckung an den Heizbändern") und wird daraus
-       für GBU und BA abgeleitet. Hersteller, Typ, Baujahr, Serien-Nr., CE, Maschinentyp,
-       Betriebszustände und Gefährdungsfaktoren sind deshalb aus der Oberfläche verschwunden –
-       nicht aus den Daten: der Export trägt sie weiterhin.
-       Der Rundgang-Leitfaden bleibt: er ist Gedankenstütze, kein Eingabefeld. -->
-  <section class="card nur-maschine">
-    <label class="f">Maschine / Anlage</label>
-    <input type="text" data-meta="maschine" placeholder="z. B. D150/3" list="portalMaschinen">
-    <!-- Vorschlaege aus dem Kundenportal: bereits dokumentierte Anlagen (Bezeichnung + ID). -->
-    <datalist id="portalMaschinen"></datalist>
-    <details class="rundgang">
-      <summary>🧭 Rundgang – wo finde ich was?</summary>
-      <div class="rundgangbox" id="rundgangBox"></div>
-    </details>
-  </section>
-
-  <!-- Modus-Umschalter raus: eine Ansicht genügt. Was früher „Detailliert" war,
-       entsteht am Schreibtisch aus Foto + Transkript. -->
-
-  <!-- SCHNELL-ANSICHT – nur für Maschinen. Die Begehungs-Startseite bleibt bewusst kahl:
-       allgemeine Infos · Maschinenliste · Fotos. Mängel entstehen dort ausschließlich über
-       Foto → Marker → Pop-Up; eine zweite Mängel-Palette wäre Doppelung. -->
-  <section class="card mode-schnell nur-maschine" id="cardSchnell">
+<div class="panel" id="pnlFotos" hidden>
+  <div class="pnlkopf"><h2>Fotos</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlbody"><section class="card">
     <div class="toolrow">
       <button class="btn" data-addfoto="gesamt">📷 Gesamtansicht</button>
       <button class="btn" data-addfoto="gesamt_rueck">📷 Rückseite</button>
@@ -445,18 +512,25 @@
     </div>
     <!-- Kurzvideo entfernt (Vorgabe Nikolai 06.08.2026): wanderte als base64 in jeden Upload,
          wurde aber von keiner Auswertung gelesen. Alte Datensaetze mit kat:"video" bleiben
-         lesbar, werden aber nicht als Bild ausgegeben. -->
+         lesbar, werden aber nicht als Bild ausgegeben.
+         „Auf Gesamtansicht markieren" ist ebenfalls raus: Der Pin wird nach jedem Mangelfoto
+         automatisch abgefragt, der Knopf war eine zweite Tür zum selben Raum. -->
+    <div class="thumbs allgThumbs"></div>
+  </section></div>
+</div>
 
+<div class="panel" id="pnlZustand" hidden>
+  <div class="pnlkopf"><h2>Zustand</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlbody"><section class="card">
     <!-- Zustand der Anlage WAEHREND der Begehung. Pflicht, weil er entscheidet, was ueberhaupt
          beurteilt werden konnte: Am 30.07.2026 standen alle fuenf Anlagen still, das musste
          hinterher aus den Sprachnotizen rekonstruiert werden. Steht es hier, entsteht die
          Bewertungsgrenze in GBU und Protokoll automatisch (§ 3 BetrSichV, §§ 5/6 ArbSchG). -->
     <div class="feld">
-      <label>Zustand bei der Begehung</label>
+      <label class="f">Zustand bei der Begehung</label>
       <!-- Nur läuft/steht (Vorgabe Nikolai 13.08.2026): "Ich kann bei einer Maschine nicht wissen,
            warum sie steht. Ob wegen keinem Auftrag, Wartung, Werkzeugwechsel – ich weiß es nicht.
-           Also weg damit." Der Grund wurde vor Ort geraten und stand hinterher als Feststellung
-           im Protokoll. Alte Exporte mit steht_wartung/steht_kein_auftrag bleiben lesbar. -->
+           Also weg damit." Alte Exporte mit steht_wartung/steht_kein_auftrag bleiben lesbar. -->
       <div class="chips" data-single="zustand_begehung" id="zustandChips">
         <span class="chip" data-val="laeuft">▶ läuft</span>
         <span class="chip" data-val="steht">⏸ steht</span>
@@ -465,20 +539,35 @@
     <!-- Linearroboter: eine Frage, ein Tipp (Vorgabe Nikolai 13.08.2026). Ohne diese Angabe muss
          am Schreibtisch geraten werden, ob die Gefährdung "Linearroboter/Entnahmegerät" in die GBU
          gehört - und eine nicht vorhandene Gefährdung darf dort nicht stehen. -->
-    <div class="feld">
-      <label>Linearroboter / Entnahmegerät</label>
+    <div class="feld" style="margin-top:14px">
+      <label class="f">Linearroboter / Entnahmegerät</label>
       <div class="chips" data-single="linearroboter" id="roboterChips">
         <span class="chip" data-val="ja">🤖 vorhanden</span>
         <span class="chip" data-val="nein">— nicht vorhanden</span>
       </div>
     </div>
-    <div class="thumbs allgThumbs"></div>
-    <div class="toolrow">
-      <button class="btn" data-plan>🗺 Auf Standortplan verorten</button>
-    </div>
-    <!-- „Auf Gesamtansicht markieren" ist raus (Vorgabe Nikolai 06.08.2026): Der Pin wird nach
-         jedem Mangelfoto automatisch abgefragt, der Knopf war eine zweite Tür zum selben Raum. -->
+  </section></div>
+</div>
 
+<div class="panel" id="pnlAudio" hidden>
+  <div class="pnlkopf"><h2>Sprachnotiz</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlbody"><section class="card">
+    <!-- Gefährdungsfaktoren stehen hier NICHT mehr: Sie sind das Ergebnis der Auswertung, nicht
+         der Erfassung. Vor Ort tippt Nikolai „Ordnung & Sauberkeit" auf dem Foto an – 8.4 und 8.5
+         setzt das Tool selbst. Was kein Mangel abdeckt (9.1 Heben, 3.1 Hautkontakt), steht in der
+         Sprachnotiz und kommt beim Erstellen der GBU dazu. -->
+    <div class="hint">Was gesprochen wird, trägt die Auswertung: Hersteller, Typ, Baujahr vom
+      Typenschild, dann die Befunde in der Reihenfolge der Fotos.</div>
+    <button class="btn rec big" id="audioRecBtn">🎙 Notiz aufnehmen</button>
+    <div id="audioBox"></div>
+    <!-- Tippfeld raus: Vor Ort wird gesprochen, nicht getippt. Das Feld meta.allg_notiz bleibt
+         im Datensatz, damit die Alt-Exporte 07/2026 unverändert lesbar sind. -->
+  </section></div>
+</div>
+
+<div class="panel" id="pnlMess" hidden>
+  <div class="pnlkopf"><h2>Lärm &amp; Licht</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlbody"><section class="card">
     <!-- Lärm & Licht: gehören hierher, weil sie NUR vor Ort erfassbar sind – aus Foto oder
          Sprachnotiz lässt sich kein Pegel ableiten. Der Befund („belastbare Messung
          veranlassen") entsteht im Hintergrund und steht ausformuliert in der GBU. -->
@@ -487,36 +576,52 @@
       <button class="btn" id="btnLux">💡 Licht</button>
     </div>
     <div id="messBox"></div>
-
-    <!-- Gefährdungsfaktoren stehen hier NICHT mehr: Sie sind das Ergebnis der Auswertung, nicht
-         der Erfassung. Vor Ort tippt Nikolai „Ordnung & Sauberkeit" auf dem Foto an – 8.4 und 8.5
-         setzt das Tool selbst. Was kein Mangel abdeckt (9.1 Heben, 3.1 Hautkontakt), steht in der
-         Sprachnotiz und kommt beim Erstellen der GBU dazu. -->
-    <button class="btn rec big" id="audioRecBtn">🎙 Notiz aufnehmen</button>
-    <div id="audioBox"></div>
-    <!-- Tippfeld raus: Vor Ort wird gesprochen, nicht getippt. Das Feld meta.allg_notiz bleibt
-         im Datensatz, damit die Alt-Exporte 07/2026 unverändert lesbar sind. -->
-  </section>
-
-  <!-- Umgebungs-Screening (Lärm/Licht) aus der Oberfläche genommen. Die Funktionen
-       bleiben im Code – bei Bedarf mit einem Block hier wieder sichtbar. -->
-
-  <!-- Detail-Stepper raus. Er enthielt nur Felder, die am Schreibtisch aus Foto und
-       Sprachnotiz entstehen: Stammdaten/CE, Mängel-Palette, Gefährdungsfaktoren,
-       Betriebszustände, Mitarbeiterhinweise. Die Ableitung Mangel→GF→Prüfpunkt läuft
-       im Hintergrund weiter und reist im Export mit. -->
-
-</main>
-
-<div class="actionbar">
-  <button class="btn primary nur-maschine" id="btnSave">✓ Speichern &amp; neu</button>
-  <button class="btn primary nur-allgemein" id="btnSaveAllg">⬆ Begehung hochladen</button>
-  <button class="btn nur-maschine" id="btnReset">✕ Neu</button>
-  <button class="btn" id="btnList">📋 <span id="machCount">0</span></button>
-  <!-- Neue Begehung gehoert ans Ende des Ablaufs, nicht mitten in die Erfassung (Vorgabe 06.08.2026). -->
-  <button class="btn nur-allgemein" id="btnNeueBegehung2" title="Neue Begehung beginnen">🆕</button>
-  <input type="file" accept="application/json,.json" id="importInput" multiple hidden>
+  </section></div>
 </div>
+
+<div class="panel" id="pnlRundgang" hidden>
+  <div class="pnlkopf"><h2>Rundgang</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <!-- Gedankenstütze, kein Eingabefeld. -->
+  <div class="pnlbody"><section class="card"><div class="rundgangbox" id="rundgangBox"></div></section></div>
+</div>
+
+<div class="panel" id="pnlListe" hidden>
+  <div class="pnlkopf"><h2>Maschinen</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlbody"><section class="card">
+    <!-- EINE Liste (Vorgabe Nikolai 14.08.2026). Bis hierher gab es sie zweimal: auf der
+         Begehungs-Seite und im 📋-Overlay, mit zwei verschiedenen Öffnen-Funktionen. -->
+    <div id="maschListe"></div>
+  </section></div>
+</div>
+
+<div class="panel" id="pnlMehr" hidden>
+  <div class="pnlkopf"><h2>Mehr</h2><button class="btn pnlzu" data-pnlzu>✕ Fertig</button></div>
+  <div class="pnlbody"><section class="card">
+    <!-- Alles, was NICHT zur Erfassung gehört. Vorher lag es im 📋-Overlay zwischen den
+         Maschinen und war dort nicht zu finden. -->
+    <button class="btn big" id="btnNeueBegehung2">🆕 Neue Begehung beginnen</button>
+    <button class="btn big nur-maschine" id="btnReset">✕ Aktuellen Bogen verwerfen</button>
+    <button class="btn big" id="btnImport">⬆︎ Begehung aus Datei laden</button>
+    <button class="btn big" id="btnDrive">⚙ Drive einrichten</button>
+    <button class="btn big" id="btnDriveTest">🔌 Drive testen</button>
+    <button class="btn big rec" id="btnAlleLoeschen">🗑 Alles auf dem Gerät löschen</button>
+    <div class="messsub" id="mehrInfo"></div>
+  </section></div>
+</div>
+
+<!-- ===== Fußleiste: eine Hauptaktion, vier feste Reiter ===== -->
+<div class="fussblock"><div class="fussblock-inner">
+  <div class="hauptzeile">
+    <button class="btn primary nur-maschine" id="btnSave">✓ Maschine sichern</button>
+    <button class="btn primary nur-allgemein" id="btnSaveAllg">⬆ Begehung hochladen</button>
+  </div>
+  <nav class="tabbar">
+    <button class="tab" id="tabAllg"><span class="tico">🏢</span>Begehung</button>
+    <button class="tab" id="tabMasch"><span class="tico">🔧</span>Maschine</button>
+    <button class="tab" id="btnList"><span class="tico">📋</span>Liste <i id="machCount">0</i></button>
+    <button class="tab" id="tabMehr"><span class="tico">⚙</span>Mehr</button>
+  </nav>
+</div></div>
 
 <script>
 "use strict";
@@ -873,10 +978,19 @@ async function persistAll(){
   try{ localStorage.setItem(LSKEY, JSON.stringify(ohneMedien(state))); }catch(e){ lsState=false; }
   try{ localStorage.removeItem(COLLKEY); }catch(e){}   // Altlast: früher lag die Sammlung hier
   /* Prefs = was der ganzen BEGEHUNG gehört und jede neue Maschine erbt. Datum und Bereich
-     gehören dazu – ohne Datum hätte der Export-Dateiname keins mehr. */
-  try{ localStorage.setItem(PREFSKEY, JSON.stringify({ kunde:state.meta.kunde||"",
-    begeher:state.meta.begeher||"", datum:state.meta.datum||"", bereich:state.meta.bereich||"",
-    arbeitssystem:state.meta.arbeitssystem||"" })); }catch(e){}
+     gehören dazu – ohne Datum hätte der Export-Dateiname keins mehr.
+     LEERE Werte duerfen einen gefuellten NIE ueberschreiben (Fehler bis 14.08.2026): Der auf
+     der Begehungs-Ebene eingetragene Kunde wurde geloescht, sobald ein aelterer Maschinen-Bogen
+     ohne Kundenname gespeichert wurde - danach trug jede weitere Maschine "" als Kunde.
+     Bewusst leeren geht ueber "🆕 Neue Begehung", das die Prefs komplett entfernt. */
+  try{
+    const alt=ladePrefs();
+    const halte=(neu,frueher)=>((neu||"").trim() ? neu : (frueher||""));
+    localStorage.setItem(PREFSKEY, JSON.stringify({
+      kunde:halte(state.meta.kunde, alt.kunde), begeher:halte(state.meta.begeher, alt.begeher),
+      datum:halte(state.meta.datum, alt.datum), bereich:halte(state.meta.bereich, alt.bereich),
+      arbeitssystem:halte(state.meta.arbeitssystem, alt.arbeitssystem) }));
+  }catch(e){}
   updateMachineCount();
   const ok=idbState&&idbColl;
   const hint=document.getElementById("savehint");
@@ -1164,7 +1278,7 @@ async function saveAndNeu(){
   if(!await persistAll()){
     collection.splice(editIdx!=null?Math.min(editIdx,collection.length-1):collection.length-1,1);
     rescueExport();
-    if(btn){ btn.disabled=false; btn.textContent="✓ Speichern"; }
+    if(btn){ btn.disabled=false; btn.textContent="✓ Maschine sichern"; }
     alert("Speicher voll – lokal NICHT gesichert. Ein Rettungs-Export wurde heruntergeladen – nichts ist verloren.");
     return;
   }
@@ -1199,6 +1313,12 @@ async function wechsleEbene(zielAllg){
   let neu=null; try{ neu=raw?JSON.parse(raw):null; }catch(e){}
   state = (neu && neu.meta) ? neu : (zielAllg ? blankAllg() : blankState());
   if(zielAllg) state._istAllgemein=true; else delete state._istAllgemein;
+  /* Stammdaten der laufenden Begehung erben: eine Maschine gehoert immer zu einem Termin.
+     Ohne das trug ein vor der Kundeneingabe angelegter Bogen dauerhaft keinen Kunden. */
+  const pf=ladePrefs();
+  ["kunde","datum","begeher","bereich"].forEach(k=>{
+    if(!((state.meta[k]||"").trim()) && (pf[k]||"").trim()) state.meta[k]=pf[k];
+  });
   if(!Array.isArray(state.maengel)) state.maengel=[];
   if(!Array.isArray(state.markierungen)) state.markierungen=[];
   migrateFotos(state);
@@ -1248,11 +1368,142 @@ function neuZeichnen(){
   renderRundgang(); renderAllgThumbs(); renderAudio(); renderMess();
   renderPlanBox(); renderMaschListe(); updateMachineCount();
   document.body.classList.toggle("ebene-allg", imAllgModus());
-  const eM=document.getElementById("ebMasch"), eA=document.getElementById("ebAllg");
-  if(eM&&eA){ eM.classList.toggle("on", !imAllgModus()); eA.classList.toggle("on", imAllgModus()); }
+  const tA=document.getElementById("tabAllg"), tM=document.getElementById("tabMasch");
+  if(tA&&tM){ tA.classList.toggle("on", imAllgModus()); tM.classList.toggle("on", !imAllgModus()); }
+  renderKacheln();
   setModus(state.meta.modus||"schnell");
+  /* Hauptaktion IMMER wieder freigeben. Bis 14.08.2026 blieb "✓ Speichern" nach dem Sichern
+     deaktiviert und trug weiter "Sichere…" - die zweite Maschine liess sich erst nach einem
+     Neuladen der App speichern (saveAndNeu setzt disabled=true und stellte es nur im
+     Fehlerfall zurueck). Das gehoert zu "drei Buttons, keiner funktioniert". */
+  const bS=document.getElementById("btnSave"), bA=document.getElementById("btnSaveAllg");
+  if(bS){ bS.disabled=false; bS.textContent="✓ Maschine sichern"; }
+  if(bA){ bA.disabled=false; bA.textContent="⬆ Begehung hochladen"; }
+  schliessePanel();                                  // ein abgeschlossener Schritt schliesst sein Panel
   const ov=document.getElementById("ovl"); if(ov) ov.remove();
   window.scrollTo(0,0);
+}
+
+/* ===== App-Huelle: Kachelraster + Vollbild-Panels =====
+   Eine Kachel = eine Aufgabe. Der Haken kommt aus dem state selbst (bzw. aus
+   fehlendePflicht()), damit es keine zweite Wahrheit ueber "erledigt" gibt. */
+function kachel(icon, name, sub, fertig, ziel){
+  const b=document.createElement("button"); b.type="button";
+  b.className="kachel"+(fertig===true?" fertig":"");
+  b.innerHTML=(fertig===null?"":`<span class="kok">${fertig?"✓":"·"}</span>`)
+    +`<span class="kico">${icon}</span><span class="knam">${esc(name)}</span>`
+    +`<span class="ksub">${esc(sub)}</span>`;
+  b.addEventListener("click",()=>oeffnePanel(ziel));
+  return b;
+}
+function datumKurz(s){
+  const t=String(s||"").split("-");
+  return t.length===3 ? t[2]+"."+t[1]+"." : (s||"ohne Datum");
+}
+function mehrzahl(n, ein, viele){ return n+" "+(n===1?ein:viele); }
+function renderKacheln(){
+  const nFoto=(state.fotosAllg||[]).length, nAudio=(state.audios||[]).length;
+  const m=state.meta||{};
+  const ks=document.getElementById("kopfSub");
+  if(ks){
+    const teile=[(m.kunde||"").trim(), m.datum?datumKurz(m.datum):"",
+      collection.length?collection.length+(collection.length===1?" Maschine":" Maschinen"):""].filter(Boolean);
+    ks.textContent = teile.length ? teile.join(" · ") : "Gefährdungserfassung · Maschinen & Anlagen";
+  }
+  if(imAllgModus()){
+    const bg=document.getElementById("kachelnBegehung"); if(!bg) return;
+    const stammOk=!!(m.kunde||"").trim() && !!(m.datum||"").trim();
+    const verortet=collection.filter(x=>(x.meta||{}).plan_pos).length;
+    bg.innerHTML="";
+    bg.appendChild(kachel("🏢","Stammdaten",
+      stammOk ? (m.kunde||"").slice(0,20)+" · "+datumKurz(m.datum) : "Kunde und Datum fehlen",
+      stammOk, "pnlStamm"));
+    bg.appendChild(kachel("🗺","Standortplan",
+      planBild ? verortet+" von "+collection.length+" verortet" : "noch kein Plan hinterlegt",
+      !!planBild, "pnlPlan"));
+    bg.appendChild(kachel("📷","Allg. Befunde",
+      (nFoto+nAudio) ? mehrzahl(nFoto,"Foto","Fotos")+" · "+mehrzahl(nAudio,"Notiz","Notizen")
+                     : "was keiner Maschine gehört",
+      (nFoto+nAudio)>0, "pnlAllg"));
+    bg.appendChild(kachel("📋","Maschinen",
+      collection.length ? collection.length+" auf dem Gerät" : "noch keine erfasst",
+      collection.length>0, "pnlListe"));
+    const sz=document.getElementById("standzeile");
+    if(sz){
+      const offen=collection.filter(istOffen).length;
+      sz.innerHTML = !collection.length ? "Reiter <b>🔧 Maschine</b> – dort die erste Anlage erfassen."
+        : (offen ? "<b>"+offen+"</b> von "+collection.length+" Maschinen noch nicht hochgeladen."
+                 : "Alle "+collection.length+" Maschinen sind bestätigt in Drive.");
+    }
+    return;
+  }
+  const mg=document.getElementById("kachelnMaschine"); if(!mg) return;
+  const gesamt=!!fotoByKat("gesamt");
+  const schild=!!fotoByKat("typenschild") || !!m.typenschild_fehlt;
+  const zust=m.zustand_begehung==="laeuft" ? "läuft" : (/^steht/.test(m.zustand_begehung||"") ? "steht" : "");
+  const rob=m.linearroboter==="ja" ? "mit Roboter" : (m.linearroboter==="nein" ? "ohne Roboter" : "");
+  const mess=[m.laerm?"Lärm ✓":"", m.lux?"Licht ✓":""].filter(Boolean).join(" · ");
+  mg.innerHTML="";
+  mg.appendChild(kachel("📷","Fotos",
+    nFoto ? mehrzahl(nFoto,"Foto","Fotos")+(gesamt?"":" · Gesamtansicht fehlt") : "Gesamtansicht + Typenschild",
+    gesamt&&schild, "pnlFotos"));
+  mg.appendChild(kachel("🎙","Sprachnotiz",
+    nAudio ? mehrzahl(nAudio,"Aufnahme","Aufnahmen") : "trägt Typ, Baujahr und Befunde",
+    nAudio>0 || !!m.notiz_entfaellt, "pnlAudio"));
+  mg.appendChild(kachel("⚙","Zustand",
+    [zust,rob].filter(Boolean).join(" · ") || "läuft oder steht?",
+    !!zust && !!rob, "pnlZustand"));
+  mg.appendChild(kachel("🗺","Plan-Position",
+    m.plan_pos ? "verortet" : (planBild ? "noch nicht verortet" : "kein Plan hinterlegt"),
+    !!m.plan_pos, "pnlPlan"));
+  mg.appendChild(kachel("🔊","Lärm & Licht", mess || "orientierende Messung", !!(m.laerm||m.lux), "pnlMess"));
+  mg.appendChild(kachel("🧭","Rundgang","wo finde ich was?", null, "pnlRundgang"));
+  /* Kurz halten: WAS fehlt, steht schon an den grauen Kacheln. Die Zeile sagt nur, ob
+     gesichert werden kann - eine Aufzählung aller fünf Pflichtangaben las sich beim Start
+     wie eine Fehlerliste. */
+  const szM=document.getElementById("standzeileM");
+  if(szM){
+    const fehlt=fehlendePflicht();
+    if(!fehlt.length) szM.innerHTML="Vollständig – <b>✓ Maschine sichern</b>.";
+    else if(!(m.maschine||"").trim() && !nFoto && !nAudio)
+      szM.innerHTML="Name eintragen, dann Fotos und Sprachnotiz.";
+    else szM.innerHTML="Es fehlt noch: <b>"+esc(fehlt.length>2
+      ? fehlt.length+" Angaben (graue Kacheln)"
+      : fehlt.map(x=>x.txt.split(" (")[0]).join(" und "))+"</b>";
+  }
+}
+/* Vollbild-Panel: enthaelt den vorhandenen Markup-Block unveraendert, wird nur ein- und
+   ausgeblendet. Kein Neuaufbau - ids und Listener bleiben gueltig. */
+let panelOffen=null;
+function oeffnePanel(id){
+  const p=document.getElementById(id); if(!p) return;
+  const warOffen=!!panelOffen;
+  if(warOffen){ const alt=document.getElementById(panelOffen); if(alt) alt.hidden=true; }
+  p.hidden=false; panelOffen=id;
+  if(id==="pnlListe") renderMaschListe();
+  if(id==="pnlMehr") renderMehrInfo();
+  const b=p.querySelector(".pnlbody"); if(b) b.scrollTop=0;
+  /* Android-Zurueck soll das Panel schliessen, nicht die App verlassen. */
+  if(!warOffen){ try{ history.pushState({oakPanel:1},""); }catch(e){} }
+}
+function schliessePanel(){
+  if(!panelOffen) return;
+  const p=document.getElementById(panelOffen); if(p) p.hidden=true;
+  panelOffen=null;
+  renderKacheln();          // im Panel Erfasstes muss sofort an der Kachel stehen
+  try{ if(history.state && history.state.oakPanel) history.back(); }catch(e){}
+}
+window.addEventListener("popstate",()=>{
+  if(!panelOffen) return;
+  const p=document.getElementById(panelOffen); if(p) p.hidden=true;
+  panelOffen=null;
+  renderKacheln();
+});
+function renderMehrInfo(){
+  const el=document.getElementById("mehrInfo"); if(!el) return;
+  const url=(localStorage.getItem(UPLOADKEY)||"").trim();
+  el.innerHTML=(url?"Drive-Verbindung eingerichtet ✓":"<b>Drive-Verbindung fehlt</b> – die Begehung ginge nur in den Downloads-Ordner.")
+    +"<br>"+collection.length+" Maschine(n) auf dem Gerät · "+collection.filter(istOffen).length+" noch nicht hochgeladen.";
 }
 function init(){
   // Stammdaten-Felder
@@ -1303,15 +1554,38 @@ function init(){
   renderGfKurz();
   const gb=document.getElementById("btnGfPick");
   if(gb) gb.addEventListener("click", gfDirektPicker);
-  // Ebenen-Leiste: große Ziele, klebt oben – vor Ort darf man nicht suchen müssen.
+  // Fußleiste: vier feste Reiter, immer an derselben Stelle (Vorgabe Nikolai 14.08.2026).
   document.body.classList.toggle("ebene-allg", imAllgModus());
-  const eM=document.getElementById("ebMasch"), eA=document.getElementById("ebAllg");
-  if(eM&&eA){
-    eM.classList.toggle("on", !imAllgModus());
-    eA.classList.toggle("on", imAllgModus());
-    eM.addEventListener("click",()=>wechsleEbene(false));
-    eA.addEventListener("click",()=>wechsleEbene(true));
+  const tA=document.getElementById("tabAllg"), tM=document.getElementById("tabMasch"),
+        tMehr=document.getElementById("tabMehr");
+  if(tA&&tM){
+    tA.classList.toggle("on", imAllgModus());
+    tM.classList.toggle("on", !imAllgModus());
+    tA.addEventListener("click",()=>{ schliessePanel(); wechsleEbene(true); });
+    tM.addEventListener("click",()=>{ schliessePanel(); wechsleEbene(false); });
   }
+  if(tMehr) tMehr.addEventListener("click",()=>oeffnePanel("pnlMehr"));
+  document.querySelectorAll("[data-pnlzu]").forEach(b=>b.addEventListener("click",schliessePanel));
+  // Verwaltung sitzt gebündelt in „⚙ Mehr" – vorher lag sie im 📋-Overlay zwischen den Maschinen.
+  const bImp=document.getElementById("btnImport");
+  if(bImp) bImp.addEventListener("click",()=>document.getElementById("importInput").click());
+  const bDrv=document.getElementById("btnDrive");
+  if(bDrv) bDrv.addEventListener("click", driveEinstellungen);
+  const bDrvT=document.getElementById("btnDriveTest");
+  if(bDrvT) bDrvT.addEventListener("click", driveTesten);
+  const bDel=document.getElementById("btnAlleLoeschen");
+  if(bDel) bDel.addEventListener("click", alleLoeschen);
+  /* Tastatur: iOS legt sie ueber die Seite, die feste Fussleiste verschwindet dahinter.
+     Der visualViewport-Versatz schiebt sie genau ueber die Tastatur. */
+  if(window.visualViewport){
+    const vv=window.visualViewport;
+    const anpassen=()=>{
+      const diff=Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty("--tastatur", diff>90 ? diff+"px" : "0px");
+    };
+    vv.addEventListener("resize",anpassen); vv.addEventListener("scroll",anpassen);
+  }
+  renderKacheln();
   // Begehungs-Startseite
   renderPlanBox();
   renderMaschListe();
@@ -1454,15 +1728,12 @@ function renderRundgang(){
 /* ===== Modus (Schnell/Detail) + Stepper ===== */
 const STEP_LABELS=["Stammdaten","Betriebszustände","Mängel","Maschinensicherheit","Gefährdungsfaktoren","Mitarbeiterhinweise"];
 let curStep=0;
-function setModus(m){
-  state.meta.modus=(m==="detail")?"detail":"schnell";
-  const detail=state.meta.modus==="detail";
-  document.getElementById("cardSchnell").classList.toggle("hide",detail);
-  const dw=document.getElementById("detailWrap"); if(dw) dw.classList.toggle("hide",!detail);
-  const ms=document.getElementById("modeSchnell"), md=document.getElementById("modeDetail");
-  if(ms) ms.classList.toggle("on",!detail);
-  if(md) md.classList.toggle("on",detail);
-  if(detail) setStep(curStep);
+/* Es gibt nur noch EINE Erfassungs-Ansicht. Alt-Staende mit meta.modus="detail" wuerden den
+   Maschinen-Screen sonst ausblenden (die Detail-Ansicht existiert seit 07/2026 nicht mehr),
+   deshalb hier hart auf "schnell" ziehen. */
+function setModus(){
+  state.meta.modus="schnell";
+  const cs=document.getElementById("cardSchnell"); if(cs) cs.classList.remove("hide");
   save();
 }
 function setStep(i){
@@ -2700,28 +2971,48 @@ function renderPlanBox(){
   t.appendChild(im);
   box.querySelector(".thumbs").appendChild(t);
 }
+/* EINE Maschinenliste (Vorgabe Nikolai 14.08.2026). Bis hierher gab es sie zweimal - auf der
+   Begehungs-Seite und im 📋-Overlay - mit zwei verschiedenen Oeffnen-Funktionen. Zeile antippen
+   = nachschaerfen, daneben nur noch Loeschen; ein eigener ✎-Knopf waere die dritte Tuer. */
 function renderMaschListe(){
   const box=document.getElementById("maschListe"); if(!box) return;
   if(!collection.length){
-    box.innerHTML=`<div class="messsub">Noch keine Maschine erfasst. Unten „＋ Maschine hinzufügen“.</div>`;
+    box.innerHTML=`<div class="messsub">Noch keine Maschine gesichert. Über den Reiter
+      <b>🔧 Maschine</b> die erste erfassen – oder unter <b>⚙ Mehr</b> eine Begehung aus einer Datei laden.</div>`;
     return;
   }
   box.innerHTML="";
   const liste=document.createElement("div"); liste.className="maschliste";
   collection.forEach((m,i)=>{
     const me=m.meta||{};
-    const nGef=Object.values(m.items||{}).filter(x=>x.ja).length;
+    const nFoto=(m.fotosAllg||[]).length, nAudio=(m.audios||[]).length;
     const nMgl=(m.maengel||[]).length;
     /* Vor dem Update vom 22.07.2026 liess sich gar kein Mangel erfassen (der Dialog nach dem
        Foto fehlte). "0 Mängel" sah dort wie Datenverlust aus - die Befunde stecken in den
        Sprachnotizen. Deshalb bei Altdatensaetzen ehrlich kennzeichnen. */
-    const altbestand = nMgl===0 && (m.audios||[]).length>0;
+    const altbestand = nMgl===0 && nAudio>0;
+    const zeile=document.createElement("div"); zeile.className="mzrow";
     const z=document.createElement("button"); z.type="button"; z.className="maschzeile";
     z.innerHTML=`<span class="mz-name">${esc(me.maschine||"(ohne Namen)")}</span>`
-      +`<span class="mz-sub">${esc([me.hersteller,me.typ].filter(Boolean).join(" · ")||"–")}</span>`
-      +`<span class="mz-zahl">${nGef} GF · ${altbestand?"Mängel in der Sprachnotiz":nMgl+" Mängel"}${me.plan_pos?" · 🗺":""}</span>`;
+      /* Hersteller/Typ werden vor Ort bewusst nicht getippt - sie stehen auf dem
+         Typenschild-Foto und in der Sprachnotiz. "–" haette hier nach fehlenden Daten
+         ausgesehen, obwohl alles erfasst ist. */
+      +`<span class="mz-sub">${esc([me.hersteller,me.typ].filter(Boolean).join(" · ")
+          || "Typ aus Typenschild-Foto & Sprachnotiz")}</span>`
+      +`<span class="mz-zahl">${nFoto} 📷 · ${nAudio} 🎙${me.plan_pos?" · 🗺":""}</span>`
+      +`<span class="mz-up ${m._upload==="gesendet"?"ok":"offen"}">`
+      +(m._upload==="gesendet" ? "✓ hochgeladen" : "noch auf dem Gerät")
+      +` · ${altbestand?"Mängel in der Sprachnotiz":nMgl+" Mängel"}</span>`;
     z.addEventListener("click",()=>maschineOeffnen(i));
-    liste.appendChild(z);
+    const del=document.createElement("button"); del.type="button"; del.className="mdel";
+    del.textContent="×"; del.title="Löschen";
+    del.addEventListener("click",async()=>{
+      if(!confirm("„"+(me.maschine||"?")+"“ endgültig löschen?")) return;
+      collection.splice(i,1); await persistAll(); renderSysList(); renderMaschListe();
+      updateMachineCount(); renderKacheln();
+    });
+    zeile.appendChild(z); zeile.appendChild(del);
+    liste.appendChild(zeile);
   });
   box.appendChild(liste);
 }
@@ -3408,7 +3699,7 @@ async function teileAlles(btn){
     download(name, inhalt, "application/json");                  // Desktop / kein Share-API
     toast("Sammlung gespeichert ("+paket.anzahl+" Maschinen, "+mb+" MB)");
   } finally {
-    if(btn){ btn.disabled=false; btn.textContent=alt||"📦 Ganze Begehung senden"; }
+    if(btn){ btn.disabled=false; btn.textContent=alt||"⬆ Begehung hochladen"; }
   }
 }
 function download(name, content, type){
@@ -3439,85 +3730,29 @@ document.getElementById("btnReset").addEventListener("click",async()=>{
   state=blankState(); await persistAll(); neuZeichnen(); toast("Bogen verworfen.");
 });
 
-/* Übersicht: gesicherte Maschinen – nach Arbeitssystem gruppiert, mit Detaillierungsgrad,
-   Nachschärfen (✎), Einzel-Teilen (📤), Löschen (×) und Laden aus Drive (⬆︎). */
+/* Reiter 📋: oeffnet die Maschinenliste als Vollbild-Panel. Der Name bleibt, weil ihn der
+   Import-Handler und die Loeschwege aufrufen. Verwaltung (Neue Begehung, Drive, Laden,
+   Alles loeschen) sitzt jetzt unter ⚙ Mehr und nicht mehr zwischen den Maschinen. */
 document.getElementById("btnList").addEventListener("click", zeigeUebersicht);
-function zeigeUebersicht(){
-  const alt=document.getElementById("ovl"); if(alt) alt.remove();
-  const ov=document.createElement("div"); ov.id="ovl";
-  const hatUp=!!(localStorage.getItem(UPLOADKEY)||"").trim();
-  const groups={};
-  collection.forEach((m,i)=>{ const sys=((m.meta||{}).arbeitssystem||"").trim()||"(einzeln)";
-    (groups[sys]=groups[sys]||[]).push(i); });
-  let body="";
-  Object.keys(groups).forEach(sys=>{
-    body+=`<div class="ovgroup">Arbeitssystem: <b>${esc(sys)}</b> · ${groups[sys].length} Maschine(n)</div>`;
-    groups[sys].forEach(i=>{
-      const m=collection[i], c=coverage(m), teil=((m.meta||{}).teilschritt||"").trim();
-      /* Es gibt genau EINEN Upload für die ganze Begehung (Vorgabe Nikolai 14.08.2026) – hier
-         steht deshalb nur noch der Stand, keine Sendeknöpfe je Maschine. */
-      const up = m._upload==="gesendet" ? ' · <b style="color:var(--gruen)">✓ hochgeladen</b>'
-        : ' · <b style="color:#b5462f">noch auf dem Gerät</b>';
-      body+=`<div class="ovrow"><div class="ovname"><b>${esc((m.meta||{}).maschine||"?")}</b>`
-        +(teil?` <span style="color:var(--muted)">· ${esc(teil)}</span>`:"")
-        +`<span>${coverageText(c)}${up}</span></div>`
-        +`<div class="ovacts">`
-        +`<button class="mdel" data-ovedit="${i}" title="Nachschärfen">✎</button>`
-        +`<button class="mdel" data-ovdel="${i}" title="Löschen">×</button></div></div>`;
-    });
-  });
-  if(!collection.length) body='<div class="ovleer">Noch keine Maschine gesichert. Über „⬆︎ Laden" eine Datei aus Drive öffnen.</div>';
-  ov.innerHTML=`<div class="ovcard"><h2>Gesicherte Maschinen (${collection.length})</h2>`
-    +`<div class="ovlist">${body}</div>`
-    +`<div class="toolrow" style="margin-top:12px">`
-    +`<button class="btn primary" id="ovAllesTeilen">⬆ Begehung hochladen</button>`
-    +`<button class="btn" id="ovNeueBegehung">🆕 Neue Begehung</button>`
-    +`<button class="btn" id="ovUpload">⚙ Drive</button>`
-    +`<button class="btn" id="ovDriveTest">🔌 Drive testen</button>`
-    +`<button class="btn" id="ovLoad">⬆︎ Laden</button>`
-    +`<button class="btn" id="ovAlle">🗑 Alles</button>`
-    +`<button class="btn primary" id="ovZu" style="margin-left:auto">Schließen</button></div></div>`;
-  document.body.appendChild(ov);
-  ov.addEventListener("click",e=>{ if(e.target===ov) ov.remove(); });
-  ov.querySelector("#ovZu").addEventListener("click",()=>ov.remove());
-  ov.querySelector("#ovAllesTeilen").addEventListener("click",e=>teileAlles(e.currentTarget));
-  ov.querySelector("#ovNeueBegehung").addEventListener("click",neueBegehung);
-  ov.querySelector("#ovAlle").addEventListener("click",alleLoeschen);
-  ov.querySelector("#ovLoad").addEventListener("click",()=>document.getElementById("importInput").click());
-  ov.querySelector("#ovUpload").addEventListener("click",()=>{
-    const curUrl=localStorage.getItem(UPLOADKEY)||"";
-    const url=prompt("Apps-Script Web-App-URL (/exec) für automatischen Upload nach Drive/eingang.\nLeer lassen = deaktivieren (dann Teilen/Download).", curUrl);
-    if(url===null) return;
-    const u=url.trim();
-    if(!u){ localStorage.removeItem(UPLOADKEY); localStorage.removeItem(UPLOADTOKENKEY); toast("Drive-Upload deaktiviert."); return; }
-    const curTok=localStorage.getItem(UPLOADTOKENKEY)||"";
-    const tok=prompt("Geheim-Token – muss exakt mit dem TOKEN im Apps-Script übereinstimmen.\nOhne passendes Token weist der Server den Upload ab.", curTok);
-    if(tok===null) return;
-    localStorage.setItem(UPLOADKEY,u);
-    localStorage.setItem(UPLOADTOKENKEY,tok.trim());
-    toast("Drive-Upload aktiviert – wird jetzt getestet …");
-    driveTesten();
-  });
-  ov.querySelector("#ovDriveTest").addEventListener("click", driveTesten);
-  ov.querySelectorAll("[data-ovedit]").forEach(b=>b.addEventListener("click",()=>bearbeiteMaschine(+b.dataset.ovedit)));
-  /* Keine Einzel-Sendewege mehr: die Begehung geht in einem Zug hoch (14.08.2026). */
-  ov.querySelectorAll("[data-ovdel]").forEach(b=>b.addEventListener("click",async()=>{
-    const i=+b.dataset.ovdel;
-    if(!confirm("„"+(((collection[i]||{}).meta||{}).maschine||"?")+"“ endgültig löschen?")) return;
-    collection.splice(i,1); await persistAll(); renderSysList(); zeigeUebersicht();
-  }));
-}
+function zeigeUebersicht(){ oeffnePanel("pnlListe"); }
 
-/* Nachschärfen: gespeicherte Maschine in den aktuellen Bogen laden (Detail-Modus), Re-Save ersetzt sie */
-async function bearbeiteMaschine(i){
-  const m=collection[i]; if(!m) return;
-  if(!confirm("„"+((m.meta||{}).maschine||"?")+"“ zum Nachschärfen laden?\nDer aktuelle Bogen wird ersetzt.")) return;
-  const rec=JSON.parse(JSON.stringify(m));
-  collection.splice(i,1);
-  rec._editIdx=i; rec.meta.modus="detail";
-  if(!Array.isArray(rec.markierungen)) rec.markierungen=[];
-  state=rec; await persistAll(); neuZeichnen();
-  toast("„"+((rec.meta||{}).maschine||"Maschine")+"“ zum Nachschärfen geladen.");
+/* Drive-Bridge einrichten. Wurde bis 14.08.2026 in teileAlles() aufgerufen, war aber nie
+   definiert - "Jetzt einrichten?" endete deshalb in einem ReferenceError, also sichtbar
+   in gar nichts. Jetzt eine Funktion, aufgerufen aus ⚙ Mehr UND aus dem Upload-Weg. */
+function driveEinstellungen(){
+  const curUrl=localStorage.getItem(UPLOADKEY)||"";
+  const url=prompt("Apps-Script Web-App-URL (/exec) für automatischen Upload nach Drive/eingang.\nLeer lassen = deaktivieren (dann Teilen/Download).", curUrl);
+  if(url===null) return;
+  const u=url.trim();
+  if(!u){ localStorage.removeItem(UPLOADKEY); localStorage.removeItem(UPLOADTOKENKEY); toast("Drive-Upload deaktiviert."); renderMehrInfo(); return; }
+  const curTok=localStorage.getItem(UPLOADTOKENKEY)||"";
+  const tok=prompt("Geheim-Token – muss exakt mit dem TOKEN im Apps-Script übereinstimmen.\nOhne passendes Token weist der Server den Upload ab.", curTok);
+  if(tok===null) return;
+  localStorage.setItem(UPLOADKEY,u);
+  localStorage.setItem(UPLOADTOKENKEY,tok.trim());
+  renderMehrInfo();
+  toast("Drive-Upload aktiviert – wird jetzt getestet …");
+  driveTesten();
 }
 /* Laden aus Drive: einzelne Maschinen-Dateien ODER Sammlungen; in die Sammlung mergen (Update bei
    gleichem Namen+Datum → Nachschärfen überschreibt sauber). */
