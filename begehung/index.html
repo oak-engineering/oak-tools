@@ -1319,7 +1319,11 @@ async function merkeGesendet(m){
    und bestaetigte Maschinen werden beim naechsten Versuch nicht noch einmal gesendet.
    Rueckgabe: "ok" nur, wenn wirklich ALLES durchkam - sonst der erste Fehlergrund. */
 async function driveStueckweise(paket, btn){
-  const offen=(paket.maschinen||[]).filter(m=>!istGesichert(m));
+  /* NUR "gesendet" heisst "liegt im Drive-eingang". istGesichert() waere hier falsch: das ist
+     auch fuer "datei" wahr - eine Sicherung im Downloads-Ordner ist aber NICHT am Ziel.
+     Genau das ist am 20.08.2026 passiert: Nach einer lokalen Sicherung galten 4 von 5
+     Maschinen als erledigt, der Knopf zeigte "Lade 1 von 1" und im eingang landete nichts. */
+  const offen=(paket.maschinen||[]).filter(m=>m._upload!=="gesendet");
   const schon=(paket.maschinen||[]).length-offen.length;
   let ok=0, grund=null;
   for(let i=0;i<offen.length;i++){
@@ -1834,7 +1838,7 @@ function schliessePanel(){
 }
 /* Fassung der App. Bei JEDER Veroeffentlichung mit der Cache-Version in begehung-sw.js
    hochzaehlen - sie ist der einzige Weg, am Geraet zu sehen, welcher Stand wirklich laeuft. */
-const APP_FASSUNG="v29 · 20.08.2026";
+const APP_FASSUNG="v30 · 20.08.2026";
 function renderMehrInfo(){
   const el=document.getElementById("mehrInfo"); if(!el) return;
   const url=(localStorage.getItem(UPLOADKEY)||"").trim();
