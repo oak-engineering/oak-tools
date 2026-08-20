@@ -1180,29 +1180,47 @@ function machineFileName(m){
    NIE einfach "true": die Begehung am 22.07. zeigte vier gruene Haken, obwohl nichts ankam.
    Ursache war mode:"no-cors" (Antwort prinzipiell unlesbar) plus ein verschluckter catch.
    text/plain bleibt - das ist eine simple request, also kein CORS-Preflight noetig. */
-async function driveUpload(m, typ){
+/* EIN Sendeweg fuer alle Drive-Uploads - mit Rueckfall auf no-cors.
+   Vorgeschichte (20.08.2026): Seit dem 22.07. sendet das Tool mit mode:"cors", um eine ehrliche
+   Bestaetigung lesen zu koennen (davor log no-cors mit gruenen Haken, obwohl nichts ankam).
+   Apps Script antwortet auf POST aber mit einem 302 auf googleusercontent.com, und liegt auf dem
+   ersten Response kein Access-Control-Allow-Origin, bricht fetch ab, BEVOR es die Antwort lesen
+   kann - jeder Upload sah aus wie ein Fehlschlag. SCHNITTSTELLE.md schreibt fuer den Browser
+   deshalb ausdruecklich no-cors vor.
+   Jetzt beides: erst cors (lesbare Antwort, echte Bestaetigung). Scheitert das an der Verbindung
+   und NICHT am Timeout, zweiter Versuch mit no-cors - der Request geht raus, die Antwort bleibt
+   unlesbar. Ergebnis dann "gesendet-blind": ehrlich benannt, nicht als Erfolg verkauft. */
+async function driveSenden(koerper){
   const url=(localStorage.getItem(UPLOADKEY)||"").trim(); if(!url) return "keine-url";
-  const paket={ _typ: typ||"OAK-Begehung-Maschine", _version:1, _exportiert:new Date().toISOString(),
-    token:(localStorage.getItem(UPLOADTOKENKEY)||""), dateiname:machineFileName(m), maschine:m };
-  const koerper=JSON.stringify(paket);
   /* Timeout an die Paketgroesse koppeln. Fest 15 s war der zweite Grund fuer den Fehlschlag:
      ein Maschinenpaket wog 13 MB, ueber Mobilfunk sind das Minuten. */
   const ms=20000+Math.ceil(koerper.length/1048576)*15000;
-  const ctl=new AbortController();
-  const t=setTimeout(()=>ctl.abort(), ms);
+  const senden=(modus)=>{
+    const ctl=new AbortController();
+    const t=setTimeout(()=>ctl.abort(), ms);
+    return fetch(url,{method:"POST", mode:modus,
+      headers:{"Content-Type":"text/plain;charset=utf-8"}, body:koerper, signal:ctl.signal})
+      .finally(()=>clearTimeout(t));
+  };
   try{
-    const r=await fetch(url,{method:"POST",mode:"cors",
-      headers:{"Content-Type":"text/plain;charset=utf-8"}, body:koerper, signal:ctl.signal});
+    const r=await senden("cors");
     const txt=((await r.text())||"").trim();
     if(!r.ok) return "unbestaetigt";
     if(/^(ok|updated)/i.test(txt)) return "ok";
     if(/forbidden/i.test(txt)) return "verboten";
     return "unbestaetigt";
   }catch(e){
-    /* Auch ein CORS-Fehler landet hier. Dann gilt bewusst "unbestaetigt" - lieber ein
-       ehrliches Fragezeichen als ein gruener Haken, der spaeter Daten kostet. */
-    return (e && e.name==="AbortError") ? "abbruch" : "unbestaetigt";
-  } finally { clearTimeout(t); }
+    if(e && e.name==="AbortError") return "abbruch";          // echtes Timeout: nicht blind wiederholen
+    try{
+      await senden("no-cors");
+      return "gesendet-blind";
+    }catch(e2){ return (e2 && e2.name==="AbortError") ? "abbruch" : "unbestaetigt"; }
+  }
+}
+async function driveUpload(m, typ){
+  const paket={ _typ: typ||"OAK-Begehung-Maschine", _version:1, _exportiert:new Date().toISOString(),
+    token:(localStorage.getItem(UPLOADTOKENKEY)||""), dateiname:machineFileName(m), maschine:m };
+  return driveSenden(JSON.stringify(paket));
 }
 /* Wie driveUpload, aber fuer die GANZE Begehung (Sammlung inkl. Standortplan + allgemeine Befunde).
    Landet als EINE Datei im Drive-eingang – kein Downloads-Umweg mehr. Server schreibt Payload ohne Token. */
@@ -1221,6 +1239,8 @@ async function driveTesten(){
     "keine-url":  "Keine Web-App-URL hinterlegt (Mehr → Drive einrichten).",
     "verboten":   "Drive lehnt ab (403): Das Token stimmt nicht mit dem Apps-Script überein.",
     "abbruch":    "Zeitüberschreitung – Netz zu langsam oder Web-App antwortet nicht.",
+    "gesendet-blind":"Abgeschickt, aber der Server antwortet dem Browser nicht lesbar (CORS). "
+      +"Die Daten sind vermutlich angekommen – Nikolai prüft den eingang. Trotzdem als Datei sichern.",
     "unbestaetigt":"Server hat nicht bestätigt – URL prüfen (endet sie auf /exec?) und Skript-Freigabe („Jeder, auch anonym“)."
   }[erg] || ("Unerwartete Antwort: "+erg);
   await hinweis("Drive-Verbindung", text);
@@ -1228,21 +1248,8 @@ async function driveTesten(){
 }
 
 async function driveUploadPaket(paket, name){
-  const url=(localStorage.getItem(UPLOADKEY)||"").trim(); if(!url) return "keine-url";
-  const body=JSON.stringify(Object.assign({}, paket,
-    { token:(localStorage.getItem(UPLOADTOKENKEY)||""), dateiname:name }));
-  const ms=20000+Math.ceil(body.length/1048576)*15000;   // Timeout an Paketgroesse koppeln (Mobilfunk!)
-  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(), ms);
-  try{
-    const r=await fetch(url,{method:"POST",mode:"cors",
-      headers:{"Content-Type":"text/plain;charset=utf-8"}, body, signal:ctl.signal});
-    const txt=((await r.text())||"").trim();
-    if(!r.ok) return "unbestaetigt";
-    if(/^(ok|updated)/i.test(txt)) return "ok";
-    if(/forbidden/i.test(txt)) return "verboten";
-    return "unbestaetigt";
-  }catch(e){ return (e && e.name==="AbortError") ? "abbruch" : "unbestaetigt"; }
-  finally { clearTimeout(t); }
+  return driveSenden(JSON.stringify(Object.assign({}, paket,
+    { token:(localStorage.getItem(UPLOADTOKENKEY)||""), dateiname:name })));
 }
 /* ===== Fortschritt ueber Begehungen hinweg =====
    Problem (Nikolai 06.08.2026): "Mir fehlt eine Angabe, wo ich bei der letzten Begehung
@@ -1325,10 +1332,14 @@ async function driveStueckweise(paket, btn){
      Maschinen als erledigt, der Knopf zeigte "Lade 1 von 1" und im eingang landete nichts. */
   const offen=(paket.maschinen||[]).filter(m=>m._upload!=="gesendet");
   const schon=(paket.maschinen||[]).length-offen.length;
-  let ok=0, grund=null;
+  let ok=0, blind=0, grund=null;
   for(let i=0;i<offen.length;i++){
     if(btn) knopfText(btn,"Lade "+(i+1)+" von "+offen.length+" …");
     const erg=await driveUpload(offen[i]);
+    /* "gesendet-blind": ueber no-cors rausgegangen, Antwort nicht lesbar. Zaehlt NICHT als
+       bestaetigt - die Maschine bleibt offen, damit ein zweiter Versuch sie erneut schickt
+       (das Script dedupliziert ueber den Dateinamen, ein Doppel-Upload schadet also nicht). */
+    if(erg==="gesendet-blind"){ blind++; grund=grund||erg; continue; }
     if(erg!=="ok"){ grund=grund||erg; continue; }
     ok++;
     await merkeGesendet(offen[i]);
@@ -1348,6 +1359,10 @@ async function driveStueckweise(paket, btn){
   if(!fehl && restOk){
     toast("In Drive/eingang: "+(ok+schon)+" Maschine(n)"+(hatRest?" + Allgemeines":"")+".");
     return "ok";
+  }
+  if(blind && blind===fehl){
+    toast(blind+" Maschine(n) abgeschickt – der Server bestätigt nicht. Bitte zusätzlich als Datei sichern.");
+    return "gesendet-blind";
   }
   /* Ehrliche Bilanz statt eines gruenen Hakens - der hat am 22.07. Daten gekostet. */
   toast((ok?ok+" hochgeladen, ":"")+(fehl?fehl+" offen":"Allgemeines offen")+" – nichts verloren.");
@@ -1838,7 +1853,7 @@ function schliessePanel(){
 }
 /* Fassung der App. Bei JEDER Veroeffentlichung mit der Cache-Version in begehung-sw.js
    hochzaehlen - sie ist der einzige Weg, am Geraet zu sehen, welcher Stand wirklich laeuft. */
-const APP_FASSUNG="v30 · 20.08.2026";
+const APP_FASSUNG="v31 · 20.08.2026";
 function renderMehrInfo(){
   const el=document.getElementById("mehrInfo"); if(!el) return;
   const url=(localStorage.getItem(UPLOADKEY)||"").trim();
@@ -4700,6 +4715,8 @@ async function neueBegehung(){
     "offline":    "Das Gerät ist gerade <b>offline</b> – ohne Netz kann nichts hochgeladen werden.",
     "verboten":   "Drive lehnt ab (403): Das <b>Token</b> stimmt nicht mit dem Apps-Script überein.",
     "abbruch":    "<b>Zeitüberschreitung</b> – das Netz ist zu langsam oder die Web-App antwortet nicht.",
+    "gesendet-blind":"<b>Abgeschickt</b> – der Server antwortet dem Browser aber nicht lesbar (CORS). "
+      +"Die Daten sind vermutlich im eingang; sicherheitshalber zusätzlich als Datei sichern.",
     "unbestaetigt":"Der Server hat <b>nicht bestätigt</b> – URL prüfen (endet sie auf <i>/exec</i>?) und Freigabe „Jeder, auch anonym“."
   };
   let text="<b>"+collection.filter(istOffen).length+"</b> von "+collection.length+" Maschinen sind noch "
