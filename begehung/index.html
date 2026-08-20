@@ -1233,13 +1233,17 @@ async function driveUpload(m, typ){
    Kunde sieht - ohne Zeile dort ist die Datei fuer das Portal nicht vorhanden. Fotos und
    Sprachnotizen bleiben damit intern, genau wie bisher. */
 const ROHPFAD="_eingang";
-async function portalRohSenden(inhalt, name){
+/* Ein Versuch. Mit Timeout, damit ein haengender Mobilfunk-Request nicht ewig blockiert -
+   grosszuegig an die Paketgroesse gekoppelt (4,5 MB brauchen im Werk auch mal eine Minute). */
+async function portalRohVersuch(inhalt, name){
   const s=portalSession();
   if(!s || !s.access_token || (s.expires_at||0) < Date.now()) return "kein-login";
   const ziel=ROHPFAD+"/"+name;
+  const ctl=new AbortController();
+  const t=setTimeout(()=>ctl.abort(), 30000+Math.ceil(inhalt.length/1048576)*30000);
   try{
     const r=await fetch(PORTAL.url+"/storage/v1/object/"+PORTAL.bucket+"/"+encodeURI(ziel),{
-      method:"POST",
+      method:"POST", signal:ctl.signal,
       headers:{apikey:PORTAL.anon, Authorization:"Bearer "+s.access_token,
                "Content-Type":"application/json", "x-upsert":"true"},
       body:inhalt});
@@ -1247,6 +1251,22 @@ async function portalRohSenden(inhalt, name){
     if(r.status===401 || r.status===403) return "kein-login";
     return "unbestaetigt";
   }catch(e){ return "unbestaetigt"; }
+  finally{ clearTimeout(t); }
+}
+/* Bis zu drei Anlaeufe je Datei. Grund (Begehung 20.08.2026): Von fuenf Maschinen kam genau
+   EINE an - im Werk reisst die Mobilfunkverbindung bei mehreren MB regelmaessig ab, und ein
+   einzelner Fehlversuch liess die Maschine liegen. Der Upload ist idempotent (x-upsert auf
+   denselben Dateinamen), ein Wiederholen kann also nichts doppeln oder zerstoeren. */
+async function portalRohSenden(inhalt, name, melde){
+  let letzte="unbestaetigt";
+  for(let versuch=1; versuch<=3; versuch++){
+    if(versuch>1 && melde) melde(" (Versuch "+versuch+"/3)");
+    letzte=await portalRohVersuch(inhalt, name);
+    if(letzte==="ok" || letzte==="kein-login") return letzte;
+    if(navigator.onLine===false) return letzte;          // ohne Netz hilft kein Nachschlag
+    await new Promise(r=>setTimeout(r, versuch*2000));   // kurz Luft holen, dann erneut
+  }
+  return letzte;
 }
 /* Anmeldung nur EINMAL erfragen und dann fuer den ganzen Lauf nutzen. */
 async function portalAnmeldungSichern(){
@@ -1260,8 +1280,13 @@ async function portalAnmeldungSichern(){
   if(!pw) return false;
   /* Trimmen rettet den haeufigsten Fall: ein Leerzeichen, das die Tastatur hinten anhaengt. */
   try{
+    toast("Anmelden …");
     await portalAnmelden(mail.trim(), pw.trim());
     localStorage.setItem("oak_portal_mail", mail.trim());   // beim naechsten Mal vorausgefuellt
+    /* Erfolg ausdruecklich melden (Nikolai 20.08.2026: "es sollte halt erst eine Meldung
+       kommen, ob das Passwort richtig eingegeben wurde"). Eine stille Anmeldung laesst einen
+       raten, ob der Upload gleich ins Leere geht - genau davon hatten wir heute genug. */
+    toast("Angemeldet als "+mail.trim()+" – Upload startet.");
     return true;
   }
   catch(e){
@@ -1399,27 +1424,37 @@ async function driveStueckweise(paket, btn){
     if(w==="neu"){ perPortal=await portalAnmeldungSichern(); if(!perPortal) return "kein-login"; }
     else if(w!=="drive") return "kein-login";
   }
-  const einSenden=async(inhalt, name, m)=>{
+  const einSenden=async(inhalt, name, m, stand)=>{
     if(perPortal){
-      const e=await portalRohSenden(inhalt, name);
+      const e=await portalRohSenden(inhalt, name,
+        zusatz=>{ if(btn) knopfText(btn, stand+zusatz); });
       if(e!=="kein-login") return e;
       perPortal=false;                       // Anmeldung abgelaufen -> Rest ueber Drive
     }
     return m ? driveUpload(m) : driveUploadPaket(JSON.parse(inhalt), name);
   };
+  /* Namen mitfuehren, nicht nur zaehlen: Nikolai (20.08.2026) "die App gibt mir aber keinen
+     Aufschluss darueber, was erfolgreich hochgeladen wurde und was nicht". Am Ende steht
+     deshalb eine Karte mit jeder Maschine einzeln - kein Toast, der nach drei Sekunden weg ist. */
+  const gelungen=[], geblieben=[];
+  const KLARTEXT={"unbestaetigt":"keine Bestätigung", "abbruch":"Zeitüberschreitung",
+    "verboten":"Zugang abgelehnt", "keine-url":"kein Ziel eingerichtet",
+    "gesendet-blind":"abgeschickt, unbestätigt", "kein-login":"nicht angemeldet"};
   for(let i=0;i<offen.length;i++){
     const m=offen[i];
-    if(btn) knopfText(btn,"Lade "+(i+1)+" von "+offen.length+" …");
+    const mname=((m.meta||{}).maschine||"ohne Namen");
+    const stand="Lade "+(i+1)+" von "+offen.length+" …";
+    if(btn) knopfText(btn, stand);
     const name=machineFileName(m);
     const inhalt=JSON.stringify({_typ:"OAK-Begehung-Maschine", _version:1,
       _exportiert:new Date().toISOString(), dateiname:name, maschine:m});
-    const erg=await einSenden(inhalt, name, m);
+    const erg=await einSenden(inhalt, name, m, stand);
     /* "gesendet-blind": ueber no-cors rausgegangen, Antwort nicht lesbar. Zaehlt NICHT als
        bestaetigt - die Maschine bleibt offen, damit ein zweiter Versuch sie erneut schickt
        (beide Ziele deduplizieren ueber den Dateinamen, ein Doppel-Upload schadet also nicht). */
-    if(erg==="gesendet-blind"){ blind++; grund=grund||erg; continue; }
-    if(erg!=="ok"){ grund=grund||erg; continue; }
-    ok++;
+    if(erg==="gesendet-blind"){ blind++; grund=grund||erg; geblieben.push([mname,erg]); continue; }
+    if(erg!=="ok"){ grund=grund||erg; geblieben.push([mname,erg]); continue; }
+    ok++; gelungen.push(mname);
     await merkeGesendet(m);
   }
   /* Plan, Pins und die Ebene "Begehung" gehoeren der Begehung, nicht einer Maschine -
@@ -1427,24 +1462,32 @@ async function driveStueckweise(paket, btn){
   const hatRest=!!(paket.allgemein || paket.plan || (paket.planpins||[]).length);
   let restOk=true;
   if(hatRest){
-    if(btn) knopfText(btn,"Lade Allgemeines …");
+    const stand="Lade Allgemeines …";
+    if(btn) knopfText(btn, stand);
     const rest=Object.assign({}, paket, {maschinen:[], anzahl:0, _teil:"allgemeines"});
     const name="Begehung_"+slug(paket.kunde||"begehung")+(paket.datum?"_"+paket.datum:"")+"_Allgemeines.json";
-    const erg=await einSenden(JSON.stringify(rest), name, null);
-    if(erg!=="ok"){ restOk=false; grund=grund||erg; }
+    const erg=await einSenden(JSON.stringify(rest), name, null, stand);
+    if(erg!=="ok"){ restOk=false; grund=grund||erg; geblieben.push(["Allgemeine Befunde",erg]); }
+    else gelungen.push("Allgemeine Befunde");
   }
   const wohin=perPortal?"Portal":"Drive/eingang";
   const fehl=offen.length-ok;
+  const liste=(eintraege,mitGrund)=>eintraege.map(e=>mitGrund
+    ? "• "+esc(e[0])+" <span style='opacity:.75'>– "+esc(KLARTEXT[e[1]]||e[1])+"</span>"
+    : "• "+esc(e)).join("<br>");
   if(!fehl && restOk){
-    toast("Im "+wohin+": "+(ok+schon)+" Maschine(n)"+(hatRest?" + Allgemeines":"")+".");
+    await hinweis("Upload vollständig",
+      "Im <b>"+wohin+"</b> angekommen:<br>"+liste(gelungen)
+      +(schon?"<br><span style='opacity:.75'>("+schon+" bereits früher übertragen)</span>":""));
     return "ok";
   }
-  if(blind && blind===fehl){
-    toast(blind+" Maschine(n) abgeschickt – der Server bestätigt nicht. Bitte zusätzlich als Datei sichern.");
-    return "gesendet-blind";
-  }
   /* Ehrliche Bilanz statt eines gruenen Hakens - der hat am 22.07. Daten gekostet. */
-  toast((ok?ok+" hochgeladen, ":"")+(fehl?fehl+" offen":"Allgemeines offen")+" – nichts verloren.");
+  await hinweis("Upload unvollständig",
+    (gelungen.length?"<b>Angekommen:</b><br>"+liste(gelungen)+"<br><br>":"")
+    +"<b>Noch offen:</b><br>"+liste(geblieben,true)
+    +"<br><br>Nochmal <b>Hochladen</b> drücken schickt <u>nur</u> die offenen erneut. "
+    +"Auf dem Gerät ist alles vorhanden – es geht nichts verloren.");
+  if(blind && blind===fehl) return "gesendet-blind";
   return grund||"unbestaetigt";
 }
 
@@ -1932,7 +1975,7 @@ function schliessePanel(){
 }
 /* Fassung der App. Bei JEDER Veroeffentlichung mit der Cache-Version in begehung-sw.js
    hochzaehlen - sie ist der einzige Weg, am Geraet zu sehen, welcher Stand wirklich laeuft. */
-const APP_FASSUNG="v33 · 20.08.2026";
+const APP_FASSUNG="v34 · 20.08.2026";
 function renderMehrInfo(){
   const el=document.getElementById("mehrInfo"); if(!el) return;
   const url=(localStorage.getItem(UPLOADKEY)||"").trim();
