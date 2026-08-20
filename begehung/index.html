@@ -1300,6 +1300,55 @@ async function markiereGesichert(art){
   await persistAll();
   renderMaschListe(); renderKacheln();
 }
+/* Eine einzelne Maschine als bestaetigt vermerken - sofort, nicht erst am Ende des Laufs.
+   Die Maschinen im Paket sind Kopien, die Wahrheit steht in `collection`; gefunden wird
+   ueber Name+Datum, denselben Schluessel benutzt der Import-Handler. */
+async function merkeGesendet(m){
+  const key=x=>((x.meta||{}).maschine||"")+"|"+((x.meta||{}).datum||"");
+  const treffer=collection.find(x=>key(x)===key(m));
+  if(treffer) treffer._upload="gesendet";
+  m._upload="gesendet";
+  await persistAll();
+  renderMaschListe(); renderKacheln();
+}
+/* Stueckweiser Upload: je Maschine ein POST statt eines Riesenpakets.
+   Grund (Begehung 20.08.2026): 5 Maschinen ergaben 30,5 MB in EINER Datei, der Upload kam nicht
+   durch. Das Apps-Script haelt den Inhalt beim Verarbeiten dreifach im Speicher (Rohstring,
+   Objekt, neuer String) - bei der Groesse bricht es ab, und das Tool sah nur "unbestaetigt".
+   Einzeln sind es handliche Pakete. Zweiter Gewinn: ein Fehlschlag kostet nur EINE Maschine,
+   und bestaetigte Maschinen werden beim naechsten Versuch nicht noch einmal gesendet.
+   Rueckgabe: "ok" nur, wenn wirklich ALLES durchkam - sonst der erste Fehlergrund. */
+async function driveStueckweise(paket, btn){
+  const offen=(paket.maschinen||[]).filter(m=>!istGesichert(m));
+  const schon=(paket.maschinen||[]).length-offen.length;
+  let ok=0, grund=null;
+  for(let i=0;i<offen.length;i++){
+    if(btn) knopfText(btn,"Lade "+(i+1)+" von "+offen.length+" …");
+    const erg=await driveUpload(offen[i]);
+    if(erg!=="ok"){ grund=grund||erg; continue; }
+    ok++;
+    await merkeGesendet(offen[i]);
+  }
+  /* Plan, Pins und die Ebene "Begehung" gehoeren der Begehung, nicht einer Maschine -
+     sie reisen als eigenes, kleines Restpaket. */
+  const hatRest=!!(paket.allgemein || paket.plan || (paket.planpins||[]).length);
+  let restOk=true;
+  if(hatRest){
+    if(btn) knopfText(btn,"Lade Allgemeines …");
+    const rest=Object.assign({}, paket, {maschinen:[], anzahl:0, _teil:"allgemeines"});
+    const name="Begehung_"+slug(paket.kunde||"begehung")+(paket.datum?"_"+paket.datum:"")+"_Allgemeines.json";
+    const erg=await driveUploadPaket(rest, name);
+    if(erg!=="ok"){ restOk=false; grund=grund||erg; }
+  }
+  const fehl=offen.length-ok;
+  if(!fehl && restOk){
+    toast("In Drive/eingang: "+(ok+schon)+" Maschine(n)"+(hatRest?" + Allgemeines":"")+".");
+    return "ok";
+  }
+  /* Ehrliche Bilanz statt eines gruenen Hakens - der hat am 22.07. Daten gekostet. */
+  toast((ok?ok+" hochgeladen, ":"")+(fehl?fehl+" offen":"Allgemeines offen")+" – nichts verloren.");
+  return grund||"unbestaetigt";
+}
 
 window.addEventListener("online", ()=>{
   if(collection.some(istOffen)) toast("Netz wieder da – Begehung jetzt hochladen.");
@@ -2401,7 +2450,13 @@ document.addEventListener("click",e=>{
    (an den vier Schildern vom 22.07. geprueft), 1920 px fuer Befundfotos. */
 const FOTO_PROFILE={ typenschild:{kante:2560,q:0.90}, _std:{kante:1920,q:0.85} };
 function fotoProfil(kat){ return FOTO_PROFILE[kat]||FOTO_PROFILE._std; }
-const MAXKANTE=3264, JPEGQ=0.92;   // Standard – gilt auch für Drehen/eingebrannte Marker
+/* Nachbearbeitung (Drehen, Marker einbrennen) benutzt DASSELBE Profil wie die Aufnahme.
+   Bis 20.08.2026 stand hier pauschal 3264/0.92: Ein mit 1920@0.85 aufgenommenes Befundfoto
+   wurde beim Drehen und beim Markieren mit q=0.92 neu geschrieben – das speichert die
+   Artefakte des ersten Durchgangs in höherer Qualität mit und macht die Datei größer, bei
+   jedem Drehen erneut. MAXKANTE wurde nie benutzt. (Begehung 20.08.2026: 30,5 MB nach
+   5 Maschinen.) Die Aufnahmeprofile selbst bleiben – sie sind an echten Schildern geprüft. */
+function fotoQ(kat){ return fotoProfil(kat).q; }
 function zeichneSkaliert(src, w, h, kat){
   const p=fotoProfil(kat);
   let s=1;
@@ -2528,7 +2583,7 @@ function drehe(f, grad, imgEl){
     ctx.translate(c.width/2, c.height/2);
     ctx.rotate(grad*Math.PI/180);
     ctx.drawImage(img, -w/2, -h/2);
-    try{ f.data=c.toDataURL("image/jpeg", JPEGQ); }catch(e){ toast("Drehen fehlgeschlagen."); return; }
+    try{ f.data=c.toDataURL("image/jpeg", fotoQ(f.kat)); }catch(e){ toast("Drehen fehlgeschlagen."); return; }
     (f.markierungen||[]).forEach(m=>{
       const rx=m.rx, ry=m.ry;
       if(grad>0){ m.rx=1-ry; m.ry=rx; }   // rechts: (rx,ry) → (1-ry, rx)
@@ -2595,7 +2650,7 @@ function aktualisiereMarkiertesGesamt(f){
     const ctx=c.getContext("2d"); ctx.drawImage(img,0,0);
     zeichneMarkerAuf(ctx, c.width, c.height, mk);
     try{
-      addFotoKat(zielKat,{name:zielKat+".jpg",data:c.toDataURL("image/jpeg",JPEGQ),markierungen:[]});
+      addFotoKat(zielKat,{name:zielKat+".jpg",data:c.toDataURL("image/jpeg",fotoQ(zielKat)),markierungen:[]});
       state.markierungen=JSON.parse(JSON.stringify(mk));   // Altfeld weiterpflegen: Auswertung liest es noch
       renderAllgThumbs(); save();
     }catch(e){ toast("Markiertes Bild konnte nicht erzeugt werden."); }
@@ -3366,11 +3421,16 @@ async function portalUploadPaket(paket, dateiname){
   }catch(e){ return (e.message||String(e)).slice(0,120); }
 }
 
-/* Plan direkt aus dem Portal holen – kein Dateiimport mehr noetig. */
-async function planAusPortal(){
+/* Plan direkt aus dem Portal holen – kein Dateiimport mehr noetig.
+   still=true: stiller Abgleich beim Start einer Begehung. Kein Login-Dialog, keine Overlays,
+   keine Meldung wenn nichts da ist. Grund (Begehung 20.08.2026): Der Vektorplan liegt in der
+   App und blieb dort, auch nachdem im Portal ein korrigierter lag - D 200/2 und A 9 waren
+   vor Ort weiss, obwohl laengst bewertet. Ein Plan, der sich nie erneuert, wird zur Falle. */
+async function planAusPortal(still){
   try{
     let s=portalSession();
     if(!s || !s.access_token || (s.expires_at||0) < Date.now()){
+      if(still) return;                       // ungefragt nach dem Passwort fragen: nein
       const mail=await frageText("Portal-Anmeldung","E-Mail",(s&&s.email)||"","name@oak-engineering.de");
       if(!mail) return;
       const pw=await frageText("Portal-Anmeldung","Passwort","","");
@@ -3378,7 +3438,8 @@ async function planAusPortal(){
       toast("Anmelden …");
       await portalAnmelden(mail.trim(), pw);
     }
-    toast("Plan wird geladen …");
+    if(still && navigator.onLine===false) return;
+    if(!still) toast("Plan wird geladen …");
     const liste=await portalListe("hallenplan");
     /* Reihenfolge: echte SVG-Datei zuerst, sonst eine HTML-Seite mit eingebettetem <svg>.
        Bis 14.08.2026 wurde NUR nach doc_typ="svg" gesucht - im Portal lag aber nur die
@@ -3387,6 +3448,7 @@ async function planAusPortal(){
     const kandidaten=liste.filter(z=>(z.doc_typ||"").toLowerCase()==="svg" || /\.svg$/i.test(z.storage_path||""))
       .concat(liste.filter(z=>/\.html?$/i.test(z.storage_path||"") || (z.doc_typ||"").toLowerCase()==="html"));
     if(!kandidaten.length){
+      if(still) return;
       await hinweis("Kein Vektorplan im Portal",
         liste.length ? "Unter <b>Hallenplan</b> liegt nur: "+esc(liste.map(z=>z.titel||z.storage_path).join(", "))
                      : "Unter <b>Hallenplan</b> liegt im Portal nichts.");
@@ -3401,18 +3463,28 @@ async function planAusPortal(){
       if(m && /<(rect|path|g|polygon|circle)\b/i.test(m[0])){ svgZeile=z; svgText=m[0]; break; }
     }
     if(!svgText){
+      if(still) return;
       await hinweis("Plan nicht verwendbar",
         "Die Datei im Portal enthält keinen fertigen Vektorplan (die Portal-Seite baut ihn erst im "
         +"Browser auf).<br>Bitte <b>hallenplan.svg</b> ins Portal laden – dann klappt es mit einem Tipp.");
       return;
     }
+    /* Beim stillen Abgleich nur ersetzen, wenn sich wirklich etwas geaendert hat - sonst
+       ueberschreiben wir bei jedem Start denselben Plan. */
+    const neuerStand=svgZeile.stand||"";
+    if(still && planSVG && planSVG.svg===svgText && (planSVG.stand||"")===neuerStand) return;
     await setzePlanSVG({name:svgZeile.titel||"Hallenplan", svg:svgText,
-                        stand:svgZeile.stand||"", quelle:"portal"});
-    toast("Hallenplan aus dem Portal geladen"+(svgZeile.stand?" (Stand "+svgZeile.stand+")":""));
+                        stand:neuerStand, quelle:"portal"});
+    if(still){
+      renderPlanBox();
+      toast("Hallenplan aktualisiert"+(neuerStand?" (Stand "+neuerStand+")":"")+".");
+      return;
+    }
+    toast("Hallenplan aus dem Portal geladen"+(neuerStand?" (Stand "+neuerStand+")":""));
     maschinenAusPortal(true);            // Maschinenliste gleich mitnehmen
     const ov=document.getElementById("mark"); if(ov) ov.remove();
     openPlan();
-  }catch(e){ toast("Portal: "+(e.message||e)); }
+  }catch(e){ if(!still) toast("Portal: "+(e.message||e)); }
 }
 
 function planSvgWaehlen(){
@@ -4441,15 +4513,11 @@ async function teileAlles(btn, opt){
     }
     if(hatBridge){
       if(navigator.onLine===false && opt.nurDrive) return "offline";
-      const erg=await driveUploadPaket(paket, name);
-      if(erg==="ok"){
-        /* Das Paket ENTHAELT alle Maschinen - also sind sie bestaetigt. Ohne diese Zeile blieb
-           jede Maschine ewig "nicht bestaetigt", und "Neue Begehung" liess sich nie ausloesen
-           (Feldbefund 13.08.2026: "drei Buttons, keiner funktioniert"). */
-        await markiereGesichert("gesendet");
-        toast("Ganze Begehung in Drive/eingang ("+paket.anzahl+" Masch. + Allgemeines, "+mb+" MB)");
-        return "ok";
-      }
+      /* Stueckweise statt in einem Rutsch - siehe driveStueckweise(). Jede bestaetigte
+         Maschine wird dort sofort markiert, deshalb hier kein markiereGesichert() mehr:
+         es wuerde auch die nicht angekommenen als gesichert ausweisen. */
+      const erg=await driveStueckweise(paket, btn);
+      if(erg==="ok") return "ok";
       /* Wer "Hochladen" gewaehlt hat, will hochladen - kein ungefragter Download hinterher
          (Nikolai 14.08.2026: "er will immer eine Datei herunterladen"). Der Grund geht zurueck
          an die Karte, die ihn im Klartext zeigt und die naechsten Wege anbietet. */
@@ -4680,6 +4748,9 @@ async function starteNeueBegehung(){
   const o=document.getElementById("ovl"); if(o) o.remove();
   neuZeichnen();
   toast("Neue Begehung – Kunde und Datum bitte eintragen.");
+  /* Guter Moment fuer den Plan-Abgleich: Beim Einrichten der Begehung ist man ohnehin online,
+     in der Halle spaeter nicht mehr. Still - ohne Login-Dialog, ohne Meldung wenn nichts da ist. */
+  planAusPortal(true);
 }
 async function alleLoeschen(){
   const offen=collection.filter(istOffen).length;
