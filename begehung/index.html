@@ -2425,9 +2425,13 @@ document.getElementById("allgFotoInput").addEventListener("change",e=>{
     addFotoKat(ziel.kat, obj);
     renderAllgThumbs(); save();
     if(ziel.cb) ziel.cb(obj);
-    /* Nummerierter Pin: direkt nach jedem Mangel-Foto einmal auf der Gesamtansicht antippen –
-       Pin „n" = Mangel-Foto n. Überspringen jederzeit möglich; 📍 am Thumbnail holt nach. */
-    if(ziel.kat==="mangel") mangelDialog(obj).then(()=>pinPrompt(obj));
+    /* Verorten ist FREIWILLIG (Nikolai 20.08.2026: "ich möchte nicht jedes Mangelfoto auf
+       Vorder-/Rückseite markieren müssen"). Früher zog jedes Mangelfoto zwangsläufig erst die
+       Frage „Vorderansicht oder Rückseite?" und dann ein Vollbild-Overlay nach sich – zweimal
+       tippen je Befund, bei 20 Befunden je Maschine ein spürbarer Umweg.
+       Der Weg bleibt vollständig erhalten: das 📍 am Thumbnail öffnet pinPrompt(), und es zeigt
+       durch seine Farbe, ob schon ein Pin sitzt (grün) oder nicht (weiß). */
+    if(ziel.kat==="mangel") mangelDialog(obj);
   }, ziel.kat);
 });
 document.addEventListener("click",e=>{
