@@ -1252,12 +1252,25 @@ async function portalRohSenden(inhalt, name){
 async function portalAnmeldungSichern(){
   const s=portalSession();
   if(s && s.access_token && (s.expires_at||0) > Date.now()) return true;
-  const mail=await frageText("Portal-Anmeldung","E-Mail für den Upload",(s&&s.email)||"","name@oak-engineering.de");
+  const letzte=localStorage.getItem("oak_portal_mail")||(s&&s.email)||"";
+  const mail=await frageText("Portal-Anmeldung","E-Mail für den Upload",letzte,
+                             "name@oak-engineering.de","mail");
   if(!mail) return false;
-  const pw=await frageText("Portal-Anmeldung","Passwort","","");
+  const pw=await frageText("Portal-Anmeldung","Passwort","","","passwort");
   if(!pw) return false;
-  try{ await portalAnmelden(mail.trim(), pw); return true; }
-  catch(e){ await hinweis("Anmeldung fehlgeschlagen", esc(e.message||String(e))); return false; }
+  /* Trimmen rettet den haeufigsten Fall: ein Leerzeichen, das die Tastatur hinten anhaengt. */
+  try{
+    await portalAnmelden(mail.trim(), pw.trim());
+    localStorage.setItem("oak_portal_mail", mail.trim());   // beim naechsten Mal vorausgefuellt
+    return true;
+  }
+  catch(e){
+    await hinweis("Anmeldung fehlgeschlagen",
+      "E-Mail und Passwort wie im Kundenportal.<br><br>"
+      +"<b>Häufigste Ursache am Handy:</b> Die Tastatur schreibt den ersten Buchstaben groß "
+      +"oder hängt ein Leerzeichen an. Beim Passwort auf Groß-/Kleinschreibung achten.");
+    return false;
+  }
 }
 /* Wie driveUpload, aber fuer die GANZE Begehung (Sammlung inkl. Standortplan + allgemeine Befunde).
    Landet als EINE Datei im Drive-eingang – kein Downloads-Umweg mehr. Server schreibt Payload ohne Token. */
@@ -1373,6 +1386,19 @@ async function driveStueckweise(paket, btn){
   /* Zielweg bestimmen: Portal, wenn eine Anmeldung zustande kommt - sonst weiter ueber Drive.
      Einmal fragen, dann fuer den ganzen Lauf gueltig. */
   let perPortal=await portalAnmeldungSichern();
+  /* Ohne Portal bliebe nur die Drive-Bridge - und die hat am 20.08.2026 nachweislich nichts
+     mehr angenommen. Dann lieber ehrlich abbrechen, als 5 Maschinen ins Leere zu schicken
+     und danach wieder zu raetseln, wo sie geblieben sind. */
+  if(!perPortal){
+    const w=await frageWahl("Nicht angemeldet",
+      "Ohne Portal-Anmeldung geht der Upload nur über den alten Drive-Weg – der hat zuletzt "
+      +"<b>nichts</b> angenommen.<br>Die Begehung bleibt auf dem Gerät, es geht nichts verloren.",
+      [{label:"Anmeldung erneut versuchen", wert:"neu", art:"primaer"},
+       {label:"Trotzdem über Drive versuchen", sub:"ohne Gewähr", wert:"drive"}],
+      "Abbrechen");
+    if(w==="neu"){ perPortal=await portalAnmeldungSichern(); if(!perPortal) return "kein-login"; }
+    else if(w!=="drive") return "kein-login";
+  }
   const einSenden=async(inhalt, name, m)=>{
     if(perPortal){
       const e=await portalRohSenden(inhalt, name);
@@ -1906,7 +1932,7 @@ function schliessePanel(){
 }
 /* Fassung der App. Bei JEDER Veroeffentlichung mit der Cache-Version in begehung-sw.js
    hochzaehlen - sie ist der einzige Weg, am Geraet zu sehen, welcher Stand wirklich laeuft. */
-const APP_FASSUNG="v32 · 20.08.2026";
+const APP_FASSUNG="v33 · 20.08.2026";
 function renderMehrInfo(){
   const el=document.getElementById("mehrInfo"); if(!el) return;
   const url=(localStorage.getItem(UPLOADKEY)||"").trim();
@@ -3138,12 +3164,21 @@ function frageWahl(titel, text, optionen, abbruchText){
   });
 }
 /* Ersatz fuer prompt(). Liefert den Text oder null bei Abbruch. */
-function frageText(titel, label, vorgabe, platzhalter){
+/* art: "text" (Standard) | "passwort" | "mail".
+   Auf dem Handy war ein blankes type="text" die Falle: Die Tastatur schreibt den ersten
+   Buchstaben gross und korrigiert selbsttaetig - bei E-Mail und Passwort fuehrt das
+   zuverlaessig zu "Anmeldung fehlgeschlagen" (Nikolai 20.08.2026), ohne dass man sieht,
+   warum. Deshalb Autokorrektur und Auto-Grossschreibung hier ausschalten. */
+function frageText(titel, label, vorgabe, platzhalter, art){
   return new Promise(res=>{
     const pk=document.createElement("div"); pk.className="mpicker";
+    const typ = art==="passwort" ? "password" : art==="mail" ? "email" : "text";
+    const zahm = (art==="passwort"||art==="mail")
+      ? ` autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="${art==="passwort"?"current-password":"username"}"`
+      : "";
     pk.innerHTML=`<div class="pcard"><h3>${esc(titel)}</h3>`
       +(label?`<label class="f">${esc(label)}</label>`:"")
-      +`<input type="text" id="ftIn" value="${esc(vorgabe||"")}" placeholder="${esc(platzhalter||"")}">`
+      +`<input type="${typ}"${zahm} id="ftIn" value="${esc(vorgabe||"")}" placeholder="${esc(platzhalter||"")}">`
       +`<div class="toolrow" style="margin-top:14px">`
       +`<button class="btn" id="ftAb" type="button">Abbrechen</button>`
       +`<button class="btn primary" id="ftOk" type="button" style="margin-left:auto">Übernehmen</button>`
@@ -4572,42 +4607,35 @@ async function teileAlles(btn, opt){
   const inhalt=JSON.stringify(paket);
   const mb=(inhalt.length/1048576).toFixed(1);
   const alt=btn?knopfTextLesen(btn):null;
-  const hatBridge=!!(localStorage.getItem(UPLOADKEY)||"").trim();
-  if(btn){ btn.disabled=true; knopfText(btn,(hatBridge?"Lade ":"Teile ")+mb+" MB…"); }
+  if(btn){ btn.disabled=true; knopfText(btn,"Lade "+mb+" MB…"); }
   try{
     // 0) ZIELWEG: Drive-eingang über die Bridge. Von dort macht Claude die Dokumente und stellt
     //    NUR die fertigen Dokumente ins Kundenportal (Vorgabe Nikolai 13.08.2026).
     //    Rohdaten mit Fotos/Sprachnotizen bleiben im eingang bzw. in <thema>/_quellen/.
-    if(!hatBridge){
-      /* Frueher fiel das Tool hier wortlos auf Downloads zurueck - deshalb "landet immer in
-         Downloads". Jetzt sagen wir, WAS fehlt, und bieten das Einrichten direkt an. */
-      if(opt.nurDrive) return "keine-url";           // die aufrufende Karte entscheidet weiter
-      const w=await frageWahl("Keine Drive-Verbindung",
-        "Auf diesem Gerät ist der Drive-Eingang nicht eingerichtet – die Begehung ginge nur "
-        +"in den <b>Downloads-Ordner</b>.",
-        [{label:"Drive jetzt einrichten", sub:"Web-App-URL + Token", wert:"setup", art:"primaer"},
-         {label:"Trotzdem als Datei sichern", sub:"landet im Downloads-Ordner", wert:"datei"}],
-        "Abbrechen");
-      if(w===null) return;
-      if(w==="setup"){ driveEinstellungen(); return; }
-    }
-    if(hatBridge){
+    /* Der Sendelauf laeuft IMMER - er entscheidet selbst zwischen Portal und Drive.
+       Bis 20.08.2026 stand hier ein Gate auf die Drive-URL: ohne hinterlegte Bridge kam man
+       gar nicht erst zum Senden, sondern direkt in den Downloads-Ordner. Seit der Portal-Weg
+       der Hauptweg ist, waere das genau verkehrt herum. */
+    {
       if(navigator.onLine===false && opt.nurDrive) return "offline";
       /* Stueckweise statt in einem Rutsch - siehe driveStueckweise(). Jede bestaetigte
          Maschine wird dort sofort markiert, deshalb hier kein markiereGesichert() mehr:
          es wuerde auch die nicht angekommenen als gesichert ausweisen. */
       const erg=await driveStueckweise(paket, btn);
       if(erg==="ok") return "ok";
+      /* Bewusst abgebrochen (keine Anmeldung gewollt): dann auch KEIN ungefragter Download.
+         Die Begehung bleibt auf dem Geraet, das ist sicher genug. */
+      if(erg==="kein-login"){ toast("Nicht hochgeladen – die Begehung bleibt auf dem Gerät."); return erg; }
       /* Wer "Hochladen" gewaehlt hat, will hochladen - kein ungefragter Download hinterher
          (Nikolai 14.08.2026: "er will immer eine Datei herunterladen"). Der Grund geht zurueck
          an die Karte, die ihn im Klartext zeigt und die naechsten Wege anbietet. */
       if(opt.nurDrive) return erg;
       if(erg==="verboten"){
-        await hinweis("Drive lehnt den Upload ab",
-          "Das Token stimmt nicht mit dem Apps-Script überein (<b>Mehr → Drive einrichten</b>).<br>"
-          +"Ich sichere die Begehung stattdessen als Datei – nichts geht verloren.");
+        await hinweis("Upload abgelehnt",
+          "Der Zugang wurde abgelehnt.<br>Ich sichere die Begehung stattdessen als Datei – "
+          +"nichts geht verloren.");
       }
-      else { toast("Drive nicht bestätigt – ich sichere die Begehung als Datei."); }
+      else { toast("Upload nicht bestätigt – ich sichere die Begehung als Datei."); }
       // -> faellt bewusst auf den bisherigen Weg durch (Share/Download)
     }
     if(navigator.canShare){
