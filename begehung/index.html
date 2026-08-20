@@ -2080,7 +2080,7 @@ function schliessePanel(){
 }
 /* Fassung der App. Bei JEDER Veroeffentlichung mit der Cache-Version in begehung-sw.js
    hochzaehlen - sie ist der einzige Weg, am Geraet zu sehen, welcher Stand wirklich laeuft. */
-const APP_FASSUNG="v35 · 20.08.2026";
+const APP_FASSUNG="v36 · 20.08.2026";
 function renderMehrInfo(){
   const el=document.getElementById("mehrInfo"); if(!el) return;
   const url=(localStorage.getItem(UPLOADKEY)||"").trim();
@@ -2242,7 +2242,20 @@ function init(){
   // Default Datum heute
   // Datum vorbelegen: Heute ist praktisch immer richtig – Tippen dafür wäre unnötig.
   const dEl=document.querySelector('[data-meta="datum"]');
-  if(!state.meta.datum){ const t=new Date().toISOString().slice(0,10); if(dEl) dEl.value=t; state.meta.datum=t; }
+  const heute=new Date().toISOString().slice(0,10);
+  if(!state.meta.datum){ if(dEl) dEl.value=heute; state.meta.datum=heute; }
+  /* Ein Datum aus der Vergangenheit auf heute ziehen. Das Datum ist ein Stammdatenfeld und
+     blieb bisher stehen, bis jemand "Neue Begehung" drueckte - deshalb trugen alle fuenf
+     Maschinen der Begehung vom 20.08.2026 das Datum 14.08. des vorherigen Termins.
+     Betroffen ist NUR der aktuelle Bogen; bereits gesicherte Maschinen behalten ihr Datum,
+     eine ueber Nacht fortgesetzte Begehung wird also nicht rueckwirkend umdatiert. */
+  else if(state.meta.datum < heute){
+    const alt=state.meta.datum;
+    state.meta.datum=heute;
+    if(dEl) dEl.value=heute;
+    save();
+    setTimeout(()=>toast("Datum auf heute gesetzt (vorher "+alt+")."), 900);
+  }
 }
 function renderSysList(){
   const dl=document.getElementById("sysList"); if(!dl) return;
