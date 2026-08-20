@@ -1222,6 +1222,43 @@ async function driveUpload(m, typ){
     token:(localStorage.getItem(UPLOADTOKENKEY)||""), dateiname:machineFileName(m), maschine:m };
   return driveSenden(JSON.stringify(paket));
 }
+/* ===== Zielweg 1: Kundenportal (Supabase Storage) =====
+   Das Apps Script hat am 20.08.2026 endgueltig nichts mehr angenommen - weder mit cors noch
+   blind ueber no-cors kam eine einzige Datei im Drive-eingang an, waehrend derselbe Upload von
+   Hand ueber die Drive-App problemlos laeuft. Eine Bereitstellung, die still veraltet und die
+   man nur ueber die Weboberflaeche erneuern kann, taugt nicht als Hauptweg fuers Feld.
+   Supabase dagegen laeuft: derselbe Storage-Weg traegt seit Wochen jeden Dokument-Upload
+   (tools/portal_login.py), liefert saubere CORS-Header und eine ehrliche HTTP-Antwort.
+   WICHTIG: Rohdaten bekommen KEINEN Eintrag in portal_dokumente. Der Katalog steuert, was der
+   Kunde sieht - ohne Zeile dort ist die Datei fuer das Portal nicht vorhanden. Fotos und
+   Sprachnotizen bleiben damit intern, genau wie bisher. */
+const ROHPFAD="_eingang";
+async function portalRohSenden(inhalt, name){
+  const s=portalSession();
+  if(!s || !s.access_token || (s.expires_at||0) < Date.now()) return "kein-login";
+  const ziel=ROHPFAD+"/"+name;
+  try{
+    const r=await fetch(PORTAL.url+"/storage/v1/object/"+PORTAL.bucket+"/"+encodeURI(ziel),{
+      method:"POST",
+      headers:{apikey:PORTAL.anon, Authorization:"Bearer "+s.access_token,
+               "Content-Type":"application/json", "x-upsert":"true"},
+      body:inhalt});
+    if(r.ok) return "ok";
+    if(r.status===401 || r.status===403) return "kein-login";
+    return "unbestaetigt";
+  }catch(e){ return "unbestaetigt"; }
+}
+/* Anmeldung nur EINMAL erfragen und dann fuer den ganzen Lauf nutzen. */
+async function portalAnmeldungSichern(){
+  const s=portalSession();
+  if(s && s.access_token && (s.expires_at||0) > Date.now()) return true;
+  const mail=await frageText("Portal-Anmeldung","E-Mail für den Upload",(s&&s.email)||"","name@oak-engineering.de");
+  if(!mail) return false;
+  const pw=await frageText("Portal-Anmeldung","Passwort","","");
+  if(!pw) return false;
+  try{ await portalAnmelden(mail.trim(), pw); return true; }
+  catch(e){ await hinweis("Anmeldung fehlgeschlagen", esc(e.message||String(e))); return false; }
+}
 /* Wie driveUpload, aber fuer die GANZE Begehung (Sammlung inkl. Standortplan + allgemeine Befunde).
    Landet als EINE Datei im Drive-eingang – kein Downloads-Umweg mehr. Server schreibt Payload ohne Token. */
 /* Verbindung zum Drive-eingang pruefen – VOR der Begehung, nicht danach.
@@ -1333,16 +1370,31 @@ async function driveStueckweise(paket, btn){
   const offen=(paket.maschinen||[]).filter(m=>m._upload!=="gesendet");
   const schon=(paket.maschinen||[]).length-offen.length;
   let ok=0, blind=0, grund=null;
+  /* Zielweg bestimmen: Portal, wenn eine Anmeldung zustande kommt - sonst weiter ueber Drive.
+     Einmal fragen, dann fuer den ganzen Lauf gueltig. */
+  let perPortal=await portalAnmeldungSichern();
+  const einSenden=async(inhalt, name, m)=>{
+    if(perPortal){
+      const e=await portalRohSenden(inhalt, name);
+      if(e!=="kein-login") return e;
+      perPortal=false;                       // Anmeldung abgelaufen -> Rest ueber Drive
+    }
+    return m ? driveUpload(m) : driveUploadPaket(JSON.parse(inhalt), name);
+  };
   for(let i=0;i<offen.length;i++){
+    const m=offen[i];
     if(btn) knopfText(btn,"Lade "+(i+1)+" von "+offen.length+" …");
-    const erg=await driveUpload(offen[i]);
+    const name=machineFileName(m);
+    const inhalt=JSON.stringify({_typ:"OAK-Begehung-Maschine", _version:1,
+      _exportiert:new Date().toISOString(), dateiname:name, maschine:m});
+    const erg=await einSenden(inhalt, name, m);
     /* "gesendet-blind": ueber no-cors rausgegangen, Antwort nicht lesbar. Zaehlt NICHT als
        bestaetigt - die Maschine bleibt offen, damit ein zweiter Versuch sie erneut schickt
-       (das Script dedupliziert ueber den Dateinamen, ein Doppel-Upload schadet also nicht). */
+       (beide Ziele deduplizieren ueber den Dateinamen, ein Doppel-Upload schadet also nicht). */
     if(erg==="gesendet-blind"){ blind++; grund=grund||erg; continue; }
     if(erg!=="ok"){ grund=grund||erg; continue; }
     ok++;
-    await merkeGesendet(offen[i]);
+    await merkeGesendet(m);
   }
   /* Plan, Pins und die Ebene "Begehung" gehoeren der Begehung, nicht einer Maschine -
      sie reisen als eigenes, kleines Restpaket. */
@@ -1352,12 +1404,13 @@ async function driveStueckweise(paket, btn){
     if(btn) knopfText(btn,"Lade Allgemeines …");
     const rest=Object.assign({}, paket, {maschinen:[], anzahl:0, _teil:"allgemeines"});
     const name="Begehung_"+slug(paket.kunde||"begehung")+(paket.datum?"_"+paket.datum:"")+"_Allgemeines.json";
-    const erg=await driveUploadPaket(rest, name);
+    const erg=await einSenden(JSON.stringify(rest), name, null);
     if(erg!=="ok"){ restOk=false; grund=grund||erg; }
   }
+  const wohin=perPortal?"Portal":"Drive/eingang";
   const fehl=offen.length-ok;
   if(!fehl && restOk){
-    toast("In Drive/eingang: "+(ok+schon)+" Maschine(n)"+(hatRest?" + Allgemeines":"")+".");
+    toast("Im "+wohin+": "+(ok+schon)+" Maschine(n)"+(hatRest?" + Allgemeines":"")+".");
     return "ok";
   }
   if(blind && blind===fehl){
@@ -1853,7 +1906,7 @@ function schliessePanel(){
 }
 /* Fassung der App. Bei JEDER Veroeffentlichung mit der Cache-Version in begehung-sw.js
    hochzaehlen - sie ist der einzige Weg, am Geraet zu sehen, welcher Stand wirklich laeuft. */
-const APP_FASSUNG="v31 · 20.08.2026";
+const APP_FASSUNG="v32 · 20.08.2026";
 function renderMehrInfo(){
   const el=document.getElementById("mehrInfo"); if(!el) return;
   const url=(localStorage.getItem(UPLOADKEY)||"").trim();
