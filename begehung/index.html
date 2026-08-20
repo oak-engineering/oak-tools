@@ -1832,11 +1832,15 @@ function schliessePanel(){
   panelZu();
   if(fn) schichtAb(fn);
 }
+/* Fassung der App. Bei JEDER Veroeffentlichung mit der Cache-Version in begehung-sw.js
+   hochzaehlen - sie ist der einzige Weg, am Geraet zu sehen, welcher Stand wirklich laeuft. */
+const APP_FASSUNG="v29 · 20.08.2026";
 function renderMehrInfo(){
   const el=document.getElementById("mehrInfo"); if(!el) return;
   const url=(localStorage.getItem(UPLOADKEY)||"").trim();
   el.innerHTML=(url?"Drive-Verbindung eingerichtet":"<b>Drive-Verbindung fehlt</b> – die Begehung ginge nur in den Downloads-Ordner.")
-    +"<br>"+collection.length+" Maschine(n) auf dem Gerät · "+collection.filter(istOffen).length+" noch nicht hochgeladen.";
+    +"<br>"+collection.length+" Maschine(n) auf dem Gerät · "+collection.filter(istOffen).length+" noch nicht hochgeladen."
+    +`<br><span style="color:var(--muted)">Fassung ${APP_FASSUNG}</span>`;
 }
 function init(){
   // Stammdaten-Felder
@@ -4810,8 +4814,38 @@ function applySetupHash(){
    Faellt die Registrierung aus (lokale Datei, altes Geraet), laeuft die App wie bisher. */
 if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
   window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("sw.js").catch(()=>{});
+    navigator.serviceWorker.register("sw.js").then(reg=>{
+      /* Ein Update still im Hintergrund installieren zu lassen war der Fehler: Die App lief
+         am 20.08.2026 den ganzen Tag offen weiter, der Fix war laengst live, und weder Nikolai
+         noch ich konnten sehen, WELCHE Fassung eigentlich lief ("Pin-Overlay kommt immer noch").
+         Jetzt sagt die App es selbst und laesst sich mit einem Tipp erneuern. */
+      reg.addEventListener("updatefound",()=>{
+        const neu=reg.installing; if(!neu) return;
+        neu.addEventListener("statechange",()=>{
+          if(neu.state==="installed" && navigator.serviceWorker.controller) zeigeUpdateBanner();
+        });
+      });
+      /* Beim Start und bei jeder Rueckkehr in den Vordergrund nachsehen - genau dann ist
+         gewoehnlich Netz da, und genau dann faellt ein Neustart nicht weiter auf. */
+      const pruefen=()=>{ if(navigator.onLine!==false) reg.update().catch(()=>{}); };
+      pruefen();
+      document.addEventListener("visibilitychange",()=>{ if(!document.hidden) pruefen(); });
+    }).catch(()=>{});
   });
+}
+function zeigeUpdateBanner(){
+  if(document.getElementById("updBan")) return;
+  const b=document.createElement("div"); b.id="updBan";
+  b.style.cssText="position:fixed;left:12px;right:12px;bottom:78px;z-index:9999;background:#1B4332;"
+    +"color:#fff;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;"
+    +"box-shadow:0 6px 20px rgba(0,0,0,.28);font-size:15px";
+  b.innerHTML=`<span style="flex:1">Neue Fassung verfügbar.</span>`
+    +`<button type="button" id="updSpaeter" style="background:none;border:0;color:#B7E4C7;font-size:15px">Später</button>`
+    +`<button type="button" id="updJetzt" style="background:#52B788;border:0;color:#0B2B1D;`
+    +`border-radius:9px;padding:8px 12px;font-weight:600;font-size:15px">Neu laden</button>`;
+  document.body.appendChild(b);
+  b.querySelector("#updSpaeter").addEventListener("click",()=>b.remove());
+  b.querySelector("#updJetzt").addEventListener("click",()=>location.reload());
 }
 (async function boot(){
   const setup=applySetupHash();
