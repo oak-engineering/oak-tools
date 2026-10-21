@@ -1281,8 +1281,8 @@ const ROHPFAD="_eingang";
 /* Ein Versuch. Mit Timeout, damit ein haengender Mobilfunk-Request nicht ewig blockiert -
    grosszuegig an die Paketgroesse gekoppelt (4,5 MB brauchen im Werk auch mal eine Minute). */
 async function portalRohVersuch(inhalt, name, aufFortschritt){
+  if(!(await portalAuffrischen())) return "kein-login";
   const s=portalSession();
-  if(!s || !s.access_token || (s.expires_at||0) < Date.now()) return "kein-login";
   const ziel=ROHPFAD+"/"+name;
   return xhrSenden(PORTAL.url+"/storage/v1/object/"+PORTAL.bucket+"/"+encodeURI(ziel),
     {apikey:PORTAL.anon, Authorization:"Bearer "+s.access_token,
@@ -1350,8 +1350,8 @@ function portalLoginDialog(vorgabeMail){
   });
 }
 async function portalAnmeldungSichern(){
+  if(await portalAuffrischen()) return true;
   const s=portalSession();
-  if(s && s.access_token && (s.expires_at||0) > Date.now()) return true;
   const letzte=localStorage.getItem("oak_portal_mail")||(s&&s.email)||"";
   const eingabe=await portalLoginDialog(letzte);
   if(!eingabe) return false;
@@ -3451,12 +3451,28 @@ function portalSessionSetzen(s){
   localStorage.setItem(PORTAL.sessKey, JSON.stringify(s));
 }
 async function portalFetch(pfad, opt){
+  await portalAuffrischen();
   const s=portalSession();
   const kopf=Object.assign({apikey:PORTAL.anon,
     Authorization:"Bearer "+((s&&s.access_token)||PORTAL.anon)}, (opt&&opt.headers)||{});
   const r=await fetch(PORTAL.url+pfad, Object.assign({}, opt, {headers:kopf}));
   if(!r.ok) throw new Error("Portal "+r.status+" "+(await r.text()).slice(0,140));
   return r;
+}
+/* Anmeldung still verlaengern: Der Zugang gilt nur 1 h, das Geraet haelt aber den
+   Refresh-Token. Bis 21.10.2026 fehlte das - trotz "Einmalig anmelden" kam nach jeder Stunde
+   wieder die Passwortabfrage (Nikolai: "es ist zum verrückt werden"). */
+async function portalAuffrischen(){
+  const s=portalSession();
+  if(s && s.access_token && (s.expires_at||0) > Date.now()) return true;
+  if(!s || !s.refresh_token || navigator.onLine===false) return false;
+  try{
+    const r=await fetch(PORTAL.url+"/auth/v1/token?grant_type=refresh_token", {
+      method:"POST", headers:{apikey:PORTAL.anon,"Content-Type":"application/json"},
+      body:JSON.stringify({refresh_token:s.refresh_token})});
+    if(!r.ok) return false;
+    portalSessionSetzen(await r.json()); return true;
+  }catch(e){ return false; }
 }
 async function portalAnmelden(email, passwort){
   const r=await fetch(PORTAL.url+"/auth/v1/token?grant_type=password", {
@@ -3507,8 +3523,7 @@ function nameGleich(a,b){
 }
 async function maschineWaehlen(){
   let liste=[]; try{ liste=JSON.parse(localStorage.getItem(PORTALMASCHKEY)||"[]"); }catch(e){}
-  const s=portalSession();
-  if(s && s.access_token && (s.expires_at||0)>Date.now()){
+  if(await portalAuffrischen()){
     const neu=await maschinenAusPortal(true); if(neu && neu.length) liste=neu;
   }
   if(!liste.length){
@@ -3664,16 +3679,15 @@ async function maschinenAusPortal(still){
 /* Beim Start das zuletzt Geladene anzeigen (offline) und still auffrischen, wenn angemeldet. */
 addEventListener("load",()=>{
   try{ maschinenlisteZeichnen(JSON.parse(localStorage.getItem(PORTALMASCHKEY)||"[]")); }catch(e){}
-  const s=portalSession();
-  if(s && s.access_token && (s.expires_at||0) > Date.now()) maschinenAusPortal(true);
+  portalAuffrischen().then(ok => { if(ok) maschinenAusPortal(true); });
 });
 
 /* Begehung ins Portal zurueckschreiben: Datei in den privaten Bucket + Katalogzeile.
    Rueckgabe "ok" | "kein-login" | Fehlertext – der Aufrufer faellt sonst auf Bridge/Teilen zurueck. */
 async function portalUploadPaket(paket, dateiname){
   if(!paket) return "nichts zu senden";
+  if(!(await portalAuffrischen())) return "kein-login";
   const s=portalSession();
-  if(!s || !s.access_token || (s.expires_at||0) < Date.now()) return "kein-login";
   const kunde=slug(paket.kunde||"kunde");
   const pfad=kunde+"/begehungen/"+dateiname;
   try{
@@ -3705,8 +3719,8 @@ async function portalUploadPaket(paket, dateiname){
 async function planAusPortal(still){
   try{
     let s=portalSession();
-    if(!s || !s.access_token || (s.expires_at||0) < Date.now()){
-      if(still) return;                       // ungefragt nach dem Passwort fragen: nein
+    if(!(await portalAuffrischen())){
+      if(still) return;                      // ungefragt nach dem Passwort fragen: nein
       const mail=await frageText("Portal-Anmeldung","E-Mail",(s&&s.email)||"","name@oak-engineering.de");
       if(!mail) return;
       const pw=await frageText("Portal-Anmeldung","Passwort","","");
