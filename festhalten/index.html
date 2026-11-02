@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>OAK Festhalten</title>
+<meta name="theme-color" content="#2D6A4F">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Jost:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--gruen:#2D6A4F;--hell:#D8F3DC;--linie:#dfe5e2;--text:#1f2a26;--grau:#62706a;--grund:#f3f6f4;--rot:#b3261e}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--grund);color:var(--text);font:400 16px/1.35 Jost,system-ui,sans-serif}
+.app{height:100dvh;display:flex;flex-direction:column}
+header{flex:none;height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:var(--gruen);color:#fff}
+header b{font:600 22px Cormorant Garamond,Georgia,serif}
+#stand{height:26px;padding:0 10px;display:flex;align-items:center;border-radius:13px;background:rgba(255,255,255,.16);font-size:13px;white-space:nowrap}
+main{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:10px 12px}
+#fotos{flex:0 0 42%;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:6px}
+.kachel{position:relative;min-height:0;border:1px dashed var(--linie);border-radius:8px;background:#fff;overflow:hidden}
+.kachel img{width:100%;height:100%;object-fit:cover;display:block}
+.kachel button{position:absolute;top:4px;right:4px;width:32px;height:32px;border:0;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font:inherit;cursor:pointer}
+#notiz{flex:1;min-height:0;width:100%;padding:10px;border:1px solid var(--linie);border-radius:8px;background:#fff;color:inherit;font:inherit;resize:none}
+footer{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 6px}
+.knopf{height:56px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--gruen);border-radius:10px;background:#fff;color:var(--gruen);font:500 17px Jost,system-ui,sans-serif;cursor:pointer}
+.knopf.haupt{background:var(--gruen);color:#fff}
+.knopf:disabled{opacity:.45;cursor:default}
+.knopf svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.recht{flex:none;display:flex;justify-content:center;gap:14px;padding:0 12px calc(6px + env(safe-area-inset-bottom));font-size:12px}
+.recht a{color:var(--grau)}
+#login{position:fixed;inset:0;display:none;flex-direction:column;gap:10px;justify-content:center;padding:24px;background:var(--grund);z-index:5}
+#login.an{display:flex}
+#login b{font:600 26px Cormorant Garamond,Georgia,serif}
+#login input{height:48px;padding:0 12px;border:1px solid var(--linie);border-radius:8px;font:inherit}
+#loginFehler{min-height:20px;color:var(--rot);font-size:14px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header><b>Festhalten</b><span id="stand">Bereit</span></header>
+  <main>
+    <div id="fotos"></div>
+    <textarea id="notiz" aria-label="Notiz" placeholder="Notiz, optional"></textarea>
+  </main>
+  <footer>
+    <label class="knopf"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Foto<input id="kamera" type="file" accept="image/*" capture="environment" hidden></label>
+    <button class="knopf haupt" id="speichern" disabled>Speichern</button>
+  </footer>
+  <div class="recht"><a href="https://www.oak-engineering.de/impressum.html">Impressum</a><a href="https://www.oak-engineering.de/datenschutz.html">Datenschutz</a></div>
+</div>
+<form id="login">
+  <b>Anmelden</b>
+  <input id="mail" type="email" autocomplete="username" placeholder="E-Mail" required>
+  <input id="pw" type="password" autocomplete="current-password" placeholder="Passwort" required>
+  <button class="knopf haupt">Anmelden</button>
+  <div id="loginFehler"></div>
+</form>
+<script>
+/* OAK Festhalten: Foto und Notiz ohne Begehung erfassen. Alles liegt zuerst im Gerät (IndexedDB) und geht danach
+   in den privaten Portal-Rohordner _eingang/festhalten/. tools/festhalten_holen.py legt es in den eingang/.
+   Gelöscht wird im Gerät erst, wenn alle Teile angekommen sind. Der Upload ist wiederholbar (x-upsert). */
+const P={url:"https://ayieotppxrjrzdpeofkx.supabase.co",anon:"sb_publishable_fz1o6tjpwa7gjiNb17uuEg_-ZwNdFcS",bucket:"kundendokumente",ordner:"_eingang/festhalten",key:"oak_festhalten_session"};
+const MAX_FOTOS=6,MAX_KANTE=2400;
+const $=i=>document.getElementById(i);
+let fotos=[],sendet=false;
+
+function dbAuf(){return new Promise((ok,nein)=>{const r=indexedDB.open("oak-festhalten",1);r.onupgradeneeded=()=>r.result.createObjectStore("warte",{keyPath:"id"});r.onsuccess=()=>ok(r.result);r.onerror=()=>nein(r.error)})}
+async function db(modus,tun){const d=await dbAuf();return new Promise((ok,nein)=>{const t=d.transaction("warte",modus),r=tun(t.objectStore("warte"));t.oncomplete=()=>ok(r&&r.result);t.onerror=()=>nein(t.error);t.onabort=()=>nein(t.error)})}
+const alle=()=>db("readonly",s=>s.getAll());
+
+function sitzung(){try{return JSON.parse(localStorage.getItem(P.key)||"null")}catch(e){return null}}
+function sitzungSetzen(d){localStorage.setItem(P.key,JSON.stringify({access_token:d.access_token,refresh_token:d.refresh_token,bis:Date.now()+(d.expires_in||3600)*900}))}
+async function zugang(){
+  const s=sitzung();if(!s)return null;
+  if(s.bis>Date.now())return s.access_token;
+  if(navigator.onLine===false)return null;
+  const r=await fetch(P.url+"/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{apikey:P.anon,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:s.refresh_token})});
+  if(r.status===400||r.status===401){localStorage.removeItem(P.key);$("login").classList.add("an");return null}
+  if(!r.ok)return null;
+  const d=await r.json();sitzungSetzen(d);return d.access_token;
+}
+async function zeigeStand(text){
+  let n=0;try{n=(await alle()).length}catch(e){}
+  $("stand").textContent=text||(n?(n===1?"1 wartet":n+" warten")+(navigator.onLine===false?" auf Netz":""):"Alles übertragen");
+}
+
+function zeichnen(){
+  const f=$("fotos");f.innerHTML="";
+  for(let i=0;i<MAX_FOTOS;i++){
+    const k=document.createElement("div");k.className="kachel";
+    if(fotos[i]){const b=document.createElement("img");b.src=fotos[i].url;b.alt="Foto "+(i+1);const x=document.createElement("button");x.type="button";x.textContent="×";x.setAttribute("aria-label","Foto entfernen");x.onclick=()=>{URL.revokeObjectURL(fotos[i].url);fotos.splice(i,1);zeichnen()};k.append(b,x)}
+    f.append(k);
+  }
+  $("speichern").disabled=!fotos.length&&!$("notiz").value.trim();
+}
+async function verkleinern(datei){
+  try{
+    const bild=await createImageBitmap(datei,{imageOrientation:"from-image"});
+    const m=Math.min(1,MAX_KANTE/Math.max(bild.width,bild.height));
+    const c=document.createElement("canvas");c.width=Math.round(bild.width*m);c.height=Math.round(bild.height*m);
+    c.getContext("2d").drawImage(bild,0,0,c.width,c.height);bild.close();
+    const b=await new Promise(ok=>c.toBlob(ok,"image/jpeg",.85));
+    return b&&b.size?b:datei;
+  }catch(e){return datei}
+}
+$("kamera").onchange=async e=>{
+  const d=e.target.files[0];e.target.value="";if(!d)return;
+  if(fotos.length>=MAX_FOTOS){$("stand").textContent="Höchstens "+MAX_FOTOS+" Fotos";return}
+  const blob=await verkleinern(d);fotos.push({blob,url:URL.createObjectURL(blob)});zeichnen();
+};
+$("notiz").oninput=zeichnen;
+$("speichern").onclick=async()=>{
+  const notiz=$("notiz").value.trim();if(!fotos.length&&!notiz)return;
+  const z=new Date(),p=n=>String(n).padStart(2,"0"),id=`${z.getFullYear()}-${p(z.getMonth()+1)}-${p(z.getDate())}_${p(z.getHours())}${p(z.getMinutes())}${p(z.getSeconds())}_${Math.random().toString(36).slice(2,6)}`;
+  $("speichern").disabled=true;
+  try{
+    await db("readwrite",s=>s.put({id,notiz,fotos:fotos.map(f=>f.blob),erledigt:[]}));
+    fotos.forEach(f=>URL.revokeObjectURL(f.url));fotos=[];$("notiz").value="";zeichnen();
+    await zeigeStand("Gespeichert");senden();
+  }catch(e){$("stand").textContent="Nicht gespeichert, bitte erneut";zeichnen()}
+};
+async function hochladen(t,name,inhalt,typ){
+  const r=await fetch(`${P.url}/storage/v1/object/${P.bucket}/${P.ordner}/${encodeURIComponent(name)}`,{method:"POST",headers:{apikey:P.anon,Authorization:"Bearer "+t,"Content-Type":typ,"x-upsert":"true"},body:inhalt});
+  if(!r.ok)throw new Error(String(r.status));
+}
+async function senden(){
+  if(sendet)return;sendet=true;
+  try{
+    const t=await zugang();
+    if(t)for(const e of await alle()){
+      const teile=e.fotos.map((b,i)=>[`Festhalten_${e.id}_${i+1}.jpg`,b,"image/jpeg"]);
+      if(e.notiz)teile.push([`Festhalten_${e.id}_notiz.txt`,new Blob([e.notiz],{type:"text/plain"}),"text/plain"]);
+      for(const[n,b,typ]of teile)await hochladen(t,n,b,typ);
+      await db("readwrite",s=>s.delete(e.id));
+    }
+  }catch(e){}
+  sendet=false;zeigeStand();
+}
+$("login").onsubmit=async e=>{
+  e.preventDefault();$("loginFehler").textContent="";
+  try{
+    const r=await fetch(P.url+"/auth/v1/token?grant_type=password",{method:"POST",headers:{apikey:P.anon,"Content-Type":"application/json"},body:JSON.stringify({email:$("mail").value.trim(),password:$("pw").value})});
+    if(!r.ok)throw 0;
+    sitzungSetzen(await r.json());$("pw").value="";$("login").classList.remove("an");senden();
+  }catch(x){$("loginFehler").textContent="Anmeldung fehlgeschlagen"}
+};
+addEventListener("online",senden);addEventListener("offline",()=>zeigeStand());
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)senden()});
+setInterval(senden,30000);
+if(!sitzung())$("login").classList.add("an");
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+zeichnen();zeigeStand("Bereit");senden();
+</script>
+</body>
+</html>

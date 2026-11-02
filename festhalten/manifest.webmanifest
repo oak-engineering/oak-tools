@@ -1,0 +1,20 @@
+{
+  "name": "OAK Festhalten",
+  "short_name": "Festhalten",
+  "description": "Foto und Notiz festhalten, landet im OAK-Eingang.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#2D6A4F",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%232D6A4F'/%3E%3Cg fill='none' stroke='%23D8F3DC' stroke-width='22' stroke-linejoin='round'%3E%3Cpath d='M112 176h68l40-60h72l40 60h68v220H112z'/%3E%3Ccircle cx='256' cy='284' r='72'/%3E%3C/g%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
